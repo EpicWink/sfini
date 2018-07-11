@@ -1,11 +1,8 @@
-image: ubuntu
+image: registry.gitlab.com/epic_wink/aws-sfn-service/ci
 
 stages:
   - build
   - test
-
-before_script:
-  - apt-get update && apt-get upgrade -y && apt-get install -y python3-pip
 
 
 build-wheel:
