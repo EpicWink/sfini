@@ -63,7 +63,7 @@ class StateMachine:  # TODO: unit-test
         """Define starting state.
 
         Args:
-            state (sifne.State): initial state
+            state (sfeeny.State): initial state
         """
 
         if self._start_state is not None:
@@ -130,7 +130,7 @@ class StateMachine:  # TODO: unit-test
         """Run a worker to execute tasks.
 
         Args:
-            tasks (list[sifne._states.Task]): tasks to
+            tasks (list[sfeeny._states.Task]): tasks to
                 execute, default: all tasks
             block (bool): run worker synchronously
         """
@@ -146,11 +146,15 @@ class StateMachine:  # TODO: unit-test
             execution_input (dict): input to first state in state-machine
 
         Returns:
-            sifne.Execution: started execution
+            sfeeny.Execution: started execution
         """
 
         _now = datetime.datetime.now().isoformat("T")
         name = "_".join((self.name, _now, str(uuid.uuid4())))
-        execution = self._execution_class(name, self, sfn_client=self._sfn_client)
-        execution.start(execution_input)
+        execution = self._execution_class(
+            name,
+            self,
+            execution_input,
+            sfn_client=self._sfn_client)
+        execution.start()
         return execution

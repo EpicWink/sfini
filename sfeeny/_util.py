@@ -1,7 +1,7 @@
 # --- 80 characters -------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
-"""``sifne`` utilities."""
+"""Package utilities."""
 
 import logging as lg
 import functools as ft

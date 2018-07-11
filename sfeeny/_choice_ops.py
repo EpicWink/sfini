@@ -38,7 +38,7 @@ class BooleanEquals(_ChoiceRule):  # TODO: unit-test
     Arguments:
         variable_name (str): name of variable to compare
         comparison_value (bool): value to compare against
-        next_state (sifne.State): state to execute on successful comparison
+        next_state (_state.State): state to execute on success
     """
 
     def __init__(self, variable_name, comparison_value, next_state):
@@ -53,7 +53,7 @@ class _NumericRule(_ChoiceRule):  # TODO: unit-test
     Arguments:
         variable_name (str): name of variable to compare
         comparison_value (int or float): value to compare against
-        next_state (sifne.State): state to execute on successful comparison
+        next_state (_state.State): state to execute on success
     """
 
     def __init__(self, variable_name, comparison_value, next_state):
@@ -89,7 +89,7 @@ class _StringdRule(_ChoiceRule):  # TODO: unit-test
     Arguments:
         variable_name (str): name of variable to compare
         comparison_value (str): value to compare against
-        next_state (sifne.State): state to execute on successful comparison
+        next_state (_state.State): state to execute on success
     """
 
     def __init__(self, variable_name, comparison_value, next_state):
@@ -124,7 +124,7 @@ class _TimestampdRule(_ChoiceRule):  # TODO: unit-test
     Arguments:
         variable_name (str): name of variable to compare
         comparison_value (datetime.datetime): value to compare against
-        next_state (sifne.State): state to execute on successful comparison
+        next_state (_state.State): state to execute on success
     """
 
     def __init__(self, variable_name, comparison_value, next_state):

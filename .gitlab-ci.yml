@@ -1,0 +1,37 @@
+image: ubuntu
+
+stages:
+  - build
+  - test
+
+before-script:
+  - apt-get update && apt-get upgrade -y && apt-get install -y python3-pip
+
+
+build-wheel:
+  stage: build
+  only:
+    - master
+    - develop
+    - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
+  script:
+    - rm -rf build/*
+    - pip3 wheel -w build/ . --no-deps
+  artifacts:
+    paths:
+      - build/
+
+test-package:
+  stage: test
+  only:
+    - master
+    - develop
+    - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
+  dependencies:
+    - build-wheel
+  script:
+    - pip3 install $(find build/ -name sfeeny-*.whl | head -n1)[dev]
+    - pytest -vvrxrs --cov=/usr/local/lib/python3.6/dist-packages/sfeeny --cov-report=html --cov-report=term
+  artifacts:
+    paths:
+      - htmlcov/

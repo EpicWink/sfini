@@ -1,4 +1,4 @@
-# sifne
+# sfeeny
 Create AWS Step Functions easily. Pronounced "SIFF-nee".
 
 ## Getting started
@@ -11,12 +11,12 @@ required.
 
 ### Installation
 ```bash
-pip3 install sifne
+pip3 install sfeeny
 ```
 
 ## Usage
 ```bash
-pydoc3 sifne
+pydoc3 sfeeny
 ```
 
 See AWS Step Functions documentation for Step Functions usage.
@@ -28,16 +28,16 @@ variables are passed to the function. Unused variables returned by
 tasks are provided in execution output.
 
 ```python
-import sifne
+import sfeeny
 
 
-@sifne.task("buyCake", timeout=3.0)
+@sfeeny.task("buyCake", timeout=3.0)
 def buy_cake(store_name):
     print("bought cake from %s" % store_name)
     return {"cost": 23.0, "quality": 3.5}
 
 
-@sifne.task("eatCake")
+@sfeeny.task("eatCake")
 def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
     if quality < 2.0:
         raise RuntimeError("Cake was bad!")
@@ -48,21 +48,21 @@ def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
         "quality": quality - 0.1}
 
 
-@sifne.task("throwCake", end=True)
+@sfeeny.task("throwCake", end=True)
 def throw_away_cake():
     print("in the bin!")
     return {"satisfaction": 0.0, "remaining": 0.0}
 
 
-check_cake_remains = sifne.Choice(
+check_cake_remains = sfeeny.Choice(
     "cakeRemains",
     choices=[
-        sifne.NumericGreaterThan("remaining", 0.0, eat_cake),
-        sifne.NumericLessThanEquals("remaining", 0.0, sifne.Succeed)],
+        sfeeny.NumericGreaterThan("remaining", 0.0, eat_cake),
+        sfeeny.NumericLessThanEquals("remaining", 0.0, sfeeny.Succeed)],
     default=throw_away_cake)
 
 # State machine definition
-sm = sifne.StateMachine("myStateMachine", role_arn="...")
+sm = sfeeny.StateMachine("myStateMachine", role_arn="...")
 sm.start_at(buy_cake)
 buy_cake.goes_to(eat_cake)
 buy_cake.retry(TypeError, interval=10, max_attempts=5)
@@ -82,19 +82,3 @@ execution.wait()
 print(execution.output)
 # {'satisfaction': 14.74, 'cost': 23.0}
 ```
-
-## Development
-### Development installation
-```bash
-pip3 install -e .[dev]
-```
-
-### Testing
-```bash
-pytest -vvrxrs
-```
-
-### Style-guide
-Follow PEP-8, then Google Python style-guide. In particular, use
-Google-style docstrings. Use hanging-indent style, with 4 spaces for
-indentation. No lines with just a closing bracket! 80-character lines.
