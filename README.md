@@ -19,6 +19,8 @@ pip3 install sifne
 pydoc3 sifne
 ```
 
+See AWS Step Functions documentation for Step Functions usage.
+
 ### Example
 Note function parameter names are used to identify state variables: values
 are overwritten by return values, and signatures define what state
@@ -31,9 +33,9 @@ import sifne
 sm = sifne.StateMachine("myStateMachine", role_arn="...")
 
 
-@sm.task("buyCake")
+@sm.task("buyCake", timeout=3.0)
 def buy_cake(store_name):
-    print("bought cake from '{}'".format(store_name))
+    print("bought cake from %s" % store_name)
     return {"cost": 23.0, "quality": 3.5}
 
 
@@ -46,24 +48,25 @@ def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
         "satisfaction": satisfaction + quality * quantity,
         "remaining": remaining - quantity,
         "quality": quality - 0.1}
-        
-        
-@sm.task("throwCake")
+
+
+@sm.task("throwCake", end=True)
 def throw_away_cake():
     print("in the bin!")
     return {"satisfaction": 0.0, "remaining": 0.0}
-    
-    
-check_cake_remains = sifne.choice(
+
+
+check_cake_remains = sifne.Choice(
+    "cakeRemains",
     choices=[
-        sifne.numeric_gt("remaining", 0.0, eat_cake),
-        sifne.numeric_lte("remaining", 0.0, sifne.success)],
+        sifne.NumericGreaterThan("remaining", 0.0, eat_cake),
+        sifne.NumericLessThanEquals("remaining", 0.0, sifne.Succeed)],
     default=throw_away_cake)
 
 # State machine definition
 sm.start_at(buy_cake)
-buy_cake.timeout = 3.0  # seconds
 buy_cake.goes_to(eat_cake)
+buy_cake.retry(TypeError, interval=10, max_attempts=5)
 eat_cake.catch(RuntimeError, throw_away_cake)
 eat_cake.goes_to(check_cake_remains)
 sm.output(["satisfaction"])  # unused variables are also output
@@ -72,9 +75,9 @@ sm.register()  # register state machine with AWS SFN
 sm.run_worker(block=False)  # start a task worker for all tasks
 
 execution = sm.start_execution(
-    input={"store_name": "bestCakeStore", "quantity": 1.1})
+    execution_input={"store_name": "bestCakeStore", "quantity": 1.1})
 print(execution.name)
-# myStateMachine_2018-07-11T19-07-53_0354d790-0b68-4849-a0ba-d4689fd86934
+# myStateMachine_2018-07-11T19-07_0354d790-0b68-4849-a0ba-d4689fd86934
 
 execution.wait()
 print(execution.output)
@@ -82,6 +85,10 @@ print(execution.output)
 ```
 
 ## Development
+Follow PEP-8, then Google Python style-guide. In particular, use
+Google-style docstrings. Use hanging-indent style, with 4 spaces for
+indentation. No lines with just a closing bracket!
+
 ### Development installation
 ```bash
 pip3 install -e .[dev]
