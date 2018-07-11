@@ -2,3 +2,4 @@
 - Write AWS Step Functions overview
 - Write simple example(s)
 - Write unit tests
+- Figure out data passing-around architecture

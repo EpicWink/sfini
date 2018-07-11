@@ -12,11 +12,18 @@ except pkg_resources.DistributionNotFound:
 
 __all__ = [
     "StateMachine",
-    "Task",
     "Execution",
+    "task",
+    "Task",
     "Choice",
     "Succeed",
     "Fail",
+    "Pass",
+    "Wait",
+    "Parallel",
+    "And",
+    "Or",
+    "Not",
     "BooleanEquals",
     "NumericEquals",
     "NumericGreaterThan",
@@ -32,17 +39,21 @@ __all__ = [
     "TimestampGreaterThan",
     "TimestampGreaterThanEquals",
     "TimestampLessThan",
-    "TimestampLessThanEquals",
-    "And",
-    "Or",
-    "Not"]
+    "TimestampLessThanEquals"]
 
 from ._state_machine import StateMachine
-from ._task import Task
 from ._execution import Execution
-from ._choice import Choice
-from ._terminal import Succeed
-from ._terminal import Fail
+from ._states import task
+from ._states import Task
+from ._states import Choice
+from ._states import Succeed
+from ._states import Fail
+from ._states import Pass
+from ._states import Wait
+from ._states import Parallel
+from ._choice_ops import And
+from ._choice_ops import Or
+from ._choice_ops import Not
 from ._choice_ops import BooleanEquals
 from ._choice_ops import NumericEquals
 from ._choice_ops import NumericGreaterThan
@@ -59,6 +70,3 @@ from ._choice_ops import TimestampGreaterThan
 from ._choice_ops import TimestampGreaterThanEquals
 from ._choice_ops import TimestampLessThan
 from ._choice_ops import TimestampLessThanEquals
-from ._choice_ops import And
-from ._choice_ops import Or
-from ._choice_ops import Not

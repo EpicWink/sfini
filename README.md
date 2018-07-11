@@ -30,16 +30,14 @@ tasks are provided in execution output.
 ```python
 import sifne
 
-sm = sifne.StateMachine("myStateMachine", role_arn="...")
 
-
-@sm.task("buyCake", timeout=3.0)
+@sifne.task("buyCake", timeout=3.0)
 def buy_cake(store_name):
     print("bought cake from %s" % store_name)
     return {"cost": 23.0, "quality": 3.5}
 
 
-@sm.task("eatCake")
+@sifne.task("eatCake")
 def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
     if quality < 2.0:
         raise RuntimeError("Cake was bad!")
@@ -50,7 +48,7 @@ def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
         "quality": quality - 0.1}
 
 
-@sm.task("throwCake", end=True)
+@sifne.task("throwCake", end=True)
 def throw_away_cake():
     print("in the bin!")
     return {"satisfaction": 0.0, "remaining": 0.0}
@@ -64,6 +62,7 @@ check_cake_remains = sifne.Choice(
     default=throw_away_cake)
 
 # State machine definition
+sm = sifne.StateMachine("myStateMachine", role_arn="...")
 sm.start_at(buy_cake)
 buy_cake.goes_to(eat_cake)
 buy_cake.retry(TypeError, interval=10, max_attempts=5)
@@ -85,16 +84,17 @@ print(execution.output)
 ```
 
 ## Development
-Follow PEP-8, then Google Python style-guide. In particular, use
-Google-style docstrings. Use hanging-indent style, with 4 spaces for
-indentation. No lines with just a closing bracket!
-
 ### Development installation
 ```bash
 pip3 install -e .[dev]
 ```
 
-### Tests
+### Testing
 ```bash
 pytest -vvrxrs
 ```
+
+### Style-guide
+Follow PEP-8, then Google Python style-guide. In particular, use
+Google-style docstrings. Use hanging-indent style, with 4 spaces for
+indentation. No lines with just a closing bracket! 80-character lines.

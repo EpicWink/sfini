@@ -9,7 +9,7 @@ import logging as lg
 _logger = lg.getLogger(__name__)
 
 
-class _ChoiceRule:
+class _ChoiceRule:  # TODO: unit-test
     def __init__(self, variable_name, comparison_value, next_state):
         self.variable_name = variable_name
         self.comparison_value = comparison_value
@@ -32,7 +32,7 @@ class _ChoiceRule:
             "Next": self.next_state.name}
 
 
-class BooleanEquals(_ChoiceRule):
+class BooleanEquals(_ChoiceRule):  # TODO: unit-test
     """Compare boolean variable value.
 
     Arguments:
@@ -47,7 +47,7 @@ class BooleanEquals(_ChoiceRule):
             raise TypeError("Boolean comparison value must be `bool`")
 
 
-class _NumericRule(_ChoiceRule):
+class _NumericRule(_ChoiceRule):  # TODO: unit-test
     """Compare numeric variable value.
 
     Arguments:
@@ -83,7 +83,7 @@ class NumericLessThanEquals(_NumericRule):
     pass
 
 
-class _StringdRule(_ChoiceRule):
+class _StringdRule(_ChoiceRule):  # TODO: unit-test
     """Compare string variable value.
 
     Arguments:
@@ -118,7 +118,7 @@ class StringLessThanEquals(_StringdRule):
     pass
 
 
-class _TimestampdRule(_ChoiceRule):
+class _TimestampdRule(_ChoiceRule):  # TODO: unit-test
     """Compare date/time variable value.
 
     Arguments:
@@ -164,7 +164,7 @@ class TimestampLessThanEquals(_TimestampdRule):
     pass
 
 
-class _LogicalRule:
+class _LogicalRule:  # TODO: unit-test
     def __init__(self, choice_rules, next_state):
         self.choice_rules = choice_rules
         self.next_state = next_state
@@ -204,7 +204,7 @@ class Or(_LogicalRule):
     pass
 
 
-class Not(_LogicalRule):
+class Not(_LogicalRule):  # TODO: unit-test
     def __init__(self, choice_rule, next_state):
         super().__init__([choice_rule], next_state)
 

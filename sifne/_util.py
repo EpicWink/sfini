@@ -9,7 +9,7 @@ import functools as ft
 _logger = lg.getLogger(__name__)
 
 
-def cached_property(fn):
+def cached_property(fn):  # TODO: unit-test
     """Decorate a method as a cached property.
 
     The wrapped method's result is stored in the instance's ``__cache__``

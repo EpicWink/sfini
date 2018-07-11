@@ -50,6 +50,7 @@ class Execution:  # TODO: unit-test
 
     @property
     def output(self):
+        """Output of execution."""
         if self._output is None:
             if self._get_execution_status() != "SUCCEEDED":
                 raise RuntimeError("Execution not yet finished")

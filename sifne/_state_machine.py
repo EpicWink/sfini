@@ -3,6 +3,7 @@
 
 """SFN state machine."""
 
+import json
 import uuid
 import datetime
 import logging as lg
@@ -10,7 +11,7 @@ import logging as lg
 import boto3
 
 from . import _util
-from . import _task
+from . import _execution
 
 _logger = lg.getLogger(__name__)
 
@@ -27,9 +28,8 @@ class StateMachine:  # TODO: unit-test
             communication
     """
 
-    _task_class = None  # TODO: implement task class
     _task_runner_class = None  # TODO: implement task runner class
-    _execution_class = None  # TODO: implement execution class
+    _execution_class = _execution.Execution
 
     def __init__(
             self,
@@ -48,7 +48,6 @@ class StateMachine:  # TODO: unit-test
         self._sfn_client = self.session.client("stepfunctions")
         self._start_state = None
         self._output_variables = set()
-        self._definition = None
         self._task_runner_threads = []
 
     @_util.cached_property
@@ -59,50 +58,6 @@ class StateMachine:  # TODO: unit-test
         account = _sts.get_caller_identity()["account"]
         _s = "arn:aws:states:%s:%s:stateMachine:%s"
         return _s % (region, account, self.name)
-
-    def _register_task(
-            self,
-            name,
-            fn,
-            comment=None,
-            end=False,
-            timeout=None,
-            heartbeat=60):
-        # TODO: implement task function registration
-        raise NotImplementedError
-
-    def task(
-            self,
-            name,
-            comment=None,
-            end=False,
-            timeout=None,
-            heartbeat=60):
-        """Task function decorator.
-
-        Args:
-            name (str): name of task
-            comment (str): task description
-            end (bool): task is an execution-terminating state
-            timeout (int): seconds before task time-out
-            heartbeat (int): second between task heartbeats
-
-        Example:
-            >>> sm = StateMachine("mySM", "...")
-            >>> @sm.task("myTask")
-            >>> def fn():
-            ...     print("hi")
-        """
-
-        def wrapper(fn):
-            return self._register_task(
-                name,
-                fn,
-                comment=comment,
-                end=end,
-                timeout=timeout,
-                heartbeat=heartbeat)
-        return wrapper
 
     def start_at(self, state):
         """Define starting state.
@@ -135,6 +90,26 @@ class StateMachine:  # TODO: unit-test
             raise RuntimeError("Start state has not been set")
         raise NotImplementedError  # TODO: implement definition building
 
+    def to_dict(self):
+        """Convert this state-machine to a definition dictionary.
+
+        Returns:
+            dict: definition
+        """
+
+        self._build_definition()
+        # TODO: implement definition dict building
+        raise NotImplementedError
+
+    def to_json(self):
+        """Convert this state-machine's definition to JSON.
+
+        Returns:
+            str: JSON of definition
+        """
+
+        return json.dumps(self.to_dict())
+
     def register(self):
         """Register state-machine with AWS Step Functions.
 
@@ -142,10 +117,9 @@ class StateMachine:  # TODO: unit-test
             dict: state-machine response
         """
 
-        self._build_definition()
         resp = self._sfn_client.create_state_machine(
             name=self.name,
-            definition=self._definition.to_json(),
+            definition=self.to_json(),
             roleArn=self.role_arn)
         _logger.info(
             "State machine created with ARN '%s' at %s",
@@ -156,7 +130,7 @@ class StateMachine:  # TODO: unit-test
         """Run a worker to execute tasks.
 
         Args:
-            tasks (list[_task.Task] or tuple[_task.Task]): tasks to
+            tasks (list[sifne._states.Task]): tasks to
                 execute, default: all tasks
             block (bool): run worker synchronously
         """
