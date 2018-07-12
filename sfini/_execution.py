@@ -6,7 +6,7 @@
 import time
 import logging as lg
 
-import boto3
+from . import _util
 
 _logger = lg.getLogger(__name__)
 
@@ -18,11 +18,11 @@ class Execution:  # TODO: unit-test
             state_machine,
             execution_input,
             *,
-            sfn_client=None):
+            session=None):
         self.name = name
         self.state_machine = state_machine
         self.execution_input = execution_input
-        self.sfn_client = sfn_client or boto3.client("stepfunctions")
+        self.session = session or _util.AWSSession()
 
         self._start_time = None
         self._arn = None
@@ -33,7 +33,7 @@ class Execution:  # TODO: unit-test
         if self._start_time is not None:
             _s = "Execution already started at %s" % self._start_time
             raise RuntimeError(_s)
-        resp = self.sfn_client.start_execution(
+        resp = self.session.sfn.start_execution(
             stateMachineArn=self.state_machine.arn,
             name=self.name,
             input=self.execution_input)
@@ -43,7 +43,7 @@ class Execution:  # TODO: unit-test
     def _get_execution_status(self):
         if self._start_time is None:
             raise RuntimeError("Execution not yet started")
-        resp = self.sfn_client.describe_execution(executionArn=self._arn)
+        resp = self.session.sfn.describe_execution(executionArn=self._arn)
         if resp["status"] == "SUCCEEDED" and self._output is not None:
             self._output = resp["output"]
         return resp["status"]

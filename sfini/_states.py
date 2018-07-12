@@ -4,8 +4,11 @@
 """SFN states."""
 
 import math
+import datetime
 import logging as lg
 import functools as ft
+
+from . import _util
 
 _logger = lg.getLogger(__name__)
 
@@ -44,21 +47,13 @@ class State:  # TODO: unit-test
             dict: definition
         """
 
-        raise NotImplementedError
+        defn = {"Type": type(self).__name__}
+        if self.comment is not None:
+            defn["Comment"] = self.comment
+        return defn
 
 
-# class _Terminal(State):  # TODO: unit-test
-#     def __init__(self, name, comment=None):
-#         super().__init__(name, comment=comment)
-#
-#     def catch(self, exc, next_state):
-#         raise RuntimeError("Terminal state cannot have catch clause")
-#
-#     def goes_to(self, state):
-#         raise RuntimeError("Cannot define next state for terminal state")
-
-
-class _HasNext:  # TODO: unit-test
+class _HasNext(State):  # TODO: unit-test
     def __init__(self, name, comment=None):
         super().__init__(name, comment=comment)
         self._next = None
@@ -76,8 +71,16 @@ class _HasNext:  # TODO: unit-test
         """Remove next state, making this state terminal."""
         self._next = None
 
+    def to_dict(self):
+        defn = super().to_dict()
+        if self._next is None:
+            defn["End"] = True
+        else:
+            defn["Next"] = self._next.name
+        return defn
 
-class _CanRetry:  # TODO: unit-test
+
+class _CanRetry(State):  # TODO: unit-test
     def __init__(self, name, comment=None):
         super().__init__(name, comment=comment)
         self._retries = {}
@@ -157,8 +160,13 @@ class _CanRetry:  # TODO: unit-test
 
         return defns
 
+    def to_dict(self):
+        defn = super().to_dict()
+        defn["Retry"] = self._retries_defn()
+        return defn
 
-class _CanCatch:  # TODO: unit-test
+
+class _CanCatch(State):  # TODO: unit-test
     def __init__(self, name, comment=None):
         super().__init__(name, comment=comment)
         self._catches = {}
@@ -201,7 +209,7 @@ class _CanCatch:  # TODO: unit-test
             else:
                 defn = {
                     "ErrorEquals": [exc],
-                    "ResultPath": "$.error-info",
+                    "ResultPath": "$.%s.error-info" % self.name,
                     "Next": state.name}
 
                 # Defer adding wildcard error until end (AWS SFN spec)
@@ -215,6 +223,11 @@ class _CanCatch:  # TODO: unit-test
             defns.append(all_defn)
 
         return defns
+
+    def to_dict(self):
+        defn = super().to_dict()
+        defn["Catch"] = self._catches_defn()
+        return defn
 
 
 class Succeed(State):  # TODO: unit-test
@@ -235,7 +248,7 @@ class Fail(State):  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
-        cause (str): cause of failure
+        cause (str): failure description
         error (str): name of failure error
     """
 
@@ -244,19 +257,34 @@ class Fail(State):  # TODO: unit-test
         self.cause = cause
         self.error = error
 
+    def to_dict(self):
+        defn = super().to_dict()
+        defn["Cause"] = self.cause
+        defn["Error"] = self.error
+        return defn
+
 
 class Pass(_HasNext, State):  # TODO: unit-test
-    """No-op state.
+    """No-op state, possibly introducing data.
+
+    The name specifies the location of any introduced data.
 
     Args:
         name (str): name of state
         comment (str): state description
-        result: return value of state
+        result: return value of state, stored in the variable ``name``
     """
 
     def __init__(self, name, comment=None, result=None):
         super().__init__(name, comment=comment)
         self.result = result
+
+    def to_dict(self):
+        defn = super().to_dict()
+        if self.result is not None:
+            defn["ResultPath"] = "$.%s" % self.name
+            defn["Result"] = self.result
+        return defn
 
 
 class Wait(_HasNext, State):  # TODO: unit-test
@@ -264,19 +292,31 @@ class Wait(_HasNext, State):  # TODO: unit-test
 
     Args:
         name (str): name of state
+        until (int or datetime.datetime or str): time to wait. If ``int``,
+            then seconds to wait; if ``datetime.datetime``, then time to
+            wait until; if ``str``, then name of variable containing
+            seconds to wait for
         comment (str): state description
-        until (int or datetime.datetime or str): time to wait. If `int`,
-            then seconds to wait; if `datetime.datetime`, then time to wait
-            until; if `str`, then name of variable containing seconds to
-            wait for
     """
 
-    def __init__(self, name, comment=None, until=None):
+    def __init__(self, name, until, comment=None):
         super().__init__(name, comment=comment)
         self.until = until
 
-    def catch(self, exc, next_state):
-        raise RuntimeError("Wait state cannot have catch clause")
+    def to_dict(self):
+        defn = super().to_dict()
+        if isinstance(self.until, int):
+            defn["Seconds"] = self.until
+        elif isinstance(self.until, datetime.datetime):
+            if self.until.tzinfo is None or self.until.tzinfo.utcoffset(self.until) is None:
+                raise ValueError("Wait time must be aware")
+            defn["Timestamp"] = self.until.isoformat("T")
+        elif isinstance(self.until, str):
+            defn["SecondsPath"] = "$.%s" % self.until
+        else:
+            _s = "Invalid type for wait time: %s"
+            raise TypeError(_s % type(self.until).__name__)
+        return defn
 
 
 class Parallel(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
@@ -295,8 +335,10 @@ class Parallel(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         self.state_machines = state_machines
 
     def to_dict(self):
-        branches = [sm.to_dict() for sm in self.state_machines]
-        raise NotImplementedError
+        defn = super().to_dict()
+        defn["Branches"] = [sm.to_dict() for sm in self.state_machines]
+        defn["ResultPath"] = "$.%s" % self.name
+        return defn
 
 
 class Choice(State):  # TODO: unit-test
@@ -320,6 +362,13 @@ class Choice(State):  # TODO: unit-test
         self.choices = choices
         self.default = default
 
+    def to_dict(self):
+        defn = super().to_dict()
+        defn["Choices"] = [cr.to_dict() for cr in self.choices]
+        if self.default is not None:
+            defn["Default"] = self.default.name
+        return defn
+
 
 class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
     """Activity execution.
@@ -331,6 +380,9 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         timeout (int): seconds before task time-out
         heartbeat (int): second between task heartbeats
 
+    Attributes:
+        session (_util.Session): AWS session to use for communication,
+            must be set before using task
     """
 
     def __init__(
@@ -344,9 +396,29 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         self.fn = fn
         self.timeout = timeout
         self.heartbeat = heartbeat
+        self.session = None
 
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
+
+    @_util.cached_property
+    def arn(self) -> str:
+        """Task resource identifier."""
+        if self.session is None:
+            raise RuntimeError("Attach a session before using task")
+        region = self.session.region
+        account_id = self.session.account_id
+        _s = "arn:aws:states:%s:%s:activity:%s"
+        return _s % (region, account_id, self.name)
+
+    def to_dict(self):
+        defn = super().to_dict()
+        defn["Resource"] = self.arn
+        defn["ResultPath"] = "$.%s" % self.name
+        if self.timeout is not None:
+            defn["TimeoutSeconds"] = self.timeout
+        defn["HeartbeatSeconds"] = self.heartbeat
+        return defn
 
 
 def task(name, comment=None, timeout=None, heartbeat=60):  # TODO: unit-test

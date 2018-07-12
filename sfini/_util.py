@@ -3,6 +3,8 @@
 
 """Package utilities."""
 
+import boto3
+
 import logging as lg
 import functools as ft
 
@@ -33,3 +35,30 @@ def cached_property(fn):  # TODO: unit-test
         return self.__cache__[name]
 
     return property(wrapped)
+
+
+class AWSSession:  # TODO: unit-test
+    """AWS session, for preconfigure communication with AWS.
+
+    Arguments:
+        session (boto3.Session): session to use
+    """
+
+    def __init__(self, session=None):
+        self.session = session or boto3.Session()
+
+    @cached_property
+    def sfn(self):
+        """Step Functions client."""
+        return self.session.client("stepfunctions")
+
+    @cached_property
+    def region(self) -> str:
+        """Session AWS region."""
+        return self.session.region_name
+
+    @cached_property
+    def account_id(self) -> str:
+        """Session's account's account ID."""
+        _sts = self.session.client("sts")
+        return _sts.get_caller_identity()["account"]

@@ -1,5 +1,6 @@
-- Implement all state and state-machine definition dictionary conversion
+- Implement state-machine definition dictionary generation
 - Write AWS Step Functions overview
 - Write simple example(s)
 - Write unit tests
-- Figure out data passing-around architecture
+- Figure out proper data passing-around architecture
+- Implement task worker

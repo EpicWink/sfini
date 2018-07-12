@@ -24,8 +24,7 @@ class StateMachine:  # TODO: unit-test
         role_arn (str): AWS ARN for state-machine IAM role
         comment (str): description of state-maching
         timeout (int): execution time-out (seconds)
-        session (boto3.session.Session): session to use for AWS
-            communication
+        session (_util.AWSSession): session to use for AWS communication
     """
 
     _task_runner_class = None  # TODO: implement task runner class
@@ -43,9 +42,8 @@ class StateMachine:  # TODO: unit-test
         self.role_arn = role_arn
         self.comment = comment
         self.timeout = timeout
-        self.session = session or boto3.Session()
+        self.session = session or _util.AWSSession()
 
-        self._sfn_client = self.session.client("stepfunctions")
         self._start_state = None
         self._output_variables = set()
         self._task_runner_threads = []
@@ -53,9 +51,8 @@ class StateMachine:  # TODO: unit-test
     @_util.cached_property
     def arn(self):
         """State-machine generated ARN."""
-        region = self.session.region_name
-        _sts = self.session.client("sts")
-        account = _sts.get_caller_identity()["account"]
+        region = self.session.region
+        account = self.session.account_id
         _s = "arn:aws:states:%s:%s:stateMachine:%s"
         return _s % (region, account, self.name)
 
@@ -117,7 +114,7 @@ class StateMachine:  # TODO: unit-test
             dict: state-machine response
         """
 
-        resp = self._sfn_client.create_state_machine(
+        resp = self.session.sfn.create_state_machine(
             name=self.name,
             definition=self.to_json(),
             roleArn=self.role_arn)
@@ -155,6 +152,6 @@ class StateMachine:  # TODO: unit-test
             name,
             self,
             execution_input,
-            sfn_client=self._sfn_client)
+            session=self.session)
         execution.start()
         return execution
