@@ -8,10 +8,9 @@ import uuid
 import datetime
 import logging as lg
 
-import boto3
-
 from . import _util
 from . import _execution
+from . import _states
 
 _logger = lg.getLogger(__name__)
 
@@ -43,10 +42,10 @@ class StateMachine:  # TODO: unit-test
         self.comment = comment
         self.timeout = timeout
         self.session = session or _util.AWSSession()
-
         self._start_state = None
         self._output_variables = set()
         self._task_runner_threads = []
+        self.states = None
 
     @_util.cached_property
     def arn(self):
@@ -82,10 +81,16 @@ class StateMachine:  # TODO: unit-test
 
         self._output_variables.update(variables)
 
-    def _build_definition(self):
+    def _discover_states(self):
+        """Find all used states in state-machine."""
         if self._start_state is None:
             raise RuntimeError("Start state has not been set")
-        raise NotImplementedError  # TODO: implement definition building
+        states = {}
+        self._start_state.add_to(states)
+        for name, state in states.items():
+            if isinstance(state, _states.Task):
+                state.session = self.session
+        return states
 
     def to_dict(self):
         """Convert this state-machine to a definition dictionary.
@@ -94,9 +99,14 @@ class StateMachine:  # TODO: unit-test
             dict: definition
         """
 
-        self._build_definition()
-        # TODO: implement definition dict building
-        raise NotImplementedError
+        states = self._discover_states()
+        state_defns = {n: s.to_dict() for n, s in states.items()}
+        defn = {"StartAt": self._start_state.name, "States": state_defns}
+        if self.comment is not None:
+            defn["Comment"] = self.comment
+        if self.timeout is not None:
+            defn["TimeoutSeconds"] = self.timeout
+        return defn
 
     def to_json(self):
         """Convert this state-machine's definition to JSON.

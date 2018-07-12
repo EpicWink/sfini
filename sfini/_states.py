@@ -52,6 +52,20 @@ class State:  # TODO: unit-test
             defn["Comment"] = self.comment
         return defn
 
+    def add_to(self, states):
+        """Add this state to a states collection.
+
+        Args:
+            states (dict[str, State]): states to add to
+        """
+
+        if self.name in states:
+            if states[self.name] is not self:
+                _s = "Multiple states defined with name '%s'"
+                raise RuntimeError(_s % self.name)
+        else:
+            states[self.name] = self
+
 
 class _HasNext(State):  # TODO: unit-test
     def __init__(self, name, comment=None):
@@ -78,6 +92,11 @@ class _HasNext(State):  # TODO: unit-test
         else:
             defn["Next"] = self._next.name
         return defn
+
+    def add_to(self, states):
+        super().add_to(states)
+        if self._next is not None:
+            self._next.add_to(states)
 
 
 class _CanRetry(State):  # TODO: unit-test
@@ -305,17 +324,18 @@ class Wait(_HasNext, State):  # TODO: unit-test
 
     def to_dict(self):
         defn = super().to_dict()
-        if isinstance(self.until, int):
-            defn["Seconds"] = self.until
-        elif isinstance(self.until, datetime.datetime):
-            if self.until.tzinfo is None or self.until.tzinfo.utcoffset(self.until) is None:
+        t = self.until
+        if isinstance(t, int):
+            defn["Seconds"] = t
+        elif isinstance(t, datetime.datetime):
+            if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
                 raise ValueError("Wait time must be aware")
-            defn["Timestamp"] = self.until.isoformat("T")
-        elif isinstance(self.until, str):
-            defn["SecondsPath"] = "$.%s" % self.until
+            defn["Timestamp"] = t.isoformat("T")
+        elif isinstance(t, str):
+            defn["SecondsPath"] = "$.%s" % t
         else:
             _s = "Invalid type for wait time: %s"
-            raise TypeError(_s % type(self.until).__name__)
+            raise TypeError(_s % type(t).__name__)
         return defn
 
 
@@ -346,8 +366,8 @@ class Choice(State):  # TODO: unit-test
 
     Args:
         name (str): name of state
-        choices (list[sfini._choice_ops._ChoiceRule]): choice rules
-            determining branch conditions
+        choices (list[_ChoiceRule]): choice rules determining branch
+            conditions
         comment (str): state description
         default (State): fall-back state if all comparisons fail
     """
@@ -368,6 +388,11 @@ class Choice(State):  # TODO: unit-test
         if self.default is not None:
             defn["Default"] = self.default.name
         return defn
+
+    def add_to(self, states):
+        super().add_to(states)
+        for rule in self.choices:
+            rule.next_state.add_to(states)
 
 
 class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
@@ -446,4 +471,3 @@ def task(name, comment=None, timeout=None, heartbeat=60):  # TODO: unit-test
         ft.update_wrapper(task_, fn)
         return task_
     return wrapper
-

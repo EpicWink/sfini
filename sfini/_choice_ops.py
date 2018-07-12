@@ -25,7 +25,6 @@ class _ChoiceRule:  # TODO: unit-test
         op_name = type(self).__name__
         if op_name.startswith("_"):
             raise RuntimeError("'%s' is not a valid choice rule")
-
         return {
             "Variable": self.variable_name,
             op_name: self.comparison_value,
@@ -130,17 +129,19 @@ class _TimestampdRule(_ChoiceRule):  # TODO: unit-test
     def __init__(self, variable_name, comparison_value, next_state):
         super().__init__(variable_name, comparison_value, next_state)
         if not isinstance(comparison_value, datetime.datetime):
-            raise TypeError(
-                "Timestamp comparison value must be `datetime.datetime`")
+            _s = "Timestamp comparison value must be `datetime.datetime`"
+            raise TypeError(_s)
 
     def to_dict(self):
         op_name = type(self).__name__
         if op_name.startswith("_"):
             raise RuntimeError("'%s' is not a valid choice rule")
-
+        t = self.comparison_value
+        if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
+            raise ValueError("Comparison time must be aware")
         return {
             "Variable": self.variable_name,
-            op_name: self.comparison_value.isoformat("T"),
+            op_name: t.isoformat("T"),
             "Next": self.next_state.name}
 
 
@@ -175,7 +176,6 @@ class _LogicalRule:  # TODO: unit-test
             defn = choice_rule.to_dict().copy()
             del defn["Next"]
             choice_rule_defns.append(defn)
-
         return choice_rule_defns
 
     def to_dict(self):
@@ -188,12 +188,8 @@ class _LogicalRule:  # TODO: unit-test
         op_name = type(self).__name__
         if op_name.startswith("_"):
             raise RuntimeError("'%s' is not a valid choice rule")
-
         choice_rule_defns = self._get_choice_rule_defns()
-
-        return {
-            op_name: choice_rule_defns,
-            "Next": self.next_state.name}
+        return {op_name: choice_rule_defns, "Next": self.next_state.name}
 
 
 class And(_LogicalRule):
