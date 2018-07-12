@@ -48,20 +48,21 @@ def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
         "quality": quality - 0.1}
 
 
-@sfini.task("throwCake", end=True)
+@sfini.task("throwCake")
 def throw_away_cake():
     print("in the bin!")
     return {"satisfaction": 0.0, "remaining": 0.0}
 
 
+cake_finished = sfini.Succeed("cakeFinished")
+
 check_cake_remains = sfini.Choice(
     "cakeRemains",
     choices=[
         sfini.NumericGreaterThan("remaining", 0.0, eat_cake),
-        sfini.NumericLessThanEquals("remaining", 0.0, sfini.Succeed)],
+        sfini.NumericLessThanEquals("remaining", 0.0, cake_finished)],
     default=throw_away_cake)
 
-# State machine definition
 sm = sfini.StateMachine("myStateMachine", role_arn="...")
 sm.start_at(buy_cake)
 buy_cake.goes_to(eat_cake)

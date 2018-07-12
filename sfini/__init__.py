@@ -43,6 +43,7 @@ __all__ = [
 
 from ._state_machine import StateMachine
 from ._execution import Execution
+from ._states import State
 from ._states import task
 from ._states import Task
 from ._states import Choice
