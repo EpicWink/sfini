@@ -144,7 +144,7 @@ class _TaskExecution:  # TODO: unit-test
         self._heartbeat_thread.start()
         kwargs = self.task.get_input_from(self.task_input)
         try:
-            res = self.task.fn(**kwargs)
+            res = self.task.activity.fn(**kwargs)
         except Exception as e:
             self._send_failure(e)
             return

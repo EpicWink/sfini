@@ -70,14 +70,13 @@ check_cake_remains = sfini.Choice(
         sfini.NumericGreaterThan("remaining", 0.0, eat_cake),
         sfini.NumericLessThanEquals("remaining", 0.0, cake_finished)],
     default=throw_away_cake)
+eat_cake.goes_to(check_cake_remains)
 
 sm = sfini.StateMachine("myStateMachine", role_arn="...")
 sm.start_at(buy_cake)
-buy_cake.retry(TypeError, interval=10, max_attempts=5)
-eat_cake.catch(RuntimeError, throw_away_cake)
-eat_cake.goes_to(check_cake_remains)
 
-sm.register()  # register state machine with AWS SFN
+activities.register()  # register activities with AWS
+sm.register()  # register state machine with AWS
 sm.run_worker(block=False)  # start a task worker for all tasks
 
 execution = sm.start_execution(

@@ -125,6 +125,7 @@ class StateMachine:  # TODO: unit-test
             dict: state-machine response
         """
 
+        _util.assert_valid_name(self.name)
         resp = self.session.sfn.create_state_machine(
             name=self.name,
             definition=self.to_json(),
