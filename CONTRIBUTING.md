@@ -23,3 +23,4 @@ indentation. No lines with just a closing bracket! 80-character lines.
 - Figure out proper data passing-around architecture
 - Implement task worker
 - Separate activity from task (multiple tasks can have the same activity)
+- Properly deal with state-machine output

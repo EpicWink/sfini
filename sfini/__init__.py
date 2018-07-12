@@ -13,7 +13,8 @@ except pkg_resources.DistributionNotFound:
 __all__ = [
     "StateMachine",
     "Execution",
-    "task",
+    "Worker",
+    "Activities",
     "Task",
     "Choice",
     "Succeed",
@@ -43,8 +44,9 @@ __all__ = [
 
 from ._state_machine import StateMachine
 from ._execution import Execution
+from ._worker import Worker
+from ._activity import Activities
 from ._states import State
-from ._states import task
 from ._states import Task
 from ._states import Choice
 from ._states import Succeed

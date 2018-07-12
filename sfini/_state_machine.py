@@ -11,6 +11,7 @@ import logging as lg
 from . import _util
 from . import _execution
 from . import _states
+from . import _worker
 
 _logger = lg.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class StateMachine:  # TODO: unit-test
         session (_util.AWSSession): session to use for AWS communication
     """
 
-    _worker_class = None  # TODO: implement task runner class
+    _worker_class = _worker.Worker
     _execution_class = _execution.Execution
 
     def __init__(

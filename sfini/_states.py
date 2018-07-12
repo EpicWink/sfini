@@ -6,7 +6,6 @@
 import math
 import datetime
 import logging as lg
-import functools as ft
 
 from . import _util
 
@@ -113,9 +112,9 @@ class _CanRetry(State):  # TODO: unit-test
         """Add a retry condition.
 
         Args:
-            exc (Exception or str): error for retry to be executed. If a
-                string, must be one of '*', 'ALL', 'Timeout', 'TaskFailed',
-                or 'Permissions' (see AWS Step Functions documentation)
+            exc (type or str): error for retry to be executed. If a string,
+                must be one of '*', 'ALL', 'Timeout', 'TaskFailed', or
+                'Permissions' (see AWS Step Functions documentation)
             interval (int): (initial) retry interval (seconds)
             max_attempts (int): maximum number of attempts before
                 re-raising error
@@ -126,7 +125,7 @@ class _CanRetry(State):  # TODO: unit-test
         if isinstance(exc, str):
             _assert_str_exc(exc)
             exc = "ALL" if exc == "*" else exc
-        elif not isinstance(exc, Exception):
+        elif not issubclass(exc, Exception):
             raise TypeError("Error must be exception or accepted string")
 
         if exc in self._retries:
@@ -152,7 +151,7 @@ class _CanRetry(State):  # TODO: unit-test
             # Convert error to string
             if isinstance(exc, str):
                 exc = "States." + exc
-            elif isinstance(exc, Exception):
+            elif issubclass(exc, Exception):
                 exc = str(exc)
 
             # Search for already-defined retries
@@ -194,16 +193,17 @@ class _CanCatch(State):  # TODO: unit-test
         """Add a catch clause.
 
         Args:
-            exc (Exception or str): error for catch clause to be executed.
-                If a string, must be one of '*', 'ALL', 'Timeout',
-                'TaskFailed', or 'Permissions' (see AWS Step Functions
-                documentation)
+            exc (type or str): error for catch clause to be executed. If a
+                string, must be one of '*', 'ALL', 'Timeout', 'TaskFailed',
+                or 'Permissions' (see AWS Step Functions documentation)
             next_state (State): state to execute for catch clause
         """
 
         if isinstance(exc, str):
             _assert_str_exc(exc)
             exc = "ALL" if exc == "*" else exc
+        elif not issubclass(exc, Exception):
+            raise TypeError("Error must be exception or accepted string")
 
         if exc in self._catches:
             raise ValueError("Error '%s' already registered" % exc)
@@ -217,7 +217,7 @@ class _CanCatch(State):  # TODO: unit-test
             # Convert error to string
             if isinstance(exc, str):
                 exc = "States." + exc
-            elif isinstance(exc, Exception):
+            elif issubclass(exc, Exception):
                 exc = str(exc)
 
             # Search for already-defined retries
@@ -400,7 +400,7 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
 
     Args:
         name (str): name of state
-        fn (callable): function to run activity
+        activity (Activity): activity to execute
         comment (str): state description
         timeout (int): seconds before task time-out
         heartbeat (int): second between task heartbeats
@@ -413,18 +413,15 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
     def __init__(
             self,
             name,
-            fn,
+            activity,
             comment=None,
             timeout=None,
             heartbeat=60):
         super().__init__(name, comment=comment)
-        self.fn = fn
+        self.activity = activity
         self.timeout = timeout
         self.heartbeat = heartbeat
         self.session = None
-
-    def __call__(self, *args, **kwargs):
-        return self.fn(*args, **kwargs)
 
     @_util.cached_property
     def arn(self) -> str:
@@ -444,30 +441,3 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
             defn["TimeoutSeconds"] = self.timeout
         defn["HeartbeatSeconds"] = self.heartbeat
         return defn
-
-
-def task(name, comment=None, timeout=None, heartbeat=60):  # TODO: unit-test
-    """Task function decorator.
-
-    Args:
-        name (str): name of task
-        comment (str): task description
-        timeout (int): seconds before task time-out
-        heartbeat (int): second between task heartbeats
-
-    Example:
-        >>> @task("myTask")
-        >>> def fn():
-        ...     print("hi")
-    """
-
-    def wrapper(fn):
-        task_ = Task(
-            name,
-            fn,
-            comment=comment,
-            timeout=timeout,
-            heartbeat=heartbeat)
-        ft.update_wrapper(task_, fn)
-        return task_
-    return wrapper

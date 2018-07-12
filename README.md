@@ -30,15 +30,17 @@ tasks are provided in execution output.
 ```python
 import sfini
 
+activities = sfini.Activities("myPackage", "1.0")
 
-@sfini.task("buyCake", timeout=3.0)
-def buy_cake(store_name):
+
+@activities.activity("buyCakeActivity")
+def buy_cake_activity(store_name):
     print("bought cake from %s" % store_name)
     return {"cost": 23.0, "quality": 3.5}
 
 
-@sfini.task("eatCake")
-def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
+@activities.activity("eatCakeActivity")
+def eat_cake_activity(quality, quantity, satisfaction=0.0, remaining=1.0):
     if quality < 2.0:
         raise RuntimeError("Cake was bad!")
     print("Mmmmh, yummy!")
@@ -48,12 +50,18 @@ def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
         "quality": quality - 0.1}
 
 
-@sfini.task("throwCake")
-def throw_away_cake():
+@activities.activity("throwCakeActivity")
+def throw_away_cake_activity():
     print("in the bin!")
     return {"satisfaction": 0.0, "remaining": 0.0}
 
 
+buy_cake = sfini.Task("buyCake", buy_cake_activity, timeout=3)
+eat_cake = sfini.Task("eatCake", eat_cake_activity)
+buy_cake.retry(TypeError, interval=10, max_attempts=5)
+buy_cake.goes_to(eat_cake)
+throw_away_cake = sfini.Task(throw_away_cake_activity, "throwCake")
+eat_cake.catch(RuntimeError, throw_away_cake)
 cake_finished = sfini.Succeed("cakeFinished")
 
 check_cake_remains = sfini.Choice(
@@ -65,11 +73,9 @@ check_cake_remains = sfini.Choice(
 
 sm = sfini.StateMachine("myStateMachine", role_arn="...")
 sm.start_at(buy_cake)
-buy_cake.goes_to(eat_cake)
 buy_cake.retry(TypeError, interval=10, max_attempts=5)
 eat_cake.catch(RuntimeError, throw_away_cake)
 eat_cake.goes_to(check_cake_remains)
-sm.output(["satisfaction"])  # unused variables are also output
 
 sm.register()  # register state machine with AWS SFN
 sm.run_worker(block=False)  # start a task worker for all tasks

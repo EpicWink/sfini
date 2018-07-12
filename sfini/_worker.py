@@ -1,9 +1,7 @@
 # --- 80 characters -------------------------------------------------------
-# Created by: Laurie 2018/08/11
+# Created by: Laurie 2018/08/12
 
 """Task runner."""
-
-import boto3
 
 import json
 import uuid
@@ -18,7 +16,7 @@ _logger = lg.getLogger(__name__)
 _host_name = socket.getfqdn(socket.gethostname())
 
 
-class Worker:
+class Worker:  # TODO: unit-test
     """Worker to poll to execute tasks.
 
     Args:
@@ -26,14 +24,14 @@ class Worker:
             containing tasks to poll
         tasks (list[Task]): tasks to poll and execute
         name (str): name of worker, used for identification
-        session (_util.AWSSession): session to communicate to AWS with
+        session (_util.Session): session to use for AWS communication
     """
 
     def __init__(self, state_machine, tasks, name=None, *, session=None):
         self.state_machine = state_machine
         self.tasks = tasks
         self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
-        self.session = session
+        self.session = session or _util.AWSSession()
 
     def run(self, block=True):
         """Run worker to poll for and execute specified tasks.
@@ -62,7 +60,7 @@ class Worker:
         raise NotImplementedError
 
 
-class _TaskRunner:
+class _TaskRunner:  # TODO: unit-test
     """Worker to poll for task executions.
 
     Args:
@@ -95,7 +93,7 @@ class _TaskRunner:
                 activityArn=self.task.arn,
                 workerName=self.worker_name)
             if resp["taskToken"] is not None:
-                self._execute(resp["taskToken"], resp["input"])
+                self._execute(resp["taskToken"], json.loads(resp["input"]))
 
 
 class _TaskExecution:  # TODO: unit-test

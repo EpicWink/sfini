@@ -37,6 +37,13 @@ def cached_property(fn):  # TODO: unit-test
     return property(wrapped)
 
 
+def assert_valid_name(name):
+    if len(name) > 79:
+        raise ValueError("Name is too long: '%s'" % name)
+    if any(c in name for c in " \n\t<>{}[]?*$%\\^|~`$,;:/"):
+        raise ValueError("Name contains bad characters: '%s'" % name)
+
+
 class AWSSession:  # TODO: unit-test
     """AWS session, for preconfigure communication with AWS.
 
