@@ -26,7 +26,7 @@ class StateMachine:  # TODO: unit-test
         session (_util.AWSSession): session to use for AWS communication
     """
 
-    _task_runner_class = None  # TODO: implement task runner class
+    _worker_class = None  # TODO: implement task runner class
     _execution_class = _execution.Execution
 
     def __init__(
@@ -137,12 +137,17 @@ class StateMachine:  # TODO: unit-test
         """Run a worker to execute tasks.
 
         Args:
-            tasks (list[sfini._states.Task]): tasks to
-                execute, default: all tasks
+            tasks (list[_states.Task]): tasks to execute, default: all
+                tasks
             block (bool): run worker synchronously
         """
 
-        task_runner = self._task_runner_class(self, tasks=tasks)
+        if tasks is None:
+            tasks = list(self._discover_states().values())
+        task_runner = self._worker_class(
+            self,
+            tasks=tasks,
+            session=self.session)
         task_runner.run(block=block)
         return task_runner
 

@@ -34,7 +34,7 @@ class _ChoiceRule:  # TODO: unit-test
 class BooleanEquals(_ChoiceRule):  # TODO: unit-test
     """Compare boolean variable value.
 
-    Arguments:
+    Args:
         variable_name (str): name of variable to compare
         comparison_value (bool): value to compare against
         next_state (_state.State): state to execute on success
@@ -49,7 +49,7 @@ class BooleanEquals(_ChoiceRule):  # TODO: unit-test
 class _NumericRule(_ChoiceRule):  # TODO: unit-test
     """Compare numeric variable value.
 
-    Arguments:
+    Args:
         variable_name (str): name of variable to compare
         comparison_value (int or float): value to compare against
         next_state (_state.State): state to execute on success
@@ -85,7 +85,7 @@ class NumericLessThanEquals(_NumericRule):
 class _StringdRule(_ChoiceRule):  # TODO: unit-test
     """Compare string variable value.
 
-    Arguments:
+    Args:
         variable_name (str): name of variable to compare
         comparison_value (str): value to compare against
         next_state (_state.State): state to execute on success
@@ -120,7 +120,7 @@ class StringLessThanEquals(_StringdRule):
 class _TimestampdRule(_ChoiceRule):  # TODO: unit-test
     """Compare date/time variable value.
 
-    Arguments:
+    Args:
         variable_name (str): name of variable to compare
         comparison_value (datetime.datetime): value to compare against
         next_state (_state.State): state to execute on success

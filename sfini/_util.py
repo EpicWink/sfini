@@ -40,7 +40,7 @@ def cached_property(fn):  # TODO: unit-test
 class AWSSession:  # TODO: unit-test
     """AWS session, for preconfigure communication with AWS.
 
-    Arguments:
+    Args:
         session (boto3.Session): session to use
     """
 

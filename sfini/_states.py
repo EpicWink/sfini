@@ -31,7 +31,7 @@ def _compare_defn(defn_key, defn, retry_val, compare_key=None):  # TODO: unit-te
 class State:  # TODO: unit-test
     """Abstract state.
 
-    Arguments:
+    Args:
         name (str): name of state
         comment (str): state description
     """
