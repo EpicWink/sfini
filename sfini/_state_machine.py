@@ -63,7 +63,7 @@ class StateMachine:  # TODO: unit-test
         """Define starting state.
 
         Args:
-            state (sfeeny.State): initial state
+            state (sfini.State): initial state
         """
 
         if self._start_state is not None:
@@ -130,7 +130,7 @@ class StateMachine:  # TODO: unit-test
         """Run a worker to execute tasks.
 
         Args:
-            tasks (list[sfeeny._states.Task]): tasks to
+            tasks (list[sfini._states.Task]): tasks to
                 execute, default: all tasks
             block (bool): run worker synchronously
         """
@@ -146,7 +146,7 @@ class StateMachine:  # TODO: unit-test
             execution_input (dict): input to first state in state-machine
 
         Returns:
-            sfeeny.Execution: started execution
+            sfini.Execution: started execution
         """
 
         _now = datetime.datetime.now().isoformat("T")

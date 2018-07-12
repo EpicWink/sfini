@@ -1,7 +1,7 @@
 # --- 80 characters -------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
-"""Install ``sfeeny``."""
+"""Install ``sfini``."""
 
 import pathlib
 import setuptools
@@ -18,7 +18,7 @@ _classifiers = [
     "Operating System :: Microsoft :: Windows"]
 
 setuptools.setup(
-    name="sfeeny",
+    name="sfini",
     version=_version,
     author="Laurie",
     author_email="laurie@sitesee.com.au",

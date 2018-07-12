@@ -1,5 +1,5 @@
-# sfeeny
-Create AWS Step Functions easily. Pronounced "SIFF-nee".
+# sfini
+Create AWS Step Functions easily. Pronounced "SFIN-ee".
 
 ## Getting started
 Prepend `sudo -H` to the following commands if elevated priviliges is
@@ -11,12 +11,12 @@ required.
 
 ### Installation
 ```bash
-pip3 install sfeeny
+pip3 install sfini
 ```
 
 ## Usage
 ```bash
-pydoc3 sfeeny
+pydoc3 sfini
 ```
 
 See AWS Step Functions documentation for Step Functions usage.
@@ -28,16 +28,16 @@ variables are passed to the function. Unused variables returned by
 tasks are provided in execution output.
 
 ```python
-import sfeeny
+import sfini
 
 
-@sfeeny.task("buyCake", timeout=3.0)
+@sfini.task("buyCake", timeout=3.0)
 def buy_cake(store_name):
     print("bought cake from %s" % store_name)
     return {"cost": 23.0, "quality": 3.5}
 
 
-@sfeeny.task("eatCake")
+@sfini.task("eatCake")
 def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
     if quality < 2.0:
         raise RuntimeError("Cake was bad!")
@@ -48,21 +48,21 @@ def eat_cake(quality, quantity, satisfaction=0.0, remaining=1.0):
         "quality": quality - 0.1}
 
 
-@sfeeny.task("throwCake", end=True)
+@sfini.task("throwCake", end=True)
 def throw_away_cake():
     print("in the bin!")
     return {"satisfaction": 0.0, "remaining": 0.0}
 
 
-check_cake_remains = sfeeny.Choice(
+check_cake_remains = sfini.Choice(
     "cakeRemains",
     choices=[
-        sfeeny.NumericGreaterThan("remaining", 0.0, eat_cake),
-        sfeeny.NumericLessThanEquals("remaining", 0.0, sfeeny.Succeed)],
+        sfini.NumericGreaterThan("remaining", 0.0, eat_cake),
+        sfini.NumericLessThanEquals("remaining", 0.0, sfini.Succeed)],
     default=throw_away_cake)
 
 # State machine definition
-sm = sfeeny.StateMachine("myStateMachine", role_arn="...")
+sm = sfini.StateMachine("myStateMachine", role_arn="...")
 sm.start_at(buy_cake)
 buy_cake.goes_to(eat_cake)
 buy_cake.retry(TypeError, interval=10, max_attempts=5)

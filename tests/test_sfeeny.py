@@ -1,9 +1,9 @@
 # --- 80 characters -------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
-"""Test ``sfeeny``."""
+"""Test ``sfini``."""
 
-import sfeeny as tscr
+import sfini as tscr
 import pytest
 import mock
 

@@ -115,7 +115,7 @@ class Choice(_state.State):  # TODO: unit-test
 
     Args:
         name (str): name of state
-        choices (list[sfeeny._choice_ops._ChoiceRule]): choice rules
+        choices (list[sfini._choice_ops._ChoiceRule]): choice rules
             determining branch conditions
         comment (str): state description
         default (_state.State): fall-back state if all comparisons fail
