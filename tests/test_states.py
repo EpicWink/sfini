@@ -1,9 +1,9 @@
 # --- 80 characters -------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
-"""Test ``sfini``."""
+"""Test ``sfini._states``."""
 
-import sfini as tscr
+from sfini import _states as tscr
 import pytest
 import mock
 
