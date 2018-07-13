@@ -6,7 +6,7 @@ Prepend `sudo -H` to the following commands if elevated priviliges is
 required.
 
 ### Prerequisites
-* [Python 3](https://www.python.org/)
+* [Python 3](https://www.python.org/) and PIP
 * [AWS](https://aws.amazon.com/) account, with
   [IAM](https://aws.amazon.com/iam/) credentials
 
@@ -61,27 +61,28 @@ def throw_away_cake_activity():
 
 
 sm = sfini.StateMachine("myStateMachine", role_arn="...")
-buy_cake = sfini.Task("buyCake", buy_cake_activity, timeout=3)
-eat_cake = sfini.Task("eatCake", eat_cake_activity)
-throw_away_cake = sfini.Task(throw_away_cake_activity, "throwCake")
-cake_finished = sfini.Succeed("cakeFinished")
-
-check_cake_remains = sfini.Choice(
-    "cakeRemains",
-    choices=[
-        sfini.NumericGreaterThan("remaining", 0.0, eat_cake),
-        sfini.NumericLessThanEquals("remaining", 0.0, cake_finished)],
-    default=throw_away_cake)
+buy_cake = sm.task("buyCake", buy_cake_activity, timeout=3)
+eat_cake = sm.task("eatCake", eat_cake_activity)
+throw_away_cake = sm.task(throw_away_cake_activity, "throwCake")
+cake_finished = sm.succeed("cakeFinished")
+check_cake_remains = sm.choice("cakeRemains")
 
 sm.start_at(buy_cake)
-buy_cake.retry(TypeError, interval=10, max_attempts=5)
+buy_cake.retry_for(TypeError, interval=10, max_attempts=5)
 buy_cake.goes_to(eat_cake)
 eat_cake.catch(RuntimeError, throw_away_cake)
 eat_cake.goes_to(check_cake_remains)
+check_cake_remains.add(
+    sfini.NumericGreaterThan("remaining", 0.0, eat_cake))
+check_cake_remains.add(
+    sfini.NumericLessThanEquals("remaining", 0.0, cake_finished))
+check_cake_remains.default(throw_away_cake)  # shouldn't occur
 
 activities.register()  # register activities with AWS
 sm.register()  # register state machine with AWS
-sm.run_worker(block=False)  # start a task worker for all tasks
+
+worker = sfini.Worker(sm, sm.all_tasks)
+worker.run(block=False)
 
 execution = sm.start_execution(
     execution_input={"store_name": "bestCakeStore", "quantity": 1.1})
@@ -91,4 +92,6 @@ print(execution.name)
 execution.wait()
 print(execution.output)
 # {'satisfaction': 14.74, 'cost': 23.0}
+
+worker.end()
 ```

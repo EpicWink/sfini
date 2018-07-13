@@ -9,11 +9,29 @@ import logging as lg
 _logger = lg.getLogger(__name__)
 
 
-class _ChoiceRule:  # TODO: unit-test
+class _ChoiceOp:  # TODO: unit-test
+    pass
+
+
+class _ChoiceRule(_ChoiceOp):  # TODO: unit-test
     def __init__(self, variable_name, comparison_value, next_state):
         self.variable_name = variable_name
         self.comparison_value = comparison_value
         self.next_state = next_state
+
+    def __str__(self):
+        return "'%s' %s %s [%s]" % (
+            self.variable_name,
+            type(self).__name__,
+            self.comparison_value,
+            self.next_state)
+
+    def __repr__(self):
+        return "%s(%s%s%s)" % (
+            type(self).__name__,
+            repr(self.variable_name),
+            repr(self.comparison_value),
+            repr(self.next_state))
 
     def to_dict(self):
         """Convert this rule to a definition dictionary.
@@ -165,10 +183,21 @@ class TimestampLessThanEquals(_TimestampdRule):
     pass
 
 
-class _LogicalRule:  # TODO: unit-test
+class _LogicalRule(_ChoiceOp):  # TODO: unit-test
     def __init__(self, choice_rules, next_state):
         self.choice_rules = choice_rules
         self.next_state = next_state
+
+    def __str__(self):
+        _t = " %s " % type(self).__name__
+        _s = _t.join("(%s)" % r for r in self.choice_rules)
+        return _s + " [%s]" % self.next_state
+
+    def __repr__(self):
+        return "%s(%s%s)" % (
+            type(self).__name__,
+            repr(self.choice_rules),
+            repr(self.next_state))
 
     def _get_choice_rule_defns(self):
         choice_rule_defns = []
@@ -203,6 +232,16 @@ class Or(_LogicalRule):
 class Not(_LogicalRule):  # TODO: unit-test
     def __init__(self, choice_rule, next_state):
         super().__init__([choice_rule], next_state)
+
+    def __str__(self):
+        _f = (type(self).__name__, self.choice_rules[0], self.next_state)
+        return "%s %s [%s]" % _f
+
+    def __repr__(self):
+        return "%s(%s%s)" % (
+            type(self).__name__,
+            repr(self.choice_rules[0]),
+            repr(self.next_state))
 
     def _get_choice_rule_defns(self):
         defn = self.choice_rules[0].to_dict().copy()

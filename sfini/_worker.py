@@ -31,7 +31,7 @@ class Worker:  # TODO: unit-test
         self.state_machine = state_machine
         self.tasks = tasks
         self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
-        self.session = session or _util.AWSSession()
+        self.session = session or state_machine.session
 
         self._task_runners = None
         self._task_runner_threads = None

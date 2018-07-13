@@ -12,7 +12,7 @@ from . import _util
 _logger = lg.getLogger(__name__)
 
 
-def _assert_str_exc(exc):
+def _assert_str_exc(exc):  # TODO: unit-test
     errs = ("*", "ALL", "Timeout", "TaskFailed", "Permissions")
     if exc not in errs:
         _s = "Error name was '%s', must be one of: %s"
@@ -33,11 +33,26 @@ class State:  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
+        state_machine (StateMachine): state-machine this state is a part of
     """
 
-    def __init__(self, name, comment=None):
+    def __init__(self, name, comment=None, *, state_machine):
         self.name = name
         self.comment = comment
+        self.state_machine = state_machine
+
+    def __str__(self):
+        return "%s '%s' [%s]" % (
+            type(self).__name__,
+            self.name,
+            self.state_machine.name)
+
+    def __repr__(self):
+        return "%s(%s%s%s)" % (
+            type(self).__name__,
+            repr(self.name),
+            "" if self.comment is None else (", " + repr(self.comment)),
+            ", state_machine=" + repr(self.state_machine))
 
     def to_dict(self):
         """Convert this state to a definition dictionary.
@@ -51,25 +66,14 @@ class State:  # TODO: unit-test
             defn["Comment"] = self.comment
         return defn
 
-    def add_to(self, states):
-        """Add this state to a states collection.
-
-        Args:
-            states (dict[str, State]): states to add to
-        """
-
-        if self.name in states:
-            if states[self.name] is not self:
-                _s = "Multiple states defined with name '%s'"
-                raise RuntimeError(_s % self.name)
-        else:
-            states[self.name] = self
-
 
 class _HasNext(State):  # TODO: unit-test
-    def __init__(self, name, comment=None):
-        super().__init__(name, comment=comment)
-        self._next = None
+    def __init__(self, name, comment=None, *, state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            state_machine=state_machine)
+        self.next = None
 
     def goes_to(self, state):
         """Set next state after this state finishes.
@@ -78,32 +82,34 @@ class _HasNext(State):  # TODO: unit-test
             state (State): state to execute next
         """
 
-        self._next = state
+        if state not in self.state_machine.states.values():
+            _s = "State '%s' is not part of this state-machine"
+            raise ValueError(_s % state)
 
-    def clear_next_state(self):
+        self.next = state
+
+    def remove_next(self):
         """Remove next state, making this state terminal."""
-        self._next = None
+        self.next = None
 
     def to_dict(self):
         defn = super().to_dict()
-        if self._next is None:
+        if self.next is None:
             defn["End"] = True
         else:
-            defn["Next"] = self._next.name
+            defn["Next"] = self.next.name
         return defn
-
-    def add_to(self, states):
-        super().add_to(states)
-        if self._next is not None:
-            self._next.add_to(states)
 
 
 class _CanRetry(State):  # TODO: unit-test
-    def __init__(self, name, comment=None):
-        super().__init__(name, comment=comment)
-        self._retries = {}
+    def __init__(self, name, comment=None, *, state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            state_machine=state_machine)
+        self.retries = {}
 
-    def retry(
+    def retry_for(
             self,
             exc,
             interval=None,
@@ -128,10 +134,10 @@ class _CanRetry(State):  # TODO: unit-test
         elif not issubclass(exc, Exception):
             raise TypeError("Error must be exception or accepted string")
 
-        if exc in self._retries:
+        if exc in self.retries:
             raise ValueError("Error '%s' already registered" % exc)
 
-        self._retries[exc] = {
+        self.retries[exc] = {
             "interval": interval,
             "max_attempts": max_attempts,
             "backoff_rate": backoff_rate}
@@ -147,7 +153,7 @@ class _CanRetry(State):  # TODO: unit-test
     def _retries_defn(self):
         defns = []
         all_defn = None
-        for exc, retry in self._retries.items():
+        for exc, retry in self.retries.items():
             # Convert error to string
             if isinstance(exc, str):
                 exc = "States." + exc
@@ -185,9 +191,12 @@ class _CanRetry(State):  # TODO: unit-test
 
 
 class _CanCatch(State):  # TODO: unit-test
-    def __init__(self, name, comment=None):
-        super().__init__(name, comment=comment)
-        self._catches = {}
+    def __init__(self, name, comment=None, *, state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            state_machine=state_machine)
+        self.catches = {}
 
     def catch(self, exc, next_state):
         """Add a catch clause.
@@ -199,21 +208,25 @@ class _CanCatch(State):  # TODO: unit-test
             next_state (State): state to execute for catch clause
         """
 
+        if next_state not in self.state_machine.states.values():
+            _s = "State '%s' is not part of this state-machine"
+            raise ValueError(_s % next_state)
+
         if isinstance(exc, str):
             _assert_str_exc(exc)
             exc = "ALL" if exc == "*" else exc
         elif not issubclass(exc, Exception):
             raise TypeError("Error must be exception or accepted string")
 
-        if exc in self._catches:
+        if exc in self.catches:
             raise ValueError("Error '%s' already registered" % exc)
 
-        self._catches[exc] = next_state
+        self.catches[exc] = next_state
 
     def _catches_defn(self):
         defns = []
         all_defn = None
-        for exc, state in self._catches.items():
+        for exc, state in self.catches.items():
             # Convert error to string
             if isinstance(exc, str):
                 exc = "States." + exc
@@ -257,8 +270,11 @@ class Succeed(State):  # TODO: unit-test
         comment (str): state description
     """
 
-    def __init__(self, name, comment=None):
-        super().__init__(name, comment=comment)
+    def __init__(self, name, comment=None, *, state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            state_machine=state_machine)
 
 
 class Fail(State):  # TODO: unit-test
@@ -271,8 +287,18 @@ class Fail(State):  # TODO: unit-test
         error (str): name of failure error
     """
 
-    def __init__(self, name, comment=None, cause=None, error=None):
-        super().__init__(name, comment=comment)
+    def __init__(
+            self,
+            name,
+            comment=None,
+            cause=None,
+            error=None,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            state_machine=state_machine)
         self.cause = cause
         self.error = error
 
@@ -281,6 +307,15 @@ class Fail(State):  # TODO: unit-test
         defn["Cause"] = self.cause
         defn["Error"] = self.error
         return defn
+
+    def __repr__(self):
+        return "%s(%s%s%s%s%s)" % (
+            type(self).__name__,
+            repr(self.name),
+            "" if self.comment is None else (", " + repr(self.comment)),
+            "" if self.cause is None else (", " + repr(self.cause)),
+            "" if self.error is None else (", " + repr(self.error)),
+            ", " + repr(self.state_machine))
 
 
 class Pass(_HasNext, State):  # TODO: unit-test
@@ -292,11 +327,25 @@ class Pass(_HasNext, State):  # TODO: unit-test
         name (str): name of state
         comment (str): state description
         result: return value of state, stored in the variable ``name``
+
+    Attributes:
+        next (State): next state to execute
     """
 
-    def __init__(self, name, comment=None, result=None):
-        super().__init__(name, comment=comment)
+    def __init__(self, name, comment=None, result=None, *, state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            state_machine=state_machine)
         self.result = result
+
+    def __repr__(self):
+        return "%s(%s%s%s%s)" % (
+            type(self).__name__,
+            repr(self.name),
+            "" if self.comment is None else (", " + repr(self.comment)),
+            "" if self.result is None else (", " + repr(self.result)),
+            ", " + repr(self.state_machine))
 
     def to_dict(self):
         defn = super().to_dict()
@@ -316,11 +365,25 @@ class Wait(_HasNext, State):  # TODO: unit-test
             wait until; if ``str``, then name of variable containing
             seconds to wait for
         comment (str): state description
+
+    Attributes:
+        next (State): next state to execute
     """
 
-    def __init__(self, name, until, comment=None):
-        super().__init__(name, comment=comment)
+    def __init__(self, name, until, comment=None, *, state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            state_machine=state_machine)
         self.until = until
+
+    def __repr__(self):
+        return "%s(%s%s%s%s)" % (
+            type(self).__name__,
+            repr(self.name),
+            repr(self.until),
+            "" if self.comment is None else (", " + repr(self.comment)),
+            ", " + repr(self.state_machine))
 
     def to_dict(self):
         defn = super().to_dict()
@@ -344,15 +407,23 @@ class Parallel(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
 
     Args:
         name (str): name of state
+        comment (str): state description
+
+    Attributes:
         state_machines (list[StateMachine]): state-machines to run in
             parallel. These state-machines do not need to be registered
             with AWS Step Functions.
-        comment (str): state description
+        next (State): next state to execute
+        retries (dict[Exception or str]): retry conditions
+        catches (dict[Exception or str]): handled state errors
     """
 
-    def __init__(self, name, state_machines, comment=None):
-        super().__init__(name, comment=comment)
-        self.state_machines = state_machines
+    def __init__(self, name, comment=None, *, state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            state_machine=state_machine)
+        self.state_machines = []
 
     def to_dict(self):
         defn = super().to_dict()
@@ -360,39 +431,99 @@ class Parallel(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         defn["ResultPath"] = "$.%s" % self.name
         return defn
 
+    def add(self, state_machine):
+        """Add a state-machine to be executed.
+
+        The input to the state-machine execution is the input into this
+        parallel state. The output of the parallel state is a list of each
+        state-machine's output (in order of adding).
+
+        Args:
+            state_machine (sfini.StateMachine): state-machine to add. It
+                will be run when this task is executed. State-machines do
+                not need to be registered with AWS Step Functions
+        """
+
+        self.state_machines.append(state_machine)
+
 
 class Choice(State):  # TODO: unit-test
     """Branch execution based on comparisons.
 
     Args:
         name (str): name of state
+        comment (str): state description
+
+    Attributes:
         choices (list[_ChoiceRule]): choice rules determining branch
             conditions
-        comment (str): state description
         default (State): fall-back state if all comparisons fail
     """
 
-    def __init__(
-            self,
+    def __init__(self, name, comment=None, *, state_machine):
+        super().__init__(
             name,
-            choices,
-            comment=None,
-            default=None):
-        super().__init__(name, comment=comment)
-        self.choices = choices
-        self.default = default
+            comment=comment,
+            state_machine=state_machine)
+        self.choices = []
+        self.default = None
 
     def to_dict(self):
+        if not self.choices and self.default is None:
+            raise RuntimeError("Choice '%s' has no next path")
         defn = super().to_dict()
         defn["Choices"] = [cr.to_dict() for cr in self.choices]
         if self.default is not None:
             defn["Default"] = self.default.name
         return defn
 
-    def add_to(self, states):
-        super().add_to(states)
-        for rule in self.choices:
-            rule.next_state.add_to(states)
+    def add(self, rule):
+        """Add a branch.
+
+        Args:
+            rule (_ChoiceOp): branch execution condition and specification
+                to add
+
+        Raises:
+            RuntimeError: rule will go to a state not part of this
+                state-machine
+        """
+
+        if rule.next_state.state_machine is not self.state_machine:
+            raise RuntimeError(
+                "Rule '%s' has next-state which is not part of this "
+                "state-machine")
+
+        self.choices.append(rule)
+
+    def remove(self, rule):
+        """Remove a branch.
+
+        Args:
+            rule (_ChoiceOp): branch execution condition and specification
+                to remove
+
+        Raises:
+            ValueError: if rule is not a registered branch
+        """
+
+        if rule not in self.choices:
+            raise ValueError("Rule '%s' is not registered with this state")
+
+        self.choices.remove(rule)
+
+    def set_default(self, state):
+        """Set the default state to execute when no conditions were met.
+
+        Args:
+            state (State): default state to execute
+        """
+
+        if self.default is not None:
+            _s = "Overwriting current default state '%s'"
+            _logger.warning(_s % self.default)
+
+        self.default = state
 
 
 class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
@@ -406,8 +537,9 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         heartbeat (int): second between task heartbeats
 
     Attributes:
-        session (_util.Session): AWS session to use for communication,
-            must be set before using task
+        next (State): next state to execute
+        retries (dict[Exception or str]): retry conditions
+        catches (dict[Exception or str]): handled state errors
     """
 
     def __init__(
@@ -416,20 +548,32 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
             activity,
             comment=None,
             timeout=None,
-            heartbeat=60):
-        super().__init__(name, comment=comment)
+            heartbeat=60,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            state_machine=state_machine)
         self.activity = activity
         self.timeout = timeout
         self.heartbeat = heartbeat
-        self.session = None
+
+    def __repr__(self):
+        return "%s(%s%s%s%s%s%s)" % (
+            type(self).__name__,
+            repr(self.name),
+            repr(self.activity),
+            "" if self.comment is None else (", " + repr(self.comment)),
+            "" if self.timeout is None else (", " + repr(self.timeout)),
+            ", " + repr(self.heartbeat),
+            ", " + repr(self.state_machine))
 
     @_util.cached_property
     def arn(self) -> str:
         """Task resource identifier."""
-        if self.session is None:
-            raise RuntimeError("Attach a session before using task")
-        region = self.session.region
-        account_id = self.session.account_id
+        region = self.state_machine.session.region
+        account_id = self.state_machine.session.account_id
         _s = "arn:aws:states:%s:%s:activity:%s"
         return _s % (region, account_id, self.name)
 

@@ -1,7 +1,7 @@
 # --- 80 characters -------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
-"""SFN execution."""
+"""SFN state-machine execution."""
 
 import time
 import logging as lg
@@ -33,6 +33,7 @@ class Execution:  # TODO: unit-test
         if self._start_time is not None:
             _s = "Execution already started at %s" % self._start_time
             raise RuntimeError(_s)
+        _util.assert_valid_name(self.name)
         resp = self.session.sfn.start_execution(
             stateMachineArn=self.state_machine.arn,
             name=self.name,

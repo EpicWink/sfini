@@ -10,6 +10,9 @@ import functools as ft
 
 _logger = lg.getLogger(__name__)
 
+MAX_NAME_LENGTH = 79
+INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*$%\\^|~`$,;:/"
+
 
 def cached_property(fn):  # TODO: unit-test
     """Decorate a method as a cached property.
@@ -37,11 +40,20 @@ def cached_property(fn):  # TODO: unit-test
     return property(wrapped)
 
 
-def assert_valid_name(name):
-    if len(name) > 79:
+def assert_valid_name(name):  # TODO: unit-test
+    """Ensure a valid name of activity, state-machine or state.
+
+    Args:
+        name (str): name to analyse
+
+    Raises:
+        ValueError: name is invalid
+    """
+
+    if len(name) > MAX_NAME_LENGTH:
         raise ValueError("Name is too long: '%s'" % name)
-    if any(c in name for c in " \n\t<>{}[]?*$%\\^|~`$,;:/"):
-        raise ValueError("Name contains bad characters: '%s'" % name)
+    if any(c in name for c in INVALID_NAME_CHARACTERS):
+        raise ValueError("Name contains invalid characters: '%s'" % name)
 
 
 class AWSSession:  # TODO: unit-test
@@ -53,6 +65,13 @@ class AWSSession:  # TODO: unit-test
 
     def __init__(self, session=None):
         self.session = session or boto3.Session()
+
+    def __str__(self):
+        _k = self.session.get_credentials().access_key
+        return "Session[access key: %s, region: %s]" % (_k, self.region)
+
+    def __repr__(self):
+        return "%s(%s)" % (type(self).__name__, repr(self.session))
 
     @cached_property
     def sfn(self):

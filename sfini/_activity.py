@@ -123,13 +123,13 @@ class Activity:  # TODO: unit-test
             session (_util.Session): session to use for AWS communication
         """
 
-        _util.assert_valid_name(name)
         activity = cls(name, fn, session=session)
         ft.update_wrapper(activity, fn)
         return activity
 
     def register(self):
         """Register activity with AWS."""
+        _util.assert_valid_name(self.name)
         self.session.sfn.create_activity(name=self.name)
 
     def get_input_from(self, task_input):

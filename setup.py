@@ -15,7 +15,8 @@ _classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Natural Language :: English",
     "Operating System :: POSIX :: Linux",
-    "Operating System :: Microsoft :: Windows"]
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS"]
 
 setuptools.setup(
     name="sfini",
