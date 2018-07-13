@@ -80,6 +80,9 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
+
+        Returns:
+            _states.Succeed: succeed state
         """
 
         if name in self.states:
@@ -98,6 +101,9 @@ class StateMachine:  # TODO: unit-test
             comment (str): state description
             cause (str): failure description
             error (str): name of failure error
+
+        Returns:
+            _states.Fail: fail state
         """
 
         if name in self.states:
@@ -121,6 +127,9 @@ class StateMachine:  # TODO: unit-test
             name (str): name of state
             comment (str): state description
             result: return value of state, stored in the variable ``name``
+
+        Returns:
+            _states.Pass: pass state
         """
 
         if name in self.states:
@@ -145,6 +154,9 @@ class StateMachine:  # TODO: unit-test
                 then time to wait until; if ``str``, then name of variable
                 containing seconds to wait for
             comment (str): state description
+
+        Returns:
+            _states.Wait: wait state
         """
 
         if name in self.states:
@@ -170,6 +182,9 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
+
+        Returns:
+            _states.Parallel: parallel state
         """
 
         if name in self.states:
@@ -186,6 +201,9 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
+
+        Returns:
+            _states.Choice: choice state
         """
 
         if name in self.states:
@@ -211,6 +229,9 @@ class StateMachine:  # TODO: unit-test
             comment (str): state description
             timeout (int): seconds before task time-out
             heartbeat (int): second between task heartbeats
+
+        Returns:
+            _states.Task: task state
         """
 
         if name in self.states:
