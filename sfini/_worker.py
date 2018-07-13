@@ -33,6 +33,21 @@ class Worker:  # TODO: unit-test
         self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
         self.session = session or _util.AWSSession()
 
+        self._task_runners = None
+        self._task_runner_threads = None
+
+    def end(self):
+        """End polling."""
+        for runner in self._task_runners:
+            runner.end()
+
+    def _join(self):
+        try:
+            for thread in self._task_runner_threads:
+                thread.join()
+        except KeyboardInterrupt:
+            self.end()
+
     def run(self, block=True):
         """Run worker to poll for and execute specified tasks.
 
@@ -40,22 +55,17 @@ class Worker:  # TODO: unit-test
             block (bool): run worker synchronously
         """
 
-        task_runners = []
-        task_runner_threads = []
+        self._task_runners = []
+        self._task_runner_threads = []
         for task in self.tasks:
             runner = _TaskRunner(task, self.name, session=self.session)
             thread = threading.Thread(target=runner.poll)
             thread.start()
-            task_runners.append(runner)
-            task_runner_threads.append(thread)
+            self._task_runners.append(runner)
+            self._task_runner_threads.append(thread)
 
         if block:
-            try:
-                for thread in task_runner_threads:
-                    thread.join()
-            except KeyboardInterrupt as e:
-                for runner in task_runners:
-                    runner.exc = e
+            self._join()
 
         raise NotImplementedError
 
@@ -75,6 +85,16 @@ class _TaskRunner:  # TODO: unit-test
         self.session = session or _util.AWSSession()
         self._task_executions = []
         self._task_execution_threads = []
+        self._end = False
+
+    def end(self):
+        """End polling."""
+        self._end = True
+        self.stop_executions()
+
+    def stop_executions(self):
+        """Tell current executions to stop."""
+        [e.request_stop() for e in self._task_executions]
 
     def _execute(self, task_token, task_input):
         execution = _TaskExecution(
@@ -87,13 +107,24 @@ class _TaskRunner:  # TODO: unit-test
         self._task_executions.append(execution)
         self._task_execution_threads.append(thread)
 
-    def poll(self):
+    def _poll(self):
         while True:
+            if self._end:
+                break
             resp = self.session.sfn.get_activity_task(
                 activityArn=self.task.arn,
                 workerName=self.worker_name)
             if resp["taskToken"] is not None:
                 self._execute(resp["taskToken"], json.loads(resp["input"]))
+
+    def poll(self):
+        """Poll for executions."""
+        try:
+            self._poll()
+        except KeyboardInterrupt:
+            _logger.info("Waiting for executions to finish")
+            self.stop_executions()
+            [t.join() for t in self._task_execution_threads]
 
 
 class _TaskExecution:  # TODO: unit-test
@@ -113,6 +144,18 @@ class _TaskExecution:  # TODO: unit-test
         self._heartbeat_thread = threading.Thread(target=self._heartbeat)
         self._request_stop = False
 
+    def request_stop(self):
+        """Tell execution to stop communicating with AWS.
+
+        Returns:
+            bool: ``True`` if communication was already stopped
+        """
+
+        if self._request_stop:
+            return False
+        self._request_stop = True
+        return True
+
     def _send_heartbeat(self):
         self.session.sfn.send_task_heartbeat(taskToken=self.task_token)
 
@@ -127,6 +170,9 @@ class _TaskExecution:  # TODO: unit-test
             time.sleep(heartbeat - (time.time() - t))
 
     def _send_failure(self, exc):
+        if self._request_stop:
+            _logger.warning("Skipping sending failure as we're quitting")
+            return
         self._request_stop = True
         self.session.sfn.send_task_failure(
             taskToken=self.task_token,
@@ -134,6 +180,9 @@ class _TaskExecution:  # TODO: unit-test
             cause=str(exc))
 
     def _send_success(self, res):
+        if self._request_stop:
+            _logger.warning("Skipping sending failure as we're quitting")
+            return
         self._request_stop = True
         self.session.sfn.send_task_success(
             taskToken=self.task_token,
@@ -142,7 +191,11 @@ class _TaskExecution:  # TODO: unit-test
     def run(self):
         """Run task."""
         self._heartbeat_thread.start()
-        kwargs = self.task.get_input_from(self.task_input)
+        try:
+            kwargs = self.task.get_input_from(self.task_input)
+        except KeyError as e:
+            self._send_failure(e)
+            return
         try:
             res = self.task.activity.fn(**kwargs)
         except Exception as e:

@@ -110,7 +110,8 @@ class Activity:  # TODO: unit-test
         for param_name, param in self.sig.parameters.items():
             if param_name not in task_input:
                 if param.default != inspect.Parameter.empty:
-                    raise KeyError("Required parameter '%s' not specified in task input")
+                    _s = "Required parameter '%s' not in task input"
+                    raise KeyError(_s % param_name)
                 kwargs[param_name] = param.default
             else:
                 kwargs[param_name] = task_input[param_name]

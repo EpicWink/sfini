@@ -44,7 +44,7 @@ class StateMachine:  # TODO: unit-test
         self.timeout = timeout
         self.session = session or _util.AWSSession()
         self._start_state = None
-        self._output_variables = set()
+        # self._output_variables = set()
         self._task_runner_threads = []
         self.states = None
 
@@ -70,17 +70,17 @@ class StateMachine:  # TODO: unit-test
                 state)
         self._start_state = state
 
-    def output(self, variables):
-        """Include variables in execution output.
-
-        Note that unused return-value variables will already be included.
-
-        Args:
-            variables (list[str] or tuple[str] or set[str]): variables to
-                include in execution output
-        """
-
-        self._output_variables.update(variables)
+    # def output(self, variables):
+    #     """Include variables in execution output.
+    #
+    #     Note that unused return-value variables will already be included.
+    #
+    #     Args:
+    #         variables (list[str] or tuple[str] or set[str]): variables to
+    #             include in execution output
+    #     """
+    #
+    #     self._output_variables.update(variables)
 
     def _discover_states(self):
         """Find all used states in state-machine."""

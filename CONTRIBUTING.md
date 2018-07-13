@@ -22,6 +22,5 @@ closing bracket! 80-character lines.
 - Write simple example(s)
 - Write unit tests
 - Figure out proper data passing-around architecture
-- Implement task worker
 - Properly deal with state-machine output
-- Handle invalid input to task
+- Add ability to update an existing registered state-machine
