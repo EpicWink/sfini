@@ -6,8 +6,9 @@ Prepend `sudo -H` to the following commands if elevated priviliges is
 required.
 
 ### Prerequisites
-* Python 3
-* AWS account, with IAM credentials
+* [Python 3](https://www.python.org/)
+* [AWS](https://aws.amazon.com/) account, with
+  [IAM](https://aws.amazon.com/iam/) credentials
 
 ### Installation
 ```bash
@@ -19,7 +20,9 @@ pip3 install sfini
 pydoc3 sfini
 ```
 
-See AWS Step Functions documentation for Step Functions usage.
+See [AWS Step Functions](https://aws.amazon.com/step-functions/)
+[documentation](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html)
+for Step Functions usage.
 
 ### Example
 Note function parameter names are used to identify state variables: values

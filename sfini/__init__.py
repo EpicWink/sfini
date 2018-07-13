@@ -14,6 +14,7 @@ __all__ = [
     "StateMachine",
     "Execution",
     "Worker",
+    "AWSSession",
     "Activities",
     "Task",
     "Choice",
@@ -45,6 +46,7 @@ __all__ = [
 from ._state_machine import StateMachine
 from ._execution import Execution
 from ._worker import Worker
+from ._util import AWSSession
 from ._activity import Activities
 from ._states import State
 from ._states import Task
