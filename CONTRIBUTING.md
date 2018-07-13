@@ -24,3 +24,5 @@ closing bracket! 80-character lines.
 - Figure out proper data passing-around architecture
 - Properly deal with state-machine output
 - Add ability to update an existing registered state-machine
+- Implement ``repr`` and ``str`` for all data classes
+- Implement activity deletion from AWS SFN

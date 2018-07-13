@@ -33,6 +33,7 @@ tasks are provided in execution output.
 ```python
 import sfini
 
+# Define 
 activities = sfini.Activities("myPackage", "1.0")
 
 
@@ -59,12 +60,10 @@ def throw_away_cake_activity():
     return {"satisfaction": 0.0, "remaining": 0.0}
 
 
+sm = sfini.StateMachine("myStateMachine", role_arn="...")
 buy_cake = sfini.Task("buyCake", buy_cake_activity, timeout=3)
 eat_cake = sfini.Task("eatCake", eat_cake_activity)
-buy_cake.retry(TypeError, interval=10, max_attempts=5)
-buy_cake.goes_to(eat_cake)
 throw_away_cake = sfini.Task(throw_away_cake_activity, "throwCake")
-eat_cake.catch(RuntimeError, throw_away_cake)
 cake_finished = sfini.Succeed("cakeFinished")
 
 check_cake_remains = sfini.Choice(
@@ -73,10 +72,12 @@ check_cake_remains = sfini.Choice(
         sfini.NumericGreaterThan("remaining", 0.0, eat_cake),
         sfini.NumericLessThanEquals("remaining", 0.0, cake_finished)],
     default=throw_away_cake)
-eat_cake.goes_to(check_cake_remains)
 
-sm = sfini.StateMachine("myStateMachine", role_arn="...")
 sm.start_at(buy_cake)
+buy_cake.retry(TypeError, interval=10, max_attempts=5)
+buy_cake.goes_to(eat_cake)
+eat_cake.catch(RuntimeError, throw_away_cake)
+eat_cake.goes_to(check_cake_remains)
 
 activities.register()  # register activities with AWS
 sm.register()  # register state machine with AWS

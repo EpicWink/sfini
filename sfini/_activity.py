@@ -15,7 +15,14 @@ _logger = lg.getLogger(__name__)
 class Activities:  # TODO: unit-test
     """Activities registration.
 
-    Arguments:
+    Provides convenience for grouping activities, generating activity
+    names, and bulk-registering activities.
+
+    An activity is attached to state-machine tasks, and is called when that
+    task is executed. A worker registers itself able to run some
+    activities using their names.
+
+    Args:
         name (str): name of activities group, used in prefix of activity
             names
         version (str): version of activities group, used in prefix of
@@ -24,51 +31,60 @@ class Activities:  # TODO: unit-test
 
     Attributes:
         activities (dict[str, Activity]): registered activities
+
+    Example:
+        >>> activities = Activities("foo", "1.0")
+        >>> @activities.activity("myActivity")
+        >>> def fn():
+        ...     print("hi")
+        >>> print(fn.name)
+        foo_1.0_myActivity
     """
 
-    def __init__(self, name="", version="", *, session=None):
+    def __init__(self, name, version="latest", *, session=None):
         self.name = name
         self.version = version
         self.activities = {}
         self.session = session or _util.AWSSession()
 
-    def activity(self, name):
+    def activity(self, name=None):
         """Activity function decorator.
 
         Args:
-            name (str): name of activity
-
-        Example:
-            >>> activities = Activities("foo", "1.0")
-            >>> @activities.activity("myActivity")
-            >>> def fn():
-            ...     print("hi")
+            name (str): name of activity, default: function name
         """
 
-        name_ = "%s-%s-%s" % (self.name, self.version, name)
-        _util.assert_valid_name(name_)
+        pref = "%s-%s-" % (self.name, self.version)
 
         def wrapper(fn):
-            activity = Activity(name_, fn, session=self.session)
-            ft.update_wrapper(activity, fn)
-            self.activities[name] = activity
+            suff = fn.__name__ if name is None else name
+            if suff in self.activities:
+                raise ValueError("Activity '%s' already registered" % suff)
+            activity = Activity.from_callable(
+                fn,
+                pref + suff,
+                session=self.session)
+            self.activities[suff] = activity
             return activity
         return wrapper
 
     def register(self):
-        """Register all activities with AWS."""
-        for activity in self.activities:
+        """Add registered activities to AWS SFN."""
+        for activity in self.activities.values():
             activity.register()
 
-    def unregister(self, version=None):
-        """Unregister activities in AWS.
+    def deregister(self, version=None):
+        """Remove activities in AWS SFN.
 
-        Arguments:
-            version (str): version of activities to unregister,
-                default: all versions
+        Args:
+            version (str): version of activities to remove, default: all
+                other versions
         """
 
-        raise NotImplementedError
+        # List activities in SFN
+        # Determine available versions
+        # Remove all activities with requested version
+        raise NotImplementedError  # TODO: implement activity deletion
 
 
 class Activity:  # TODO: unit-test
@@ -76,6 +92,11 @@ class Activity:  # TODO: unit-test
 
     Note that activity names must be unique (within a region). It's
     recommended to put your code's title and version in the activity name.
+    ``Activities`` makes this straight-forward.
+
+    An activity is attached to state-machine tasks, and is called when that
+    task is executed. A worker registers itself able to run some
+    activities using their names.
 
     Args:
         name (str): name of activity
@@ -92,6 +113,21 @@ class Activity:  # TODO: unit-test
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
 
+    @classmethod
+    def from_callable(cls, fn, name, *, session=None):
+        """Create an activity from the callable.
+
+        Args:
+            fn (callable): function to run activity
+            name (str): name of activity
+            session (_util.Session): session to use for AWS communication
+        """
+
+        _util.assert_valid_name(name)
+        activity = cls(name, fn, session=session)
+        ft.update_wrapper(activity, fn)
+        return activity
+
     def register(self):
         """Register activity with AWS."""
         self.session.sfn.create_activity(name=self.name)
@@ -99,7 +135,7 @@ class Activity:  # TODO: unit-test
     def get_input_from(self, task_input):
         """Parse task input for activity input.
 
-        Arguments:
+        Args:
             task_input (dict): task input
 
         Returns:
