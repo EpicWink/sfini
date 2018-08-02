@@ -6,7 +6,7 @@ stages:
   - release
 
 
-build:
+build-package:
   stage: build
   only:
     - master
@@ -28,7 +28,7 @@ test-package:
     - develop
     - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
   dependencies:
-    - build-wheel
+    - build-package
   script:
     - pip3 install $(find build-wheel/ -name sfini-*.whl | head -n1)[dev]
     - >
@@ -45,7 +45,7 @@ release-package:
     - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
   when: manual
   dependencies:
-    - build-wheel
+    - build-package
   script:
     - pip3 install twine
     - twine upload dist/*
