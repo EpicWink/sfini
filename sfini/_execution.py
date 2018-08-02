@@ -17,10 +17,9 @@ class Execution:  # TODO: unit-test
 
     Args:
         name (str): name of execution
-        state_machine (sfini._state_machine.StateMachine): state-machine to
-            execute
+        state_machine (StateMachine): state-machine to execute
         execution_input: execution input (must be JSON-serialisable)
-        session (sfini._util.AWSSession): AWS session to use for execution
+        session (AWSSession): AWS session to use for SFN communication
     """
 
     def __init__(self, name, state_machine, execution_input, *, session=None):
@@ -32,6 +31,29 @@ class Execution:  # TODO: unit-test
         self._start_time = None
         self._arn = None
         self._output = None
+
+    @classmethod
+    def from_arn(cls, arn, *, session=None):
+        """Construct an ``Execution`` from an existing execution.
+
+        Args:
+            arn (str): existing execution ARN
+            session (AWSSession): AWS session to use for SFN communication
+
+        Returns:
+            Execution: described execution. Note that the ``state_machine``
+                attribute will be the ARN of the state-machine, not a
+                ``StateMachine`` instance
+        """
+
+        session = session or _util.AWSSession()
+        resp = session.sfn.describe_execution(executionArn=arn)
+        sm_arn = resp["stateMachineArn"]
+        self = cls(resp["name"], sm_arn, resp["input"], session=session)
+        self._start_time = resp["startDate"]
+        self._arn = arn
+        self._output = resp.get("output", None)
+        return self
 
     def start(self):
         """Start this state-machine execution."""
@@ -53,6 +75,8 @@ class Execution:  # TODO: unit-test
             str: execution status
         """
 
+        if self._output is not None:
+            return "SUCCEEDED"
         if self._start_time is None:
             raise RuntimeError("Execution not yet started")
         resp = self.session.sfn.describe_execution(executionArn=self._arn)
@@ -101,3 +125,18 @@ class Execution:  # TODO: unit-test
             _kw["cause"] = details
         resp = self.session.sfn.stop_execution(executionArn=self._arn, **_kw)
         _logger.info("Execution stopped on %s" % resp["stopDate"])
+
+    def print_history(self):
+        """Print the execution history."""
+        if self._start_time is None:
+            raise RuntimeError("Execution not yet started")
+        resp = _util.collect_paginated(
+            self.session.sfn.get_execution_history,
+            kwargs={"executionArn": self._arn})
+        for event in resp["events"]:
+            id_ = event["id"]
+            ts = event["timestamp"]
+            t = event["type"]
+            prev_id = event["previousEventId"]
+            detes = event[event["type"]]
+            print("  [%s] %s %s (from %s):\n%s" % (id_, ts, t, prev_id, detes))

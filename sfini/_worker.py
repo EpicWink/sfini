@@ -20,8 +20,8 @@ class Worker:  # TODO: unit-test
     """Worker to poll to execute tasks.
 
     Args:
-        state_machine (sfini._state_machine.StateMachine): state-machine
-            containing tasks to poll
+        state_machine (StateMachine): state-machine containing tasks to
+            poll
         tasks (list[Task]): tasks to poll and execute
         name (str): name of worker, used for identification
         session (_util.Session): session to use for AWS communication
