@@ -3,9 +3,10 @@ image: registry.gitlab.com/epic_wink/aws-sfn-service/ci
 stages:
   - build
   - test
+  - release
 
 
-build-wheel:
+build:
   stage: build
   only:
     - master
@@ -13,10 +14,12 @@ build-wheel:
     - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
   script:
     - rm -rf build/*
-    - pip3 wheel -w build/ . --no-deps
+    - pip3 wheel -w build-wheel/ . --no-deps
+    - python3 setup.py sdist bdist_wheel
   artifacts:
     paths:
-      - build/
+      - build-wheel/
+      - dist/
 
 test-package:
   stage: test
@@ -27,7 +30,7 @@ test-package:
   dependencies:
     - build-wheel
   script:
-    - pip3 install $(find build/ -name sfini-*.whl | head -n1)[dev]
+    - pip3 install $(find build-wheel/ -name sfini-*.whl | head -n1)[dev]
     - >
       pytest -vvrxrs
       --cov=/usr/local/lib/python3.6/dist-packages/sfini
@@ -35,3 +38,14 @@ test-package:
   artifacts:
     paths:
       - htmlcov/
+
+release-package:
+  stage: release
+  only:
+    - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
+  when: manual
+  dependencies:
+    - build-wheel
+  script:
+    - pip3 install twine
+    - twine upload dist/*
