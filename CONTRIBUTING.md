@@ -23,6 +23,5 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
 - Write unit tests
 - Allow user to specify input, result and output paths for tasks
 - Properly deal with state-machine output
-- Implement `repr` and `str` for all data classes
 - Implement activity deletion from AWS SFN
 - Handle execution history nicely
