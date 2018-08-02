@@ -49,12 +49,13 @@ class StateMachine:  # TODO: unit-test
         return "State-machine '%s' (%s states)" % (self.name, len(self.states))
 
     def __repr__(self):
-        return "%s(%s%s%s%s%s)" % (
+        tottl = ", %s" % ("timeout=" if self.comment is None else "")
+        return "%s(%s, %s%s%s%s)" % (
             type(self).__name__,
             repr(self.name),
             repr(self.role_arn),
-            "" if self.comment is None else (", " + repr(self.comment)),
-            "" if self.timeout is None else (", " + repr(self.timeout)),
+            "" if self.comment is None else ", " + repr(self.comment),
+            "" if self.timeout is None else tottl + repr(self.timeout),
             ", session=" + repr(self.session))
 
     @_util.cached_property
@@ -64,12 +65,6 @@ class StateMachine:  # TODO: unit-test
         account = self.session.account_id
         _s = "arn:aws:states:%s:%s:stateMachine:%s"
         return _s % (region, account, self.name)
-
-    @property
-    def all_tasks(self) -> list:
-        """All task states."""
-        states = self.states.values()
-        return list(s for s in states if isinstance(s, _states.Task))
 
     def succeed(self, name, comment=None):
         """Create a succeed state.
@@ -214,7 +209,9 @@ class StateMachine:  # TODO: unit-test
 
         Args:
             name (str): name of state
-            activity (Activity): activity to execute
+            activity (Activity or str): activity to execute. If ``Activity``,
+                the task is executed by an activity runner. If ``str``, the
+                task is run by the AWS Lambda function named ``activity``
             comment (str): state description
             timeout (int): seconds before task time-out
             heartbeat (int): second between task heartbeats

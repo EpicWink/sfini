@@ -7,46 +7,9 @@ import math
 import datetime
 import logging as lg
 
-from . import _util
+from . import _state_error
 
 _logger = lg.getLogger(__name__)
-
-
-def _assert_str_exc(exc):  # TODO: unit-test
-    """Ensure exception type-name is valid.
-
-    Args:
-        exc (str): exception type-name
-
-    Raises:
-        ValueError: bad type-name
-    """
-
-    errs = ("*", "ALL", "Timeout", "TaskFailed", "Permissions")
-    if exc not in errs:
-        _s = "Error name was '%s', must be one of: %s"
-        raise ValueError(_s % (exc, errs))
-
-
-def _compare_defn(defn_key, defn, compare_val, compare_key=None):  # TODO: unit-test
-    """Compare definition value, checking for existance.
-
-    Args:
-        defn_key (str): key of definition to compare
-        defn (dict): definition of object
-        compare_val: comparison value
-        compare_key (callable): returns if comparison is true, must have
-            signature ``compares = compare_key(a, b)``, default: ``==``
-
-    Returns:
-        bool: whether value compares
-    """
-
-    compare_key = compare_key or (lambda a, b: a == b)
-    if defn_key in defn:
-        return compare_key(defn[defn_key], compare_val)
-    else:
-        return compare_val is None
 
 
 class State:  # TODO: unit-test
@@ -120,7 +83,7 @@ class _HasNext(State):  # TODO: unit-test
         return defn
 
 
-class _CanRetry(State):  # TODO: unit-test
+class _CanRetry(_state_error._ExceptionCondition, State):  # TODO: unit-test
     def __init__(self, name, comment=None, *, state_machine):
         super().__init__(name, comment=comment, state_machine=state_machine)
         self.retries = {}
@@ -144,85 +107,50 @@ class _CanRetry(State):  # TODO: unit-test
                 attempts
         """
 
-        if isinstance(exc, str):
-            _assert_str_exc(exc)
-            exc = "ALL" if exc == "*" else exc
-        elif not issubclass(exc, Exception):
-            raise TypeError("Error must be exception or accepted string")
+        exc = self._process_exc(exc)
 
         if exc in self.retries:
             raise ValueError("Error '%s' already registered" % exc)
 
-        self.retries[exc] = {
-            "interval": interval,
-            "max_attempts": max_attempts,
-            "backoff_rate": backoff_rate}
+        retry = {}
+        if interval is not None:
+            retry["interval"] = interval
+        if max_attempts is not None:
+            retry["max_attempts"] = max_attempts
+        if backoff_rate is not None:
+            retry["backoff_rate"] = backoff_rate
+        self.retries[exc] = retry
 
     @staticmethod
-    def _retries_equal(defn, retry):
-        """Check if retry definitions are equal.
+    def _rules_similar(rule_a, rule_b):
+        if rule_a.keys() != rule_b.keys():
+            return False
+        for k in ("interval", "max_attempts"):
+            if k in rule_a and rule_a[k] != rule_b[k]:
+                return False
+        k = "backoff_rate"
+        if k in rule_a and not math.isclose(rule_a[k], rule_b[k]):
+            return False
+        return True
 
-        Args:
-            defn (dict): registered retry definition
-            retry (dict): new retry definition
-
-        Returns:
-            bool: definitions are equal
-        """
-
-        ic = math.isclose
-        return all((
-            _compare_defn("IntervalSeconds", defn, retry["interval"]),
-            _compare_defn("MaxAttempts", defn, retry["max_attempts"]),
-            _compare_defn("BackoffRate", defn, retry["backoff_rate"], ic)))
-
-    def _retries_defn(self):
-        """Get definition of retry rules.
-
-        Returns:
-            list[dict]: retries' definitions
-        """
-
-        defns = []
-        all_defn = None
-        for exc, retry in self.retries.items():
-            # Convert error to string
-            if isinstance(exc, str):
-                exc = "States." + exc
-            elif issubclass(exc, Exception):
-                exc = str(exc)
-
-            # Search for already-defined retries
-            for defn_ in defns:
-                if self._retries_equal(defn_, retry):
-                    defn_["ErrorEquals"].append(exc)
-                    break
-            else:
-                defn = {
-                    "ErrorEquals": [exc],
-                    "IntervalSeconds": retry["interval"],
-                    "MaxAttempts": retry["max_attempts"],
-                    "BackoffRate": retry["backoff_rate"]}
-
-                # Defer adding wildcard error until end (AWS SFN spec)
-                if exc == "States.ALL":
-                    all_defn = defn
-                    continue
-
-                defns.append(defn)
-
-        if all_defn is not None:  # append ALL retry at the end
-            defns.append(all_defn)
-
-        return defns
+    @staticmethod
+    def _rule_defn(rule):
+        defn = {}
+        if "interval" in rule:
+            defn["IntervalSeconds"] = rule["interval"]
+        if "max_attempts" in rule:
+            defn["MaxAttempts"] = rule["max_attempts"]
+        if "backoff_rate" in rule:
+            defn["BackoffRate"] = rule["backoff_rate"]
+        return defn
 
     def to_dict(self):
         defn = super().to_dict()
-        defn["Retry"] = self._retries_defn()
+        defn["Retry"] = self._rule_defns(self.retries)
         return defn
 
 
-class _CanCatch(State):  # TODO: unit-test
+class _CanCatch(_state_error._ExceptionCondition, State):  # TODO: unit-test
     def __init__(self, name, comment=None, *, state_machine):
         super().__init__(name, comment=comment, state_machine=state_machine)
         self.catches = {}
@@ -238,62 +166,27 @@ class _CanCatch(State):  # TODO: unit-test
         """
 
         if next_state not in self.state_machine.states.values():
-            _s = "State '%s' is not part of this state-machine"
-            raise ValueError(_s % next_state)
+            _s = "State '%s' is not part of this state-machine '%s'"
+            raise ValueError(_s % (next_state, self.state_machine))
 
-        if isinstance(exc, str):
-            _assert_str_exc(exc)
-            exc = "ALL" if exc == "*" else exc
-        elif not issubclass(exc, Exception):
-            raise TypeError("Error must be exception or accepted string")
+        exc = self._process_exc(exc)
 
         if exc in self.catches:
             raise ValueError("Error '%s' already registered" % exc)
 
         self.catches[exc] = next_state
 
-    def _catches_defn(self):
-        """Get definition of catch rules.
+    @staticmethod
+    def _rules_similar(next_state_a, next_stateb_b):
+        return next_state_a.name == next_stateb_b.name
 
-        Returns:
-            list[dict]: catches' definitions
-        """
-
-        defns = []
-        all_defn = None
-        for exc, state in self.catches.items():
-            # Convert error to string
-            if isinstance(exc, str):
-                exc = "States." + exc
-            elif issubclass(exc, Exception):
-                exc = str(exc)
-
-            # Search for already-defined retries
-            for defn_ in defns:
-                if defn_["Next"] == state.name:
-                    defn_["ErrorEquals"].append(exc)
-                    break
-            else:
-                defn = {
-                    "ErrorEquals": [exc],
-                    "ResultPath": "$.%s.error-info" % self.name,
-                    "Next": state.name}
-
-                # Defer adding wildcard error until end (AWS SFN spec)
-                if exc == "States.ALL":
-                    all_defn = defn
-                    continue
-
-                defns.append(defn)
-
-        if all_defn is not None:  # append ALL retry at the end
-            defns.append(all_defn)
-
-        return defns
+    @staticmethod
+    def _rule_defn(next_state):
+        return {"Next": next_state.name}
 
     def to_dict(self):
         defn = super().to_dict()
-        defn["Catch"] = self._catches_defn()
+        defn["Catch"] = self._rule_defns(self.catches)
         return defn
 
 
@@ -543,7 +436,9 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
 
     Args:
         name (str): name of state
-        activity (Activity): activity to execute
+        activity (Activity or str): activity to execute. If ``Activity``,
+            the task is executed by an activity runner. If ``str``, the
+            task is run by the AWS Lambda function named ``activity``
         comment (str): state description
         timeout (int): seconds before task time-out
         heartbeat (int): second between task heartbeats
@@ -578,17 +473,24 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
             ", " + repr(self.heartbeat),
             ", " + repr(self.state_machine))
 
-    @_util.cached_property
-    def arn(self) -> str:
-        """Task resource identifier."""
-        region = self.state_machine.session.region
-        account_id = self.state_machine.session.account_id
-        _s = "arn:aws:states:%s:%s:activity:%s"
-        return _s % (region, account_id, self.name)
+    def _get_resource_arn(self):
+        """Get the activity resource ARN.
+
+        Returns:
+            str: activity ARN
+        """
+
+        if isinstance(self.activity, str):
+            region = self.state_machine.session.region
+            account = self.state_machine.session.account_id
+            _s = "arn:aws:states:%s:%s:lambda:%s"
+            return _s % (region, account, self.activity)
+        else:
+            return self.activity.arn
 
     def to_dict(self):
         defn = super().to_dict()
-        defn["Resource"] = self.arn
+        defn["Resource"] = self._get_resource_arn()
         defn["ResultPath"] = "$.%s" % self.name
         if self.timeout is not None:
             defn["TimeoutSeconds"] = self.timeout

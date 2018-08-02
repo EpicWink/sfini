@@ -19,7 +19,7 @@ class Execution:  # TODO: unit-test
         name (str): name of execution
         state_machine (StateMachine): state-machine to execute
         execution_input: execution input (must be JSON-serialisable)
-        session (AWSSession): AWS session to use for SFN communication
+        session (AWSSession): AWS session to use for AWS communication
     """
 
     def __init__(self, name, state_machine, execution_input, *, session=None):
@@ -38,7 +38,7 @@ class Execution:  # TODO: unit-test
 
         Args:
             arn (str): existing execution ARN
-            session (AWSSession): AWS session to use for SFN communication
+            session (AWSSession): AWS session to use for AWS communication
 
         Returns:
             Execution: described execution. Note that the ``state_machine``

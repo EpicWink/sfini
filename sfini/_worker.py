@@ -8,132 +8,25 @@ import uuid
 import time
 import socket
 import threading
+import traceback
 import logging as lg
 
+from botocore import exceptions as bc_exc
+
 from . import _util
+from . import _state_error
 
 _logger = lg.getLogger(__name__)
 _host_name = socket.getfqdn(socket.gethostname())
 
 
-class Worker:  # TODO: unit-test
-    """Worker to poll to execute tasks.
-
-    Args:
-        state_machine (StateMachine): state-machine containing tasks to
-            poll
-        tasks (list[Task]): tasks to poll and execute
-        name (str): name of worker, used for identification
-        session (_util.Session): session to use for AWS communication
-    """
-
-    def __init__(self, state_machine, tasks, name=None, *, session=None):
-        self.state_machine = state_machine
-        self.tasks = tasks
-        self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
-        self.session = session or state_machine.session
-
-        self._task_runners = None
-        self._task_runner_threads = None
-
-    def end(self):
-        """End polling."""
-        for runner in self._task_runners:
-            runner.end()
-
-    def _join(self):
-        """Wait on worker thread to exit."""
-        try:
-            for thread in self._task_runner_threads:
-                thread.join()
-        except KeyboardInterrupt:
-            self.end()
-
-    def run(self, block=True):
-        """Run worker to poll for and execute specified tasks.
-
-        Args:
-            block (bool): run worker synchronously
-        """
-
-        self._task_runners = []
-        self._task_runner_threads = []
-        for task in self.tasks:
-            runner = _TaskRunner(task, self.name, session=self.session)
-            thread = threading.Thread(target=runner.poll)
-            thread.start()
-            self._task_runners.append(runner)
-            self._task_runner_threads.append(thread)
-
-        if block:
-            self._join()
-
-        raise NotImplementedError
-
-
-class _TaskRunner:  # TODO: unit-test
-    """Worker to poll for task executions.
-
-    Args:
-        task (Task): task to poll and execute
-        worker_name (str): name of worker, used for identification
-        session (_util.AWSSession): session to communicate to AWS with
-    """
-
-    def __init__(self, task, worker_name, *, session=None):
-        self.task = task
-        self.worker_name = worker_name
-        self.session = session or _util.AWSSession()
-        self._task_executions = []
-        self._task_execution_threads = []
-        self._end = False
-
-    def end(self):
-        """End polling."""
-        self._end = True
-        self.stop_executions()
-
-    def stop_executions(self):
-        """Tell current executions to stop."""
-        [e.request_stop() for e in self._task_executions]
-
-    def _execute(self, task_token, task_input):
-        execution = _TaskExecution(
-            self.task,
-            task_token,
-            task_input,
-            session=self.session)
-        thread = threading.Thread(target=execution.run)
-        thread.start()
-        self._task_executions.append(execution)
-        self._task_execution_threads.append(thread)
-
-    def _poll(self):
-        while True:
-            if self._end:
-                break
-            resp = self.session.sfn.get_activity_task(
-                activityArn=self.task.arn,
-                workerName=self.worker_name)
-            if resp["taskToken"] is not None:
-                self._execute(resp["taskToken"], json.loads(resp["input"]))
-
-    def poll(self):
-        """Poll for executions."""
-        try:
-            self._poll()
-        except KeyboardInterrupt:
-            _logger.info("Waiting for executions to finish")
-            self.stop_executions()
-            [t.join() for t in self._task_execution_threads]
-
-
 class _TaskExecution:  # TODO: unit-test
-    """Execute a task.
+    """Execute a task, providing heartbeats and .
 
     Args:
-        task (Task): task to poll and execute
+        task (Task): task to execute
         task_token (str): task token for execution identification
+        task_input: task input
         session (_util.AWSSession): session to communicate to AWS with
     """
 
@@ -145,20 +38,13 @@ class _TaskExecution:  # TODO: unit-test
         self._heartbeat_thread = threading.Thread(target=self._heartbeat)
         self._request_stop = False
 
-    def request_stop(self):
-        """Tell execution to stop communicating with AWS.
-
-        Returns:
-            bool: ``True`` if communication was already stopped
-        """
-
-        if self._request_stop:
-            return False
-        self._request_stop = True
-        return True
-
     def _send_heartbeat(self):
-        self.session.sfn.send_task_heartbeat(taskToken=self.task_token)
+        try:
+            _ = self.session.sfn.send_task_heartbeat(taskToken=self.task_token)
+        except bc_exc.ClientError as e:
+            if e.response["Error"]["Code"] != "TaskTimedOut":
+                raise
+            self._request_stop = True
 
     def _heartbeat(self):
         heartbeat = self.task.heartbeat
@@ -175,10 +61,11 @@ class _TaskExecution:  # TODO: unit-test
             _logger.warning("Skipping sending failure as we're quitting")
             return
         self._request_stop = True
+        cause = traceback.format_exception(type(exc), exc, exc.__traceback__)
         self.session.sfn.send_task_failure(
             taskToken=self.task_token,
             error=type(exc).__name__,
-            cause=str(exc))
+            cause=cause)
 
     def _send_success(self, res):
         if self._request_stop:
@@ -199,7 +86,119 @@ class _TaskExecution:  # TODO: unit-test
             return
         try:
             res = self.task.activity.fn(**kwargs)
+        except KeyboardInterrupt:
+            self.report_cancelled()
+            return
         except Exception as e:
             self._send_failure(e)
             return
         self._send_success(res)
+
+    def report_cancelled(self):
+        """Cancel a task execution before beginning."""
+        if self._request_stop:
+            _logger.warning("Skipping sending cancellation as we're quitting")
+            return
+        self._request_stop = True
+        self.session.sfn.send_task_failure(
+            taskToken=self.task_token,
+            error=_state_error.WorkerCancel.__name__,
+            cause=str(_state_error.WorkerCancel()))
+
+
+class Worker:  # TODO: unit-test
+    """Worker to poll for activity task executions.
+
+    Args:
+        activity (Activity): activity to poll and run tasks of
+        name (str): name of worker, used for identification, default: a
+            combination of UUID and host's FQDN
+        session (_util.Session): session to use for AWS communication
+    """
+
+    _task_execution_class = _TaskExecution
+
+    def __init__(self, activity, name=None, *, session=None):
+        self.activity = activity
+        self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
+        self.session = session or _util.AWSSession()
+
+        self._poller = threading.Thread(target=self._worker)
+        self._request_finish = False
+        self._exc = None
+
+    def __str__(self):
+        _s = "%s '%s' on '%s'"
+        return _s % (type(self).__name__, self.name, self.activity)
+
+    def __repr__(self):
+        return "%s(%s, %s, session=%s)" % (
+            type(self).__name__,
+            repr(self.activity),
+            repr(self.name),
+            repr(self.session))
+
+    def _exectute_on(self, task_input, task_token):
+        """Execute the provided task.
+
+        Arguments:
+            task_input (str):
+        """
+        execution = self._task_execution_class(
+            self.activity,
+            task_token,
+            json.loads(task_input),
+            session=self.session)
+        if self._request_finish:
+            execution.report_cancelled()
+        else:
+            execution.run()
+
+    def _poll_and_execute(self):
+        """Poll for tasks to execute, then execute any found."""
+        while True:
+            if self._request_finish:
+                break
+            _s = "Polling for activity '{}' executions"
+            _logger.debug(_s % self.activity)
+            resp = self.session.sfn.get_activity_task(
+                activityArn=self.activity.arn,
+                workerName=self.name)
+            if resp.get("taskToken", None) is not None:
+                self._exectute_on(resp["input"], resp["taskToken"])
+
+    def _worker(self):
+        """Run polling, catching exceptins."""
+        _util.assert_valid_name(self.name)
+        try:
+            self._poll_and_execute()
+        except (Exception, KeyboardInterrupt) as e:
+            self._exc = e  # send exception to main thread
+            self.end()
+
+    def start(self):
+        """Start polling."""
+        self._poller.start()
+
+    def join(self):
+        """Block until polling exit."""
+        try:
+            self._poller.join()
+        except KeyboardInterrupt:
+            _logger.info("Quitting polling due to KeyboardInterrupt")
+            self.end()
+        except Exception:
+            self.end()
+            raise
+        if self._exc is not None:
+            raise self._exc
+
+    def end(self):
+        """End polling."""
+        _logger.debug("Worker '%s': waiting on final poll to finish" % self)
+        self._request_finish = True
+
+    def run(self):
+        """Run worker to poll for and execute specified tasks."""
+        self.start()
+        self.join()
