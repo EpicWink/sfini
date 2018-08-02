@@ -1,4 +1,4 @@
-# --- 80 characters -------------------------------------------------------
+# --- 80 characters ----------------------------------------------------------
 # Created by: Laurie 2018/08/12
 
 """Task runner."""
@@ -42,6 +42,7 @@ class Worker:  # TODO: unit-test
             runner.end()
 
     def _join(self):
+        """Wait on worker thread to exit."""
         try:
             for thread in self._task_runner_threads:
                 thread.join()

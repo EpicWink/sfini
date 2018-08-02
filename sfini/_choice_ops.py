@@ -1,4 +1,4 @@
-# --- 80 characters -------------------------------------------------------
+# --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
 """SFN choice rule operations."""
@@ -42,7 +42,7 @@ class _ChoiceRule(_ChoiceOp):  # TODO: unit-test
 
         op_name = type(self).__name__
         if op_name.startswith("_"):
-            raise RuntimeError("'%s' is not a valid choice rule")
+            raise RuntimeError("'%s' is not a valid choice rule" % op_name)
         return {
             "Variable": self.variable_name,
             op_name: self.comparison_value,
@@ -76,8 +76,8 @@ class _NumericRule(_ChoiceRule):  # TODO: unit-test
     def __init__(self, variable_name, comparison_value, next_state):
         super().__init__(variable_name, comparison_value, next_state)
         if not isinstance(comparison_value, (int, float)):
-            raise TypeError(
-                "Numeric comparison value must be `int` or `float`")
+            _s = "Numeric comparison value must be `int` or `float`"
+            raise TypeError(_s)
 
 
 class NumericEquals(_NumericRule):
@@ -200,6 +200,12 @@ class _LogicalRule(_ChoiceOp):  # TODO: unit-test
             repr(self.next_state))
 
     def _get_choice_rule_defns(self):
+        """Build choice rule definitions.
+
+        Returns:
+            list[dict]: choice rule definitions
+        """
+
         choice_rule_defns = []
         for choice_rule in self.choice_rules:
             defn = choice_rule.to_dict().copy()

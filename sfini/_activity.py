@@ -1,4 +1,4 @@
-# --- 80 characters -------------------------------------------------------
+# --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/12
 
 """Activity wrapper."""
@@ -19,8 +19,8 @@ class Activities:  # TODO: unit-test
     names, and bulk-registering activities.
 
     An activity is attached to state-machine tasks, and is called when that
-    task is executed. A worker registers itself able to run some
-    activities using their names.
+    task is executed. A worker registers itself able to run some activities
+    using their names.
 
     Args:
         name (str): name of activities group, used in prefix of activity
@@ -60,10 +60,8 @@ class Activities:  # TODO: unit-test
             suff = fn.__name__ if name is None else name
             if suff in self.activities:
                 raise ValueError("Activity '%s' already registered" % suff)
-            activity = Activity.from_callable(
-                fn,
-                pref + suff,
-                session=self.session)
+            name_ = pref + suff
+            activity = Activity.from_callable(fn, name_, session=self.session)
             self.activities[suff] = activity
             return activity
         return wrapper
@@ -77,8 +75,8 @@ class Activities:  # TODO: unit-test
         """Remove activities in AWS SFN.
 
         Args:
-            version (str): version of activities to remove, default: all
-                other versions
+            version (str): version of activities to remove, default: all other
+                versions
         """
 
         # List activities in SFN
@@ -132,7 +130,7 @@ class Activity:  # TODO: unit-test
         _util.assert_valid_name(self.name)
         self.session.sfn.create_activity(name=self.name)
 
-    def get_input_from(self, task_input):
+    def _get_input_from(self, task_input):
         """Parse task input for activity input.
 
         Args:
@@ -152,3 +150,16 @@ class Activity:  # TODO: unit-test
             else:
                 kwargs[param_name] = task_input[param_name]
         return kwargs
+
+    def call_with(self, task_input):
+        """Call with task-input context.
+
+        Args:
+            task_input (dict): task input
+
+        Returns:
+            function return-value
+        """
+
+        kwargs = self._get_input_from(task_input)
+        return self.fn(**kwargs)

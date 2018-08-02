@@ -1,4 +1,4 @@
-# --- 80 characters -------------------------------------------------------
+# --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
 """AWS Step Functions service."""
@@ -39,7 +39,6 @@ from ._state_machine import StateMachine
 from ._worker import Worker
 from ._util import AWSSession
 from ._activity import Activities
-from ._states import State
 from ._choice_ops import And
 from ._choice_ops import Or
 from ._choice_ops import Not

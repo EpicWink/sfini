@@ -1,4 +1,4 @@
-# --- 80 characters -------------------------------------------------------
+# --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
 """SFN state-machine."""
@@ -46,8 +46,7 @@ class StateMachine:  # TODO: unit-test
         self.states = None
 
     def __str__(self):
-        n_states = len(self.states)
-        return "State-machine '%s' (%s states)" % (self.name, n_states)
+        return "State-machine '%s' (%s states)" % (self.name, len(self.states))
 
     def __repr__(self):
         return "%s(%s%s%s%s%s)" % (
@@ -120,8 +119,8 @@ class StateMachine:  # TODO: unit-test
     def pass_(self, name, comment=None, result=None):
         """Create a pass state.
 
-        No-op state, but can introduce data. The name specifies the
-        location of the introduced data.
+        No-op state, but can introduce data. The name specifies the location of
+            the introduced data.
 
         Args:
             name (str): name of state
@@ -149,10 +148,10 @@ class StateMachine:  # TODO: unit-test
 
         Args:
             name (str): name of state
-            until (int or datetime.datetime or str): time to wait. If
-                ``int``, then seconds to wait; if ``datetime.datetime``,
-                then time to wait until; if ``str``, then name of variable
-                containing seconds to wait for
+            until (int or datetime.datetime or str): time to wait. If ``int``,
+                then seconds to wait; if ``datetime.datetime``, then time to
+                wait until; if ``str``, then name of variable containing
+                seconds to wait for
             comment (str): state description
 
         Returns:
@@ -161,19 +160,15 @@ class StateMachine:  # TODO: unit-test
 
         if name in self.states:
             raise ValueError("State name '%s' already registered" % name)
-        state = _states.Wait(
-            name,
-            until,
-            comment=comment,
-            state_machine=self)
+        state = _states.Wait(name, until, comment=comment, state_machine=self)
         self.states[name] = state
         return state
 
     def parallel(self, name, comment=None):
         """Create a parallel state.
 
-        Runs states-machines in parallel. These state-machines do not need
-        to be registered with AWS Step Functions.
+        Runs states-machines in parallel. These state-machines do not need to
+        be registered with AWS Step Functions.
 
         The input to each state-machine execution is the input into this
         parallel state. The output of the parallel state is a list of each
@@ -212,13 +207,7 @@ class StateMachine:  # TODO: unit-test
         self.states[name] = state
         return state
 
-    def task(
-            self,
-            name,
-            activity,
-            comment=None,
-            timeout=None,
-            heartbeat=60):
+    def task(self, name, activity, comment=None, timeout=None, heartbeat=60):
         """Create a task state.
 
         Executes an activity.
@@ -243,23 +232,22 @@ class StateMachine:  # TODO: unit-test
             timeout=timeout,
             heartbeat=heartbeat,
             state_machine=self)
+        self.states[name] = state
         return state
 
     def start_at(self, state):
         """Define starting state.
 
         Args:
-            state (sfini.State): initial state
+            state (State): initial state
         """
 
         if state.state_machine is not self:
             _s = "State '%s' is not part of this state-machine"
-            raise ValueError(_s)
+            raise ValueError(_s % state)
         if self._start_state is not None:
-            _logger.warning(
-                "Overriding start state %s with %s",
-                self._start_state,
-                state)
+            _s = "Overriding start state %s with %s"
+            _logger.warning(_s % (self._start_state, state))
         self._start_state = state
 
     def to_dict(self):
@@ -277,22 +265,61 @@ class StateMachine:  # TODO: unit-test
             defn["TimeoutSeconds"] = self.timeout
         return defn
 
-    def register(self):
-        """Register state-machine with AWS Step Functions.
+    def is_registered(self):
+        """See if this state-machine is registered.
 
         Returns:
-            dict: state-machine response
+            bool: if this state-machine is registered
         """
 
-        _util.assert_valid_name(self.name)
+        resp = _util.collect_paginated(self.session.sfn.list_state_machines)
+        arns = {sm["stateMachineArn"] for sm in resp["stateMachines"]}
+        return self.arn in arns
+
+    def _sfn_create(self):
+        """Create this state-machine in SFN."""
         resp = self.session.sfn.create_state_machine(
             name=self.name,
             definition=json.dumps(self.to_dict()),
             roleArn=self.role_arn)
-        _logger.info(
-            "State machine created with ARN '%s' at %s",
-            resp["stateMachineArn"],
-            resp["creationDate"])
+        assert resp["stateMachineArn"] == self.arn
+        return resp
+
+    def _sfn_update(self):
+        """Update this state-machine in SFN."""
+        resp = self.session.sfn.update_state_machine(
+            definition=json.dumps(self.to_dict()),
+            roleArn=self.role_arn,
+            stateMachineArn=self.arn)
+        return resp
+
+    def register(self, allow_update=False):
+        """Register state-machine with AWS Step Functions.
+
+        Args:
+            allow_update (bool): if ``True``, allow overwriting of an
+                existing state-machine with the same name
+        """
+
+        _util.assert_valid_name(self.name)
+
+        if allow_update and self.is_registered():
+            resp = self._sfn_update()
+            _s = "State machine '%s' updated at %s"
+            _logger.info(_s % (self, resp["creationDate"]))
+        else:
+            resp = self._sfn_create()
+            _arn = resp["stateMachineArn"]
+            _date = resp["creationDate"]
+            _s = "State machine '%s' created with ARN '%s' at %s"
+            _logger.info(_s % (self, _arn, _date))
+
+    def deregister(self):
+        """Remove state-machine from AWS SFN."""
+        if not self.is_registered():
+            raise RuntimeError("Cannot de-register unregistered state-machine")
+        _ = self.session.sfn.delete_state_machine(stateMachineArn=self.arn)
+        _logger.info("State-machine '%s' de-registered" % self)
 
     def start_execution(self, execution_input):
         """Start an execution.
@@ -301,7 +328,7 @@ class StateMachine:  # TODO: unit-test
             execution_input (dict): input to first state in state-machine
 
         Returns:
-            sfini.Execution: started execution
+            Execution: started execution
         """
 
         _now = datetime.datetime.now().isoformat("T")

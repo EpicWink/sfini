@@ -1,9 +1,10 @@
-# --- 80 characters -------------------------------------------------------
+# --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
 """SFN state-machine execution."""
 
 import time
+import json
 import logging as lg
 
 from . import _util
@@ -12,13 +13,17 @@ _logger = lg.getLogger(__name__)
 
 
 class Execution:  # TODO: unit-test
-    def __init__(
-            self,
-            name,
-            state_machine,
-            execution_input,
-            *,
-            session=None):
+    """A state-machine execution.
+
+    Args:
+        name (str): name of execution
+        state_machine (sfini._state_machine.StateMachine): state-machine to
+            execute
+        execution_input: execution input (must be JSON-serialisable)
+        session (sfini._util.AWSSession): AWS session to use for execution
+    """
+
+    def __init__(self, name, state_machine, execution_input, *, session=None):
         self.name = name
         self.state_machine = state_machine
         self.execution_input = execution_input
@@ -31,21 +36,27 @@ class Execution:  # TODO: unit-test
     def start(self):
         """Start this state-machine execution."""
         if self._start_time is not None:
-            _s = "Execution already started at %s" % self._start_time
-            raise RuntimeError(_s)
+            _s = "Execution already started at %s"
+            raise RuntimeError(_s % self._start_time)
         _util.assert_valid_name(self.name)
         resp = self.session.sfn.start_execution(
             stateMachineArn=self.state_machine.arn,
             name=self.name,
-            input=self.execution_input)
+            input=json.dumps(self.execution_input))
         self._arn = resp["executionArn"]
         self._start_time = resp["startDate"]
 
     def _get_execution_status(self):
+        """Request status of this execution.
+
+        Returns:
+            str: execution status
+        """
+
         if self._start_time is None:
             raise RuntimeError("Execution not yet started")
         resp = self.session.sfn.describe_execution(executionArn=self._arn)
-        if resp["status"] == "SUCCEEDED" and self._output is not None:
+        if resp["status"] == "SUCCEEDED" and self._output is None:
             self._output = resp["output"]
         return resp["status"]
 
@@ -71,3 +82,22 @@ class Execution:  # TODO: unit-test
                     break
                 raise RuntimeError("Execution %s" % status)
             time.sleep(3.0)
+
+    def stop(self, error_code=None, details=None):
+        """Stop an existing execution.
+
+        Args:
+            error_code (str): stop reason identification
+            details (str): stop reason
+        """
+
+        status = self._get_execution_status()
+        if status != "RUNNING":
+            raise RuntimeError("Cannot stop execution; execution %s" % status)
+        _kw = {}
+        if error_code:
+            _kw["error"] = error_code
+        if details:
+            _kw["cause"] = details
+        resp = self.session.sfn.stop_execution(executionArn=self._arn, **_kw)
+        _logger.info("Execution stopped on %s" % resp["stopDate"])

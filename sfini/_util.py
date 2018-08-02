@@ -1,4 +1,4 @@
-# --- 80 characters -------------------------------------------------------
+# --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
 """Package utilities."""
@@ -18,7 +18,7 @@ def cached_property(fn):  # TODO: unit-test
     """Decorate a method as a cached property.
 
     The wrapped method's result is stored in the instance's ``__cache__``
-    dictionary, with the method's name as key
+    dictionary, with the method's name as key.
 
     Args:
         fn (callable): method to decorate
@@ -54,6 +54,35 @@ def assert_valid_name(name):  # TODO: unit-test
         raise ValueError("Name is too long: '%s'" % name)
     if any(c in name for c in INVALID_NAME_CHARACTERS):
         raise ValueError("Name contains invalid characters: '%s'" % name)
+
+
+def collect_paginated(fn, kwargs=None):  # TODO: unit-test
+    """Call SFN API paginated endpoint.
+
+    Arguments:
+        fn (callable): SFN API function
+        kwargs (dict): arguments to ``fn``, default=``{}``
+
+    Returns:
+        combined results of paginated API calls
+    """
+
+    if kwargs is None:
+        kwargs = {}
+
+    if "nextToken" in kwargs:
+        raise ValueError("Can't start pagination with 'nextToken'")
+
+    result = fn(**kwargs)
+    while "nextToken" in result:
+        next_token = result.pop("nextToken")
+        next_result = fn(nextToken=next_token, **kwargs)
+        for key, value in next_result.items():
+            if key == "nextToken":
+                result["nextToken"] = value
+            else:
+                result[key].extend(value)
+    return result
 
 
 class AWSSession:  # TODO: unit-test

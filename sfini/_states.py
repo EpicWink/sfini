@@ -1,4 +1,4 @@
-# --- 80 characters -------------------------------------------------------
+# --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/11
 
 """SFN states."""
@@ -13,18 +13,40 @@ _logger = lg.getLogger(__name__)
 
 
 def _assert_str_exc(exc):  # TODO: unit-test
+    """Ensure exception type-name is valid.
+
+    Args:
+        exc (str): exception type-name
+
+    Raises:
+        ValueError: bad type-name
+    """
+
     errs = ("*", "ALL", "Timeout", "TaskFailed", "Permissions")
     if exc not in errs:
         _s = "Error name was '%s', must be one of: %s"
         raise ValueError(_s % (exc, errs))
 
 
-def _compare_defn(defn_key, defn, retry_val, compare_key=None):  # TODO: unit-test
+def _compare_defn(defn_key, defn, compare_val, compare_key=None):  # TODO: unit-test
+    """Compare definition value, checking for existance.
+
+    Args:
+        defn_key (str): key of definition to compare
+        defn (dict): definition of object
+        compare_val: comparison value
+        compare_key (callable): returns if comparison is true, must have
+            signature ``compares = compare_key(a, b)``, default: ``==``
+
+    Returns:
+        bool: whether value compares
+    """
+
     compare_key = compare_key or (lambda a, b: a == b)
     if defn_key in defn:
-        return compare_key(defn[defn_key], retry_val)
+        return compare_key(defn[defn_key], compare_val)
     else:
-        return retry_val is None
+        return compare_val is None
 
 
 class State:  # TODO: unit-test
@@ -69,10 +91,7 @@ class State:  # TODO: unit-test
 
 class _HasNext(State):  # TODO: unit-test
     def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
         self.next = None
 
     def goes_to(self, state):
@@ -103,10 +122,7 @@ class _HasNext(State):  # TODO: unit-test
 
 class _CanRetry(State):  # TODO: unit-test
     def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
         self.retries = {}
 
     def retry_for(
@@ -122,8 +138,8 @@ class _CanRetry(State):  # TODO: unit-test
                 must be one of '*', 'ALL', 'Timeout', 'TaskFailed', or
                 'Permissions' (see AWS Step Functions documentation)
             interval (int): (initial) retry interval (seconds)
-            max_attempts (int): maximum number of attempts before
-                re-raising error
+            max_attempts (int): maximum number of attempts before re-raising
+                error
             backoff_rate (float): retry interval increase factor between
                 attempts
         """
@@ -144,6 +160,16 @@ class _CanRetry(State):  # TODO: unit-test
 
     @staticmethod
     def _retries_equal(defn, retry):
+        """Check if retry definitions are equal.
+
+        Args:
+            defn (dict): registered retry definition
+            retry (dict): new retry definition
+
+        Returns:
+            bool: definitions are equal
+        """
+
         ic = math.isclose
         return all((
             _compare_defn("IntervalSeconds", defn, retry["interval"]),
@@ -151,6 +177,12 @@ class _CanRetry(State):  # TODO: unit-test
             _compare_defn("BackoffRate", defn, retry["backoff_rate"], ic)))
 
     def _retries_defn(self):
+        """Get definition of retry rules.
+
+        Returns:
+            list[dict]: retries' definitions
+        """
+
         defns = []
         all_defn = None
         for exc, retry in self.retries.items():
@@ -192,10 +224,7 @@ class _CanRetry(State):  # TODO: unit-test
 
 class _CanCatch(State):  # TODO: unit-test
     def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
         self.catches = {}
 
     def catch(self, exc, next_state):
@@ -203,8 +232,8 @@ class _CanCatch(State):  # TODO: unit-test
 
         Args:
             exc (type or str): error for catch clause to be executed. If a
-                string, must be one of '*', 'ALL', 'Timeout', 'TaskFailed',
-                or 'Permissions' (see AWS Step Functions documentation)
+                string, must be one of '*', 'ALL', 'Timeout', 'TaskFailed', or
+                'Permissions' (see AWS Step Functions documentation)
             next_state (State): state to execute for catch clause
         """
 
@@ -224,6 +253,12 @@ class _CanCatch(State):  # TODO: unit-test
         self.catches[exc] = next_state
 
     def _catches_defn(self):
+        """Get definition of catch rules.
+
+        Returns:
+            list[dict]: catches' definitions
+        """
+
         defns = []
         all_defn = None
         for exc, state in self.catches.items():
@@ -271,10 +306,7 @@ class Succeed(State):  # TODO: unit-test
     """
 
     def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
 
 
 class Fail(State):  # TODO: unit-test
@@ -295,10 +327,7 @@ class Fail(State):  # TODO: unit-test
             error=None,
             *,
             state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
         self.cause = cause
         self.error = error
 
@@ -333,10 +362,7 @@ class Pass(_HasNext, State):  # TODO: unit-test
     """
 
     def __init__(self, name, comment=None, result=None, *, state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
         self.result = result
 
     def __repr__(self):
@@ -360,10 +386,9 @@ class Wait(_HasNext, State):  # TODO: unit-test
 
     Args:
         name (str): name of state
-        until (int or datetime.datetime or str): time to wait. If ``int``,
-            then seconds to wait; if ``datetime.datetime``, then time to
-            wait until; if ``str``, then name of variable containing
-            seconds to wait for
+        until (int or datetime.datetime or str): time to wait. If ``int``, then
+            seconds to wait; if ``datetime.datetime``, then time to wait until;
+            if ``str``, then name of variable containing seconds to wait for
         comment (str): state description
 
     Attributes:
@@ -371,10 +396,7 @@ class Wait(_HasNext, State):  # TODO: unit-test
     """
 
     def __init__(self, name, until, comment=None, *, state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
         self.until = until
 
     def __repr__(self):
@@ -410,19 +432,16 @@ class Parallel(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         comment (str): state description
 
     Attributes:
-        state_machines (list[StateMachine]): state-machines to run in
-            parallel. These state-machines do not need to be registered
-            with AWS Step Functions.
+        state_machines (list[StateMachine]): state-machines to run in parallel.
+            These state-machines do not need to be registered with AWS Step
+            Functions.
         next (State): next state to execute
         retries (dict[Exception or str]): retry conditions
         catches (dict[Exception or str]): handled state errors
     """
 
     def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
         self.state_machines = []
 
     def to_dict(self):
@@ -439,9 +458,9 @@ class Parallel(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         state-machine's output (in order of adding).
 
         Args:
-            state_machine (sfini.StateMachine): state-machine to add. It
-                will be run when this task is executed. State-machines do
-                not need to be registered with AWS Step Functions
+            state_machine (sfini.StateMachine): state-machine to add. It will
+                be run when this task is executed. State-machines do not need
+                to be registered with AWS Step Functions
         """
 
         self.state_machines.append(state_machine)
@@ -455,16 +474,12 @@ class Choice(State):  # TODO: unit-test
         comment (str): state description
 
     Attributes:
-        choices (list[_ChoiceRule]): choice rules determining branch
-            conditions
+        choices (list[_ChoiceRule]): choice rules determining branch conditions
         default (State): fall-back state if all comparisons fail
     """
 
     def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
         self.choices = []
         self.default = None
 
@@ -481,8 +496,8 @@ class Choice(State):  # TODO: unit-test
         """Add a branch.
 
         Args:
-            rule (_ChoiceOp): branch execution condition and specification
-                to add
+            rule (_ChoiceOp): branch execution condition and specification to
+                add
 
         Raises:
             RuntimeError: rule will go to a state not part of this
@@ -490,18 +505,17 @@ class Choice(State):  # TODO: unit-test
         """
 
         if rule.next_state.state_machine is not self.state_machine:
-            raise RuntimeError(
-                "Rule '%s' has next-state which is not part of this "
-                "state-machine")
-
+            _s = "Rule '%s' has next-state which is not part of this "
+            _s += "state-machine"
+            raise RuntimeError(_s % rule)
         self.choices.append(rule)
 
     def remove(self, rule):
         """Remove a branch.
 
         Args:
-            rule (_ChoiceOp): branch execution condition and specification
-                to remove
+            rule (_ChoiceOp): branch execution condition and specification to
+                remove
 
         Raises:
             ValueError: if rule is not a registered branch
@@ -509,7 +523,6 @@ class Choice(State):  # TODO: unit-test
 
         if rule not in self.choices:
             raise ValueError("Rule '%s' is not registered with this state")
-
         self.choices.remove(rule)
 
     def set_default(self, state):
@@ -522,7 +535,6 @@ class Choice(State):  # TODO: unit-test
         if self.default is not None:
             _s = "Overwriting current default state '%s'"
             _logger.warning(_s % self.default)
-
         self.default = state
 
 
@@ -551,10 +563,7 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
             heartbeat=60,
             *,
             state_machine):
-        super().__init__(
-            name,
-            comment=comment,
-            state_machine=state_machine)
+        super().__init__(name, comment=comment, state_machine=state_machine)
         self.activity = activity
         self.timeout = timeout
         self.heartbeat = heartbeat
