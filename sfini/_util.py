@@ -8,10 +8,27 @@ import boto3
 import logging as lg
 import functools as ft
 
+from . import __name__ as package_name
+
 _logger = lg.getLogger(__name__)
 
 MAX_NAME_LENGTH = 79
 INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*$%\\^|~`$,;:/"
+
+
+def setup_logging():
+    """Setup logging for ``sfini``, if logs would otherwise be ignored."""
+    package_logger = lg.getLogger(package_name)
+    if not package_logger.propagate or package_logger.disabled:
+        return
+    if not package_logger.hasHandlers():
+        handler = lg.StreamHandler()
+        fmt = "%(asctime)s \t%(levelname)s \t%(name)s \t%(message)s"
+        formatter = lg.Formatter(fmt)
+        handler.setFormatter(formatter)
+        package_logger.addHandler(handler)
+    if not package_logger.isEnabledFor(lg.INFO):
+        package_logger.setLevel(lg.INFO)
 
 
 def cached_property(fn):  # TODO: unit-test
@@ -105,6 +122,7 @@ class AWSSession:  # TODO: unit-test
     @cached_property
     def sfn(self):
         """Step Functions client."""
+        setup_logging()
         return self.session.client("stepfunctions")
 
     @cached_property
