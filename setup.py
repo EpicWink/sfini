@@ -16,11 +16,13 @@ _classifiers = [
     "Natural Language :: English",
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
-    "Operating System :: MacOS"]
+    "Operating System :: MacOS",
+    "License :: OSI Approved :: MIT License"]
 
 setuptools.setup(
     name="sfini",
     version=_version,
+    license="MIT",
     author="Laurie",
     author_email="laurie@sitesee.com.au",
     maintainer="Laurie",
