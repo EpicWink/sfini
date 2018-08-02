@@ -43,7 +43,7 @@ class StateMachine:  # TODO: unit-test
         self.session = session or _util.AWSSession()
         self._start_state = None
         self._task_runner_threads = []
-        self.states = None
+        self.states = {}
 
     def __str__(self):
         return "State-machine '%s' (%s states)" % (self.name, len(self.states))
