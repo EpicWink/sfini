@@ -24,7 +24,7 @@ class _TaskExecution:  # TODO: unit-test
     """Execute a task, providing heartbeats and .
 
     Args:
-        task (Task): task to execute
+        task (Task): task with activity to execute
         task_token (str): task token for execution identification
         task_input: task input
         session (_util.AWSSession): session to communicate to AWS with
@@ -38,12 +38,24 @@ class _TaskExecution:  # TODO: unit-test
         self._heartbeat_thread = threading.Thread(target=self._heartbeat)
         self._request_stop = False
 
+    def __str__(self):
+        return "Execution '%s' of '%s'" % (self.task_token, self.task)
+
+    def __repr__(self):
+        return "%s(%s, %s, len(task_input)=%s, session=%s)" % (
+            type(self).__name__,
+            repr(self.task),
+            repr(self.task_token),
+            len(self.task_input),
+            repr(self.session))
+
     def _send_heartbeat(self):
         try:
             _ = self.session.sfn.send_task_heartbeat(taskToken=self.task_token)
         except bc_exc.ClientError as e:
             if e.response["Error"]["Code"] != "TaskTimedOut":
                 raise
+            _logger.error("Task execution '%s' timed-out" % self)
             self._request_stop = True
 
     def _heartbeat(self):
@@ -80,12 +92,7 @@ class _TaskExecution:  # TODO: unit-test
         """Run task."""
         self._heartbeat_thread.start()
         try:
-            kwargs = self.task.get_input_from(self.task_input)
-        except KeyError as e:
-            self._send_failure(e)
-            return
-        try:
-            res = self.task.activity.fn(**kwargs)
+            res = self.task.activity.call_with(self.task_input)
         except KeyboardInterrupt:
             self.report_cancelled()
             return
@@ -107,10 +114,10 @@ class _TaskExecution:  # TODO: unit-test
 
 
 class Worker:  # TODO: unit-test
-    """Worker to poll for activity task executions.
+    """Worker to poll for task executions.
 
     Args:
-        activity (Activity): activity to poll and run tasks of
+        task (Task): task with activity to poll and run executions of
         name (str): name of worker, used for identification, default: a
             combination of UUID and host's FQDN
         session (_util.Session): session to use for AWS communication
@@ -118,8 +125,8 @@ class Worker:  # TODO: unit-test
 
     _task_execution_class = _TaskExecution
 
-    def __init__(self, activity, name=None, *, session=None):
-        self.activity = activity
+    def __init__(self, task, name=None, *, session=None):
+        self.task = task
         self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
         self.session = session or _util.AWSSession()
 
@@ -129,12 +136,12 @@ class Worker:  # TODO: unit-test
 
     def __str__(self):
         _s = "%s '%s' on '%s'"
-        return _s % (type(self).__name__, self.name, self.activity)
+        return _s % (type(self).__name__, self.name, self.task)
 
     def __repr__(self):
         return "%s(%s, %s, session=%s)" % (
             type(self).__name__,
-            repr(self.activity),
+            repr(self.task),
             repr(self.name),
             repr(self.session))
 
@@ -145,7 +152,7 @@ class Worker:  # TODO: unit-test
             task_input (str):
         """
         execution = self._task_execution_class(
-            self.activity,
+            self.task,
             task_token,
             json.loads(task_input),
             session=self.session)
@@ -160,9 +167,9 @@ class Worker:  # TODO: unit-test
             if self._request_finish:
                 break
             _s = "Polling for activity '{}' executions"
-            _logger.debug(_s % self.activity)
+            _logger.debug(_s % self.task.activity)
             resp = self.session.sfn.get_activity_task(
-                activityArn=self.activity.arn,
+                activityArn=self.task.activity.arn,
                 workerName=self.name)
             if resp.get("taskToken", None) is not None:
                 self._exectute_on(resp["input"], resp["taskToken"])

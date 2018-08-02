@@ -32,6 +32,18 @@ class Execution:  # TODO: unit-test
         self._arn = None
         self._output = None
 
+    def __str__(self):
+        _s = "%s '%s' on '%s'"
+        return _s % (type(self).__name__, self.name, self.state_machine)
+
+    def __repr__(self):
+        return "%s(%s, %s, len(execution_input)=%s, session=%s)" % (
+            type(self).__name__,
+            repr(self.name),
+            repr(self.state_machine),
+            len(self.execution_input),
+            repr(self.session))
+
     @classmethod
     def from_arn(cls, arn, *, session=None):
         """Construct an ``Execution`` from an existing execution.

@@ -147,6 +147,16 @@ class Activities:  # TODO: unit-test
         self.activities = {}
         self.session = session or _util.AWSSession()
 
+    def __str__(self):
+        return "%s '%s' [%s]" % (type(self).__name__, self.name, self.version)
+
+    def __repr__(self):
+        return "%s(%s, %s, session=%s)" % (
+            type(self).__name__,
+            repr(self.name),
+            repr(self.version),
+            repr(self.session))
+
     @property
     def all_activities(self):
         """All registered activities."""

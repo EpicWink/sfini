@@ -27,7 +27,7 @@ class _ChoiceRule(_ChoiceOp):  # TODO: unit-test
             self.next_state)
 
     def __repr__(self):
-        return "%s(%s%s%s)" % (
+        return "%s(%s, %s, %s)" % (
             type(self).__name__,
             repr(self.variable_name),
             repr(self.comparison_value),
@@ -194,7 +194,7 @@ class _LogicalRule(_ChoiceOp):  # TODO: unit-test
         return _s + " [%s]" % self.next_state
 
     def __repr__(self):
-        return "%s(%s%s)" % (
+        return "%s(%s, %s)" % (
             type(self).__name__,
             repr(self.choice_rules),
             repr(self.next_state))
@@ -244,7 +244,7 @@ class Not(_LogicalRule):  # TODO: unit-test
         return "%s %s [%s]" % _f
 
     def __repr__(self):
-        return "%s(%s%s)" % (
+        return "%s(%s, %s)" % (
             type(self).__name__,
             repr(self.choice_rules[0]),
             repr(self.next_state))

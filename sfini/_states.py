@@ -483,7 +483,7 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         if isinstance(self.activity, str):
             region = self.state_machine.session.region
             account = self.state_machine.session.account_id
-            _s = "arn:aws:states:%s:%s:lambda:%s"
+            _s = "arn:aws:lambda:%s:%s:function:%s"
             return _s % (region, account, self.activity)
         else:
             return self.activity.arn
