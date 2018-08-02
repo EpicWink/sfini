@@ -29,10 +29,12 @@ setuptools.setup(
     maintainer_email="laurie@sitesee.com.au",
     description="AWS SFN Service",
     long_description=_long_description,
+    long_description_content_type="text/markdown",
     url="https://gitlab.com/Epic_Wink/aws-sfn-service",
     classifiers=_classifiers,
     keywords="aws sfn service step functions",
     packages=setuptools.find_packages(exclude=["tests/*"]),
+    python_requires="~=3.3",
     install_requires=["boto3"],
     extras_require={
         "dev": ["pytest", "pytest-cov", "mock", "moto"]})
