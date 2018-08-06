@@ -21,17 +21,17 @@ _host_name = socket.getfqdn(socket.gethostname())
 
 
 class _TaskExecution:  # TODO: unit-test
-    """Execute a task, providing heartbeats and .
+    """Execute a task, providing heartbeats and catching failures.
 
     Args:
-        task (Task): task with activity to execute
+        activity (Activity): activity to execute task of
         task_token (str): task token for execution identification
         task_input: task input
         session (_util.AWSSession): session to communicate to AWS with
     """
 
-    def __init__(self, task, task_token, task_input, *, session=None):
-        self.task = task
+    def __init__(self, activity, task_token, task_input, *, session=None):
+        self.activity = activity
         self.task_token = task_token
         self.task_input = task_input
         self.session = session or _util.AWSSession()
@@ -39,12 +39,12 @@ class _TaskExecution:  # TODO: unit-test
         self._request_stop = False
 
     def __str__(self):
-        return "Execution '%s' of '%s'" % (self.task_token, self.task)
+        return "Execution '%s' of '%s'" % (self.task_token, self.activity)
 
     def __repr__(self):
         return "%s(%s, %s, len(task_input)=%s, session=%s)" % (
             type(self).__name__,
-            repr(self.task),
+            repr(self.activity),
             repr(self.task_token),
             len(self.task_input),
             repr(self.session))
@@ -59,7 +59,7 @@ class _TaskExecution:  # TODO: unit-test
             self._request_stop = True
 
     def _heartbeat(self):
-        heartbeat = self.task.heartbeat
+        heartbeat = self.activity.heartbeat
         heartbeat = min(max(heartbeat - 5.0, 1.0), heartbeat)
         while True:
             t = time.time()
@@ -92,7 +92,7 @@ class _TaskExecution:  # TODO: unit-test
         """Run task."""
         self._heartbeat_thread.start()
         try:
-            res = self.task.activity.call_with(self.task_input)
+            res = self.activity.call_with(self.task_input)
         except KeyboardInterrupt:
             self.report_cancelled()
             return
@@ -117,7 +117,7 @@ class Worker:  # TODO: unit-test
     """Worker to poll for task executions.
 
     Args:
-        task (Task): task with activity to poll and run executions of
+        activity (Activity): activity to poll and run executions of
         name (str): name of worker, used for identification, default: a
             combination of UUID and host's FQDN
         session (_util.Session): session to use for AWS communication
@@ -125,8 +125,8 @@ class Worker:  # TODO: unit-test
 
     _task_execution_class = _TaskExecution
 
-    def __init__(self, task, name=None, *, session=None):
-        self.task = task
+    def __init__(self, activity, name=None, *, session=None):
+        self.activity = activity
         self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
         self.session = session or _util.AWSSession()
 
@@ -136,12 +136,12 @@ class Worker:  # TODO: unit-test
 
     def __str__(self):
         _s = "%s '%s' on '%s'"
-        return _s % (type(self).__name__, self.name, self.task)
+        return _s % (type(self).__name__, self.name, self.activity)
 
     def __repr__(self):
         return "%s(%s, %s, session=%s)" % (
             type(self).__name__,
-            repr(self.task),
+            repr(self.activity),
             repr(self.name),
             repr(self.session))
 
@@ -152,7 +152,7 @@ class Worker:  # TODO: unit-test
             task_input (str):
         """
         execution = self._task_execution_class(
-            self.task,
+            self.activity,
             task_token,
             json.loads(task_input),
             session=self.session)
@@ -167,9 +167,9 @@ class Worker:  # TODO: unit-test
             if self._request_finish:
                 break
             _s = "Polling for activity '{}' executions"
-            _logger.debug(_s % self.task.activity)
+            _logger.debug(_s % self.activity)
             resp = self.session.sfn.get_activity_task(
-                activityArn=self.task.activity.arn,
+                activityArn=self.activity.arn,
                 workerName=self.name)
             if resp.get("taskToken", None) is not None:
                 self._exectute_on(resp["input"], resp["taskToken"])

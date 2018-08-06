@@ -26,12 +26,14 @@ class Activity:  # TODO: unit-test
     Args:
         name (str): name of activity
         fn (callable): function to run activity
+        heartbeat (int): seconds between heartbeat during activity running
         session (_util.Session): session to use for AWS communication
     """
 
-    def __init__(self, name, fn, *, session=None):
+    def __init__(self, name, fn, heartbeat=20, *, session=None):
         self.name = name
         self.fn = fn
+        self.heartbeat = heartbeat
         self.session = session or _util.AWSSession()
         self.sig = inspect.Signature.from_callable(fn)
 
@@ -48,16 +50,17 @@ class Activity:  # TODO: unit-test
             repr(self.session))
 
     @classmethod
-    def from_callable(cls, fn, name, *, session=None):
+    def from_callable(cls, fn, name, heartbeat=20, *, session=None):
         """Create an activity from the callable.
 
         Args:
             fn (callable): function to run activity
             name (str): name of activity
+            heartbeat (int): seconds between heartbeat during activity running
             session (_util.Session): session to use for AWS communication
         """
 
-        activity = cls(name, fn, session=session)
+        activity = cls(name, fn, heartbeat=heartbeat, session=session)
         ft.update_wrapper(activity, fn)
         return activity
 
@@ -162,11 +165,12 @@ class Activities:  # TODO: unit-test
         """All registered activities."""
         return set(self.activities.values())
 
-    def activity(self, name=None):
+    def activity(self, name=None, heartbeat=20):
         """Activity function decorator.
 
         Args:
             name (str): name of activity, default: function name
+            heartbeat (int): seconds between heartbeat during activity running
         """
 
         pref = "%s-%s-" % (self.name, self.version)
@@ -175,8 +179,11 @@ class Activities:  # TODO: unit-test
             suff = fn.__name__ if name is None else name
             if suff in self.activities:
                 raise ValueError("Activity '%s' already registered" % suff)
-            name_ = pref + suff
-            activity = Activity.from_callable(fn, name_, session=self.session)
+            activity = Activity.from_callable(
+                fn,
+                pref + suff,
+                heartbeat=heartbeat,
+                session=self.session)
             self.activities[suff] = activity
             return activity
         return wrapper

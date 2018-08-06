@@ -337,3 +337,35 @@ class StateMachine:  # TODO: unit-test
             session=self.session)
         execution.start()
         return execution
+
+    def list_executions(self, status=None):
+        """List all executions of this state-machine.
+
+        Arguments:
+            status (str): only list executions with this status. Choose from
+                'RUNNING', 'SUCCEEDED', 'FAILED', 'TIMED_OUT' or 'ABORTED'
+        """
+
+        kwargs = {"stateMachineArn": self.arn}
+        if status is not None:
+            kwargs["statusFilter"] = status
+        fn = self.session.sfn.list_executions
+        resp = _util.collect_paginated(fn, kwargs=kwargs)
+
+        executions = []
+        for exec_info in resp["executions"]:
+            assert exec_info["stateMachineArn"] == self.arn
+            execution = _execution.Execution(
+                name=exec_info["name"],
+                state_machine=self,
+                execution_input=None,
+                session=self)
+            execution._arn = exec_info["executionArn"]
+            execution._start_time = resp["startDate"]
+            executions.append(execution)
+
+            _s = "Found execution '%s' with status '%s' and stop-date: %s"
+            _logger.debug(_s % (execution, resp["status"], resp["stopDate"]))
+
+        return executions
+

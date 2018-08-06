@@ -441,7 +441,6 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
             task is run by the AWS Lambda function named ``activity``
         comment (str): state description
         timeout (int): seconds before task time-out
-        heartbeat (int): second between task heartbeats
 
     Attributes:
         next (State): next state to execute
@@ -455,23 +454,27 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
             activity,
             comment=None,
             timeout=None,
-            heartbeat=60,
             *,
             state_machine):
         super().__init__(name, comment=comment, state_machine=state_machine)
         self.activity = activity
         self.timeout = timeout
-        self.heartbeat = heartbeat
 
     def __repr__(self):
-        return "%s(%s%s%s%s%s%s)" % (
+        to_cm_str = ", timeout=" if self.comment is None else ", "
+        _to = "" if self.timeout is None else (to_cm_str + repr(self.timeout))
+        return "%s(%s%s%s%s%s)" % (
             type(self).__name__,
             repr(self.name),
             repr(self.activity),
             "" if self.comment is None else (", " + repr(self.comment)),
-            "" if self.timeout is None else (", " + repr(self.timeout)),
-            ", " + repr(self.heartbeat),
-            ", " + repr(self.state_machine))
+            _to,
+            ", state_machine=" + repr(self.state_machine))
+
+    @property
+    def is_lambda(self) -> bool:
+        """This task is run by an AWS Lambda Function."""
+        return isinstance(self.activity, str)
 
     def _get_resource_arn(self):
         """Get the activity resource ARN.
@@ -480,7 +483,7 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
             str: activity ARN
         """
 
-        if isinstance(self.activity, str):
+        if self.is_lambda:
             region = self.state_machine.session.region
             account = self.state_machine.session.account_id
             _s = "arn:aws:lambda:%s:%s:function:%s"
@@ -494,5 +497,6 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         defn["ResultPath"] = "$.%s" % self.name
         if self.timeout is not None:
             defn["TimeoutSeconds"] = self.timeout
-        defn["HeartbeatSeconds"] = self.heartbeat
+        if not self.is_lambda:
+            defn["HeartbeatSeconds"] = self.activity.heartbeat
         return defn
