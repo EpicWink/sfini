@@ -27,7 +27,7 @@ setuptools.setup(
     author_email="laurie@sitesee.com.au",
     maintainer="Laurie",
     maintainer_email="laurie@sitesee.com.au",
-    description="AWS SFN Service",
+    description="Create AWS Step Functions easily",
     long_description=_long_description,
     long_description_content_type="text/markdown",
     url="https://gitlab.com/Epic_Wink/aws-sfn-service",
