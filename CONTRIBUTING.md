@@ -26,4 +26,4 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
 - Implement activity deletion from AWS SFN
 - Handle execution history nicely
 - Handle state-machines in the process of deletion
-- Implement CLI service helper
+- Improve CLI service helper
