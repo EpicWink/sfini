@@ -35,7 +35,8 @@ __all__ = [
     "TimestampGreaterThan",
     "TimestampGreaterThanEquals",
     "TimestampLessThan",
-    "TimestampLessThanEquals"]
+    "TimestampLessThanEquals",
+    "CLI"]
 
 from ._state_machine import StateMachine
 from ._worker import Worker
@@ -62,3 +63,4 @@ from ._choice_ops import TimestampGreaterThan
 from ._choice_ops import TimestampGreaterThanEquals
 from ._choice_ops import TimestampLessThan
 from ._choice_ops import TimestampLessThanEquals
+from ._cli import CLI

@@ -202,7 +202,7 @@ class StateMachine:  # TODO: unit-test
         self.states[name] = state
         return state
 
-    def task(self, name, activity, comment=None, timeout=None, heartbeat=60):
+    def task(self, name, activity, comment=None, timeout=None):
         """Create a task state.
 
         Executes an activity.
@@ -214,7 +214,6 @@ class StateMachine:  # TODO: unit-test
                 task is run by the AWS Lambda function named ``activity``
             comment (str): state description
             timeout (int): seconds before task time-out
-            heartbeat (int): second between task heartbeats
 
         Returns:
             _states.Task: task state
@@ -227,7 +226,6 @@ class StateMachine:  # TODO: unit-test
             activity,
             comment=comment,
             timeout=timeout,
-            heartbeat=heartbeat,
             state_machine=self)
         self.states[name] = state
         return state

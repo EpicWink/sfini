@@ -1,5 +1,5 @@
 # --- 80 characters -------------------------------------------------------
-# Created by: Laurie 2018/08/13
+# Created by: Laurie 2018/07/13
 
 """Test ``sfini._activity``."""
 

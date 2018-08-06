@@ -134,4 +134,4 @@ class AWSSession:  # TODO: unit-test
     def account_id(self) -> str:
         """Session's account's account ID."""
         _sts = self.session.client("sts")
-        return _sts.get_caller_identity()["account"]
+        return _sts.get_caller_identity()["Account"]
