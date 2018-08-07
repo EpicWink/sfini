@@ -58,7 +58,7 @@ class CLI:
             "start",
             help="start state-machine execution")
         start_parser.add_argument(
-            "input-json",
+            "input_json",
             help="execution input JSON, use '-' for STDIN")
         start_parser.add_argument(
             "-w",
@@ -71,7 +71,7 @@ class CLI:
             help="run an acitivity worker",
             description="run an activity worker")
         worker_parser.add_argument(
-            "activity-name",
+            "activity_name",
             nargs="*",
             help="name of activity to run")
 
@@ -89,7 +89,7 @@ class CLI:
 
     def _execute(self, args, parser):
         if args.command == "register":
-            self.state_machine.register()
+            self.state_machine.register(allow_update=args.state_machine_only)
             if not args.state_machine_only:
                 self.activities.register()
         elif args.command == "start":
@@ -117,7 +117,8 @@ class CLI:
                     worker.end()
                     worker.join()
         elif args.command == "executions":
-            self.state_machine.list_executions(status=args.status)
+            execs = self.state_machine.list_executions(status=args.status)
+            print("Executions:\n" + "\n".join(map(str, execs)))
         else:
             parser.error("Invalid command: %s" % repr(args.command))
 

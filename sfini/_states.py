@@ -146,7 +146,9 @@ class _CanRetry(_state_error._ExceptionCondition, State):  # TODO: unit-test
 
     def to_dict(self):
         defn = super().to_dict()
-        defn["Retry"] = self._rule_defns(self.retries)
+        retry = self._rule_defns(self.retries)
+        if retry:
+            defn["Retry"] = retry
         return defn
 
 
@@ -186,7 +188,9 @@ class _CanCatch(_state_error._ExceptionCondition, State):  # TODO: unit-test
 
     def to_dict(self):
         defn = super().to_dict()
-        defn["Catch"] = self._rule_defns(self.catches)
+        catch = self._rule_defns(self.catches)
+        if catch:
+            defn["Catch"] = catch
         return defn
 
 
@@ -494,7 +498,7 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
     def to_dict(self):
         defn = super().to_dict()
         defn["Resource"] = self._get_resource_arn()
-        defn["ResultPath"] = "$.%s" % self.name
+        defn["ResultPath"] = "$._results.%s" % self.name
         if self.timeout is not None:
             defn["TimeoutSeconds"] = self.timeout
         if not self.is_lambda:

@@ -50,6 +50,9 @@ class _TaskExecution:  # TODO: unit-test
             repr(self.session))
 
     def _send_heartbeat(self):
+        """Send a heartbeat."""
+        _logger.debug("Sending heartbeat for '%s'" % self)
+
         try:
             _ = self.session.sfn.send_task_heartbeat(taskToken=self.task_token)
         except bc_exc.ClientError as e:
@@ -59,6 +62,7 @@ class _TaskExecution:  # TODO: unit-test
             self._request_stop = True
 
     def _heartbeat(self):
+        """Run heartbeat sending."""
         heartbeat = self.activity.heartbeat
         heartbeat = min(max(heartbeat - 5.0, 1.0), heartbeat)
         while True:
@@ -69,20 +73,30 @@ class _TaskExecution:  # TODO: unit-test
             time.sleep(heartbeat - (time.time() - t))
 
     def _send_failure(self, exc):
+        """Report failure."""
         if self._request_stop:
             _logger.warning("Skipping sending failure as we're quitting")
             return
+
+        _logger.info("Report task failure for '%s'" % self, exc_info=exc)
+
         self._request_stop = True
         cause = traceback.format_exception(type(exc), exc, exc.__traceback__)
+        cause = "".join(cause)
         self.session.sfn.send_task_failure(
             taskToken=self.task_token,
             error=type(exc).__name__,
             cause=cause)
 
     def _send_success(self, res):
+        """Report success."""
         if self._request_stop:
             _logger.warning("Skipping sending failure as we're quitting")
             return
+
+        _s = "Report task success for '%s' with output: %s"
+        _logger.info(_s % (self, res))
+
         self._request_stop = True
         self.session.sfn.send_task_success(
             taskToken=self.task_token,
@@ -91,6 +105,8 @@ class _TaskExecution:  # TODO: unit-test
     def run(self):
         """Run task."""
         self._heartbeat_thread.start()
+        t = time.time()
+
         try:
             res = self.activity.call_with(self.task_input)
         except KeyboardInterrupt:
@@ -99,6 +115,9 @@ class _TaskExecution:  # TODO: unit-test
         except Exception as e:
             self._send_failure(e)
             return
+
+        _s = "Task '%s' completed in %.6f seconds"
+        _logger.debug(_s % (self, time.time() - t))
         self._send_success(res)
 
     def report_cancelled(self):
@@ -106,6 +125,10 @@ class _TaskExecution:  # TODO: unit-test
         if self._request_stop:
             _logger.warning("Skipping sending cancellation as we're quitting")
             return
+
+        _s = "Reporting task failure for '%s' due to cancellation"
+        _logger.info(_s % self)
+
         self._request_stop = True
         self.session.sfn.send_task_failure(
             taskToken=self.task_token,
@@ -149,12 +172,16 @@ class Worker:  # TODO: unit-test
         """Execute the provided task.
 
         Arguments:
-            task_input (str):
+            task_input: activity task execution input
+            task_token (str): task execuion identifier
         """
+
+        _logger.debug("Got task input: %s" % task_input)
+
         execution = self._task_execution_class(
             self.activity,
             task_token,
-            json.loads(task_input),
+            task_input,
             session=self.session)
         if self._request_finish:
             execution.report_cancelled()
@@ -166,13 +193,13 @@ class Worker:  # TODO: unit-test
         while True:
             if self._request_finish:
                 break
-            _s = "Polling for activity '{}' executions"
+            _s = "Polling for activity '%s' executions"
             _logger.debug(_s % self.activity)
             resp = self.session.sfn.get_activity_task(
                 activityArn=self.activity.arn,
                 workerName=self.name)
             if resp.get("taskToken", None) is not None:
-                self._exectute_on(resp["input"], resp["taskToken"])
+                self._exectute_on(json.loads(resp["input"]), resp["taskToken"])
 
     def _worker(self):
         """Run polling, catching exceptins."""
@@ -202,7 +229,7 @@ class Worker:  # TODO: unit-test
 
     def end(self):
         """End polling."""
-        _logger.debug("Worker '%s': waiting on final poll to finish" % self)
+        _logger.info("Worker '%s': waiting on final poll to finish" % self)
         self._request_finish = True
 
     def run(self):

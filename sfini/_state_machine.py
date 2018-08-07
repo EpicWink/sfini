@@ -273,17 +273,19 @@ class StateMachine:  # TODO: unit-test
 
     def _sfn_create(self):
         """Create this state-machine in SFN."""
+        _logger.info("Creating state-machine '%s' on SFN" % self)
         resp = self.session.sfn.create_state_machine(
             name=self.name,
-            definition=json.dumps(self.to_dict()),
+            definition=json.dumps(self.to_dict(), indent=4),
             roleArn=self.role_arn)
         assert resp["stateMachineArn"] == self.arn
         return resp
 
     def _sfn_update(self):
         """Update this state-machine in SFN."""
+        _logger.info("Updating state-machine '%s' on SFN" % self)
         resp = self.session.sfn.update_state_machine(
-            definition=json.dumps(self.to_dict()),
+            definition=json.dumps(self.to_dict(), indent=4),
             roleArn=self.role_arn,
             stateMachineArn=self.arn)
         return resp
@@ -301,7 +303,7 @@ class StateMachine:  # TODO: unit-test
         if allow_update and self.is_registered():
             resp = self._sfn_update()
             _s = "State machine '%s' updated at %s"
-            _logger.info(_s % (self, resp["creationDate"]))
+            _logger.info(_s % (self, resp["updateDate"]))
         else:
             resp = self._sfn_create()
             _arn = resp["stateMachineArn"]
@@ -313,6 +315,9 @@ class StateMachine:  # TODO: unit-test
         """Remove state-machine from AWS SFN."""
         if not self.is_registered():
             raise RuntimeError("Cannot de-register unregistered state-machine")
+
+        _logger.info("Deleting state-machine '%s' from SFN" % self)
+
         _ = self.session.sfn.delete_state_machine(stateMachineArn=self.arn)
         _logger.info("State-machine '%s' de-registered" % self)
 
@@ -326,8 +331,11 @@ class StateMachine:  # TODO: unit-test
             Execution: started execution
         """
 
-        _now = datetime.datetime.now().isoformat("T")
-        name = "_".join((self.name, _now, str(uuid.uuid4())))
+        _s = "Starting execution of '%s' with: %s"
+        _logger.info(_s % (self, execution_input))
+
+        _now = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        name = self.name + "_" + _now + "_" + str(uuid.uuid4())[:8]
         execution = self._execution_class(
             name,
             self,
@@ -359,11 +367,11 @@ class StateMachine:  # TODO: unit-test
                 execution_input=None,
                 session=self)
             execution._arn = exec_info["executionArn"]
-            execution._start_time = resp["startDate"]
+            execution._start_time = exec_info["startDate"]
             executions.append(execution)
 
             _s = "Found execution '%s' with status '%s' and stop-date: %s"
-            _logger.debug(_s % (execution, resp["status"], resp["stopDate"]))
+            _logger.debug(_s % (execution, exec_info["status"], exec_info["stopDate"]))
 
         return executions
 

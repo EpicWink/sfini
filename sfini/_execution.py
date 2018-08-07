@@ -76,7 +76,8 @@ class Execution:  # TODO: unit-test
         resp = self.session.sfn.start_execution(
             stateMachineArn=self.state_machine.arn,
             name=self.name,
-            input=json.dumps(self.execution_input))
+            input=self.execution_input)
+            # input=json.dumps(self.execution_input))
         self._arn = resp["executionArn"]
         self._start_time = resp["startDate"]
 
