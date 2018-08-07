@@ -1,4 +1,4 @@
-# --- 100 characters ------------------------------------------------------------------------------
+# --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/06
 
 """SFN service helper.
@@ -46,13 +46,18 @@ class CLI:
 
         register_parser = subparsers.add_parser(
             "register",
-            help="register (or update) activities and state-machine",
-            description="register (or update) activities and state-machine")
+            help="register activities and state-machine with SFN",
+            description="register activities and state-machine with SFN")
         register_parser.add_argument(
             "-o",
             "--state-machine-only",
             action="store_true",
             help="only register (or update) state-machine")
+
+        deregister_parser = subparsers.add_parser(
+            "deregister",
+            help="deregister state-machine from SFN",
+            description="deregister state-machine from SFN")
 
         start_parser = subparsers.add_parser(
             "start",
@@ -68,11 +73,10 @@ class CLI:
 
         worker_parser = subparsers.add_parser(
             "worker",
-            help="run an acitivity worker",
+            help="run an activity worker",
             description="run an activity worker")
         worker_parser.add_argument(
             "activity_name",
-            nargs="*",
             help="name of activity to run")
 
         executions_parser = subparsers.add_parser(
@@ -103,22 +107,16 @@ class CLI:
                 execution.wait()
                 print(execution.output)
         elif args.command == "worker":
-            workers = []
-            for activity_name in args.activity_name:
-                activity = self.activities.activities[activity_name]
-                worker = _worker.Worker(activity)
-                worker.start()
-                workers.append(worker)
-            try:
-                for worker in workers:
-                    worker.join()
-            except KeyboardInterrupt:
-                for worker in workers:
-                    worker.end()
-                    worker.join()
+            activity = self.activities.activities[args.activity_name]
+            worker = _worker.Worker(activity)
+            worker.run()
         elif args.command == "executions":
             execs = self.state_machine.list_executions(status=args.status)
-            print("Executions:\n" + "\n".join(map(str, execs)))
+            for execution in execs:
+                print(execution)
+                execution.print_history()
+        elif args.command == "deregister":
+            self.state_machine.deregister()
         else:
             parser.error("Invalid command: %s" % repr(args.command))
 

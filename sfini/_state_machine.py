@@ -1,5 +1,5 @@
 # --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/08/11
+# Created by: Laurie 2018/07/11
 
 """SFN state-machine."""
 
@@ -317,9 +317,7 @@ class StateMachine:  # TODO: unit-test
             raise RuntimeError("Cannot de-register unregistered state-machine")
 
         _logger.info("Deleting state-machine '%s' from SFN" % self)
-
         _ = self.session.sfn.delete_state_machine(stateMachineArn=self.arn)
-        _logger.info("State-machine '%s' de-registered" % self)
 
     def start_execution(self, execution_input):
         """Start an execution.
@@ -370,8 +368,8 @@ class StateMachine:  # TODO: unit-test
             execution._start_time = exec_info["startDate"]
             executions.append(execution)
 
+            status, stop_date = exec_info["status"], exec_info["stopDate"]
             _s = "Found execution '%s' with status '%s' and stop-date: %s"
-            _logger.debug(_s % (execution, exec_info["status"], exec_info["stopDate"]))
+            _logger.debug(_s % (execution, status, stop_date))
 
         return executions
-

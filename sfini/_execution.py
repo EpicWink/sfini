@@ -1,10 +1,9 @@
 # --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/08/11
+# Created by: Laurie 2018/07/11
 
 """SFN state-machine execution."""
 
 import time
-import json
 import logging as lg
 
 from . import _util
@@ -77,7 +76,6 @@ class Execution:  # TODO: unit-test
             stateMachineArn=self.state_machine.arn,
             name=self.name,
             input=self.execution_input)
-            # input=json.dumps(self.execution_input))
         self._arn = resp["executionArn"]
         self._start_time = resp["startDate"]
 
