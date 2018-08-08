@@ -7,6 +7,7 @@ import time
 import logging as lg
 
 from . import _util
+from . import _execution_history
 
 _logger = lg.getLogger(__name__)
 
@@ -137,17 +138,22 @@ class Execution:  # TODO: unit-test
         resp = self.session.sfn.stop_execution(executionArn=self._arn, **_kw)
         _logger.info("Execution stopped on %s" % resp["stopDate"])
 
-    def print_history(self):
-        """Print the execution history."""
+    def get_history(self):
+        """List the execution history."""
         if self._start_time is None:
             raise RuntimeError("Execution not yet started")
         resp = _util.collect_paginated(
             self.session.sfn.get_execution_history,
             kwargs={"executionArn": self._arn})
-        for event in resp["events"]:
-            id_ = event["id"]
-            ts = event["timestamp"]
-            t = event["type"]
-            prev_id = event["previousEventId"]
-            detes = event[event["type"]]
-            print("  [%s] %s %s (from %s):\n%s" % (id_, ts, t, prev_id, detes))
+        return _execution_history.parse_history(resp["events"])
+
+    def print_history(self):
+        """Print the execution history."""
+        events = self.get_history()
+        for event in events:
+            id_ = event.event_id
+            ts = event.timestamp
+            t = event.event_type
+            p_id = event.previous_event_id
+            d = ":\n    %s" % event.details_str if event.details_str else ""
+            print("  [%s] %s %s (from [%s])%s" % (id_, ts, t, p_id, d))
