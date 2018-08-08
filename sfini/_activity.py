@@ -173,7 +173,9 @@ class Activities:  # TODO: unit-test
             heartbeat (int): seconds between heartbeat during activity running
         """
 
-        pref = "%s-%s-" % (self.name, self.version)
+        if "!" in self.name:
+            raise ValueError("Activities group name cannot contain '!'")
+        pref = "%s!%s!" % (self.name, self.version)
 
         def wrapper(fn):
             suff = fn.__name__ if name is None else name
@@ -193,6 +195,40 @@ class Activities:  # TODO: unit-test
         for activity in self.activities.values():
             activity.register()
 
+    def _get_name_and_version(self, activity_item_name):
+        name_splits = activity_item_name.split("!", 3)
+        if len(name_splits) < 3:
+            return None
+        group_name, version, activity_name = name_splits
+        if group_name != self.name:
+            return None
+        return version, activity_name
+
+    def _list_activities(self):
+        resp = _util.collect_paginated(self.session.sfn.list_activities)
+        acts = []
+        for act in resp["activities"]:
+            name_and_version = self._get_name_and_version(act["name"])
+            if name_and_version is None:
+                continue
+            version, name = name_and_version
+            acts.append((version, name, act["arn"], act["creationDate"]))
+        return acts
+
+    def _filter_versions(self, activity_items, version=None):
+        acts = []
+        for act in activity_items:
+            if version is None and act[0] != self.version:
+                acts.append(act)
+            elif version is not None and act[0] == version:
+                acts.append(act)
+        return acts
+
+    def _deregister_activities(self, activity_items):
+        _logger.info("Deregistering %d activities" % len(activity_items))
+        for act in activity_items:
+            self.session.sfn.delete_activity(activityArn=act[2])
+
     def deregister(self, version=None):
         """Remove activities in AWS SFN.
 
@@ -201,7 +237,6 @@ class Activities:  # TODO: unit-test
                 versions
         """
 
-        # List activities in SFN
-        # Determine available versions
-        # Remove all activities with requested version
-        raise NotImplementedError  # TODO: implement activity deletion
+        acts = self._list_activities()
+        acts = self._filter_versions(acts, version=version)
+        self._deregister_activities(acts)
