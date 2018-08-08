@@ -23,6 +23,5 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
 - Write unit tests
 - Allow user to specify input, result and output paths for tasks
 - Properly deal with state-machine output
-- Handle execution history nicely
 - Handle state-machines in the process of deletion
 - Improve CLI service helper
