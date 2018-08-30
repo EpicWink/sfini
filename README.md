@@ -63,7 +63,7 @@ def get_centres_activity(resized_image_dir):
 
 sm = sfini.StateMachine("myStateMachine", role_arn="...")
 list_images = sm.task("listImages", list_images_activity)
-get_centres = sm.task("getCentre", list_images)
+get_centres = sm.task("getCentre", get_centres_activity)
 sm.start_at(list_images)
 list_images.goes_to(get_centres)
 
