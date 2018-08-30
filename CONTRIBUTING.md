@@ -22,6 +22,9 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
 - Write more example(s)
 - Write unit tests
 - Allow user to specify input, result and output paths for tasks
-- Properly deal with state-machine output
-- Handle state-machines in the process of deletion
+- Properly deal with state-machine output?
 - Improve CLI service helper
+- Implement multiple workers, specifically cancelling other workers' polls on
+  job recieve
+- Generate a random valid role ARN when not provided and the state-machine has
+  no AWS Lambda activities for its tasks
