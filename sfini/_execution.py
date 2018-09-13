@@ -151,9 +151,5 @@ class Execution:  # TODO: unit-test
         """Print the execution history."""
         events = self.get_history()
         for event in events:
-            id_ = event.event_id
-            ts = event.timestamp
-            t = event.event_type
-            p_id = event.previous_event_id
-            d = ":\n    %s" % event.details_str if event.details_str else ""
-            print("  [%s] %s %s (from [%s])%s" % (id_, ts, t, p_id, d))
+            _d = event.details_str
+            print(("%s:\n  %s" % (event, _d)) if _d else event)

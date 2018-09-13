@@ -92,7 +92,7 @@ class _Event:  # TODO: unit-test
         timestamp = history_event["timestamp"]
         event_type = history_event["type"]
         event_id = history_event["id"]
-        previous_event_id = history_event["previousEventId"]
+        previous_event_id = history_event.get("previousEventId")
         details = history_event[_type_key_map[event_type]]
         return (timestamp, event_type, event_id, previous_event_id), details
 

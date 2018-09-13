@@ -28,3 +28,5 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
   job recieve
 - Generate a random valid role ARN when not provided and the state-machine has
   no AWS Lambda activities for its tasks
+- Use state-variable objects which store input and output task data: this will
+  require a local graph to be generated to determine input and output paths
