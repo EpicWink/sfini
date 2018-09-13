@@ -59,7 +59,7 @@ class Activity:  # TODO: unit-test
         _logger.info(_s % (self, resp["creationDate"]))
 
 
-class CallableActivity(Activity):
+class CallableActivity(Activity):  # TODO: unit-test
     """Activity execution defined by a callable.
 
     Note that activity names must be unique (within a region). It's
@@ -165,10 +165,11 @@ class Activities:  # TODO: unit-test
         >>> def fn():
         ...     print("hi")
         >>> print(fn.name)
-        foo_1.0_myActivity
+        foo!1.0!myActivity
     """
 
     _activity_class = CallableActivity
+    _external_activity_class = Activity
 
     def __init__(self, name, version="latest", *, session=None):
         self.name = name
@@ -213,8 +214,24 @@ class Activities:  # TODO: unit-test
                 heartbeat=heartbeat,
                 session=self.session)
             self.activities[suff] = activity
-            return activity
+            ft.update_wrapper(activity, fn)
+            return ft.wraps(fn)(activity)
         return wrapper
+
+    def new_external_activity(self, name, heartbeat=20):
+        """Declare an external activity.
+
+        Args:
+            name (str): name of activity
+            heartbeat (int): seconds between heartbeat during activity running
+        """
+
+        if "!" in self.name:
+            raise ValueError("Activities group name cannot contain '!'")
+        pref = "%s!%s!" % (self.name, self.version)
+
+        cls = self._external_activity_class
+        return cls(pref + name, heartbeat=heartbeat, session=self.session)
 
     def register(self):
         """Add registered activities to AWS SFN."""

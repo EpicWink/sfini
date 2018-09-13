@@ -12,10 +12,9 @@ except pkg_resources.DistributionNotFound:
 
 __all__ = [
     "StateMachine",
-    "Worker",
+    "Workers",
     "AWSSession",
     "Activities",
-    "Activity",
     "Execution",
     "WorkerCancel",
     "And",
@@ -40,10 +39,9 @@ __all__ = [
     "CLI"]
 
 from ._state_machine import StateMachine
-from ._worker import Worker
+from ._worker import Workers
 from ._util import AWSSession
 from ._activity import Activities
-from ._activity import Activity
 from ._execution import Execution
 from ._state_error import WorkerCancel
 from ._choice_ops import And

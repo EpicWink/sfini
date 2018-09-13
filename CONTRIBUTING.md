@@ -30,3 +30,4 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
   no AWS Lambda activities for its tasks
 - Use state-variable objects which store input and output task data: this will
   require a local graph to be generated to determine input and output paths
+- Catch socket read fail after closing worker task poll

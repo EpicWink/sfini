@@ -32,7 +32,6 @@ the state-machine to process state executions. See AWS Step Functions
 documentation for more information.
 
 ### Examples
-
 #### File-processing example
 ```python
 import sfini
@@ -70,10 +69,8 @@ list_images.goes_to(get_centres)
 activities.register()
 sm.register()
 
-list_images_worker = sfini.Worker(list_images_activity)
-get_centres_worker = sfini.Worker(get_centres_activity)
-list_images_worker.start()
-get_centres_worker.start()
+workers = sfini.Workers([list_images_activity, get_centres_activity])
+workers.start()
 
 execution = sm.start_execution(
     execution_input={
@@ -90,10 +87,8 @@ print(execution.output)
 #     "listImages": None,
 #     "getCentre": [(128, 128, 128), (128, 255, 0), (0, 0, 0), (0, 0, 255)]}
 
-list_images_worker.end()
-get_centres_worker.end()
-list_images_worker.join()
-get_centres_worker.join()
+workers.end()
+workers.join()
 ```
 
 #### Optimistic example
@@ -159,10 +154,7 @@ activities.register()  # register activities with AWS
 sm.register()  # register state-machine with AWS
 
 # Start activity workers
-workers = {}
-for activity_name, activity in activities.activities.items():
-    workers[activity_name] = sfini.Worker(activity)
-    workers[activity_name].start()
+workers = sfini.Workers(activities.activities.values())
 
 # Run state-machine execution
 execution = sm.start_execution(
@@ -174,8 +166,6 @@ execution.wait()
 print(execution.output)
 # {'satisfaction': 14.74, 'cost': 23.0}
 
-for worker in workers.values():
-    worker.end()
-for worker in workers.values():
-    worker.join()
+workers.end()
+workers.join()
 ```

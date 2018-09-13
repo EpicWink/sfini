@@ -104,19 +104,28 @@ class Execution:  # TODO: unit-test
                 raise RuntimeError("Execution not yet finished")
         return self._output
 
-    def wait(self, raise_on_error=True):
+    def wait(self, raise_on_error=True, timeout=None):
         """Wait for execution to finish.
 
         Args:
             raise_on_error (bool): raise error when execution fails
+            timeout (float): time to wait for execution to finish (seconds),
+                default: no time-out
+
+        Raises:
+            RuntimeError: if execution finishes unsuccessfully, or if time-out
+                is specified and reached before execution finishes
         """
 
+        t = time.time()
         while True:
             status = self._get_execution_status()
             if status != "RUNNING":
                 if status == "SUCCEEDED" or not raise_on_error:
                     break
-                raise RuntimeError("Execution %s" % status)
+                raise RuntimeError("Execution '%s' %s" % (self, status))
+            if time.time() - t > timeout:
+                raise RuntimeError("Time-out waiting on execution '%s'" % self)
             time.sleep(3.0)
 
     def stop(self, error_code=None, details=None):

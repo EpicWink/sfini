@@ -144,6 +144,12 @@ class Worker:  # TODO: unit-test
         name (str): name of worker, used for identification, default: a
             combination of UUID and host's FQDN
         session (_util.Session): session to use for AWS communication
+
+    Attributes:
+        pre_execute_hooks (list[callable]): functions to call before task
+            execution
+        post_execute_hooks (list[callable]): functions to call after task
+            execution
     """
 
     _task_execution_class = _TaskExecution
@@ -156,6 +162,9 @@ class Worker:  # TODO: unit-test
         self._poller = threading.Thread(target=self._worker)
         self._request_finish = False
         self._exc = None
+        self.pre_execute_hooks = []
+        self.post_execute_hooks = []
+        self._allow_poll = threading.Lock()
 
     def __str__(self):
         _s = "%s '%s' on '%s'"
@@ -168,7 +177,7 @@ class Worker:  # TODO: unit-test
             repr(self.name),
             repr(self.session))
 
-    def _exectute_on(self, task_input, task_token):
+    def _execute_on(self, task_input, task_token):
         """Execute the provided task.
 
         Arguments:
@@ -177,6 +186,8 @@ class Worker:  # TODO: unit-test
         """
 
         _logger.debug("Got task input: %s" % task_input)
+
+        [fn() for fn in self.pre_execute_hooks]
 
         execution = self._task_execution_class(
             self.activity,
@@ -188,18 +199,22 @@ class Worker:  # TODO: unit-test
         else:
             execution.run()
 
+        [fn() for fn in self.post_execute_hooks]
+
     def _poll_and_execute(self):
         """Poll for tasks to execute, then execute any found."""
         while True:
             if self._request_finish:
                 break
+            self._allow_poll.acquire()
             _s = "Polling for activity '%s' executions"
             _logger.debug(_s % self.activity)
             resp = self.session.sfn.get_activity_task(
                 activityArn=self.activity.arn,
-                workerName=self.name)
+                workerName=self.name)  # TODO: catch error on connection close
+            self._allow_poll.release()
             if resp.get("taskToken", None) is not None:
-                self._exectute_on(json.loads(resp["input"]), resp["taskToken"])
+                self._execute_on(json.loads(resp["input"]), resp["taskToken"])
 
     def _worker(self):
         """Run polling, catching exceptins."""
@@ -210,8 +225,19 @@ class Worker:  # TODO: unit-test
             self._exc = e  # send exception to main thread
             self.end()
 
+    def cancel_poll(self):
+        """Cancel the current poll for tasks, and block polling."""
+        if self._poller.is_alive():
+            self.session.sfn._endpoint.http_session.close()  # cancels any poll
+            self._allow_poll.acquire()
+
+    def allow_poll(self):
+        """Unblock polling."""
+        self._allow_poll.release()
+
     def start(self):
         """Start polling."""
+        _logger.info("Worker '%s': waiting on final poll to finish" % self)
         self._poller.start()
 
     def join(self):
@@ -231,8 +257,78 @@ class Worker:  # TODO: unit-test
         """End polling."""
         _logger.info("Worker '%s': waiting on final poll to finish" % self)
         self._request_finish = True
+        self.cancel_poll()
 
     def run(self):
         """Run worker to poll for and execute specified tasks."""
+        self.start()
+        self.join()
+
+
+class Workers:  # TODO: unit-test
+    """Simultaneously poll for multiple task executions.
+
+    Arguments:
+        activities (list[Activity]): activities to poll and run executions
+            of
+        name (str): name of worker, used for identification, default: a
+            combination of UUID and host's FQDN
+        session (_util.Session): session to use for AWS communication
+    """
+
+    _worker_class = Worker
+
+    def __init__(self, activities, name=None, *, session=None):
+        self.activities = activities
+        self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
+        self.session = session or _util.AWSSession()
+
+    def __str__(self):
+        _as = ", ".join(a.name for a in self.activities)
+        return "%s '%s' polling: %s" % (type(self).__name__, self.name, _as)
+
+    def __repr__(self):
+        _t = type(self).__name__
+        _a, _n, _s = map(repr, (self.activities, self.name, self.session))
+        return "%s(%s, name=%s, session=%s)" % (_t, _a, _n, _s)
+
+    @_util.cached_property
+    def workers(self) -> list:
+        """Activity workers."""
+        _n, _s, _a = self.name, self.session, self.activities
+        return [self._worker_class(a, name=_n, session=_s) for a in _a]
+
+    def _cancel_poll(self, j):
+        """Cancel polling for all but one worker.
+
+        Arguments:
+            j (int): index of worker to not cancel polling for
+        """
+
+        [w.cancel_poll() for k, w in enumerate(self.workers) if k != j]
+
+    def start(self):
+        """Start workers."""
+        for j, worker in enumerate(self.workers):
+            worker.pre_execute_hooks.append(lambda: self._cancel_poll(j))
+        [w.start() for w in self.workers]
+
+    def join(self):
+        """Wait for workers to finish, ending workers on exception."""
+        try:
+            [w.join() for w in self.workers]
+        except KeyboardInterrupt:
+            _logger.info("Quitting running due to KeyboardInterrupt")
+            self.end()
+        except Exception:
+            self.end()
+            raise
+
+    def end(self):
+        """Notify workers to end."""
+        [w.end() for w in self.workers]
+
+    def run(self):
+        """Run workers and wait to finish."""
         self.start()
         self.join()
