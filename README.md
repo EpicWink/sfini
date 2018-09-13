@@ -84,8 +84,7 @@ print(execution.output)
 # {
 #     "image_dir": "~/data/images/",
 #     "resized_image_dir": "~/data/images-small/"
-#     "listImages": None,
-#     "getCentre": [(128, 128, 128), (128, 255, 0), (0, 0, 0), (0, 0, 255)]}
+#     "_task_result": [(128, 128, 128), (128, 255, 0), (0, 0, 0), (0, 0, 255)]}
 
 workers.end()
 workers.join()

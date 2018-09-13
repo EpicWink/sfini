@@ -123,6 +123,11 @@ class CallableActivity(Activity):  # TODO: unit-test
                 _s = "Required parameter '%s' not in task input"
                 raise KeyError(_s % param_name)
             kwargs[param_name] = val
+
+        _kws = inspect.Parameter.VAR_KEYWORD
+        if any(p.kind is _kws for p in self.sig.parameters.values()):
+            kwargs.update(task_input)
+
         return kwargs
 
     def call_with(self, task_input):

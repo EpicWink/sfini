@@ -91,7 +91,7 @@ class StateMachine:  # TODO: unit-test
         self.states[name] = state
         return state
 
-    def succeed(self, name, comment=None):
+    def succeed(self, name, comment=None, input_path=None, output_path=None):
         """Create a succeed state.
 
         Ends execution successfully.
@@ -99,15 +99,28 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
+            input_path (str): state input filter JSONPath
+            output_path (str): state output filter JSONPath
 
         Returns:
             _states.Succeed: succeed state
         """
 
-        s = self._succeed_state_class
-        return self._state(s, name, comment=comment)
+        return self._state(
+            self._succeed_state_class,
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path)
 
-    def fail(self, name, comment=None, cause=None, error=None):
+    def fail(
+            self,
+            name,
+            comment=None,
+            cause=None,
+            error=None,
+            input_path=None,
+            output_path=None):
         """Create a fail state.
 
         Ends execution unsuccessfully.
@@ -115,6 +128,8 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
+            input_path (str): state input filter JSONPath
+            output_path (str): state output filter JSONPath
             cause (str): failure description
             error (str): name of failure error
 
@@ -122,10 +137,23 @@ class StateMachine:  # TODO: unit-test
             _states.Fail: fail state
         """
 
-        s = self._fail_state_class
-        return self._state(s, name, comment=comment, cause=cause, error=error)
+        return self._state(
+            self._fail_state_class,
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            cause=cause,
+            error=error)
 
-    def pass_(self, name, comment=None, result=None):
+    def pass_(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            result_path=None,
+            result=None):
         """Create a pass state.
 
         No-op state, but can introduce data. The name specifies the location of
@@ -134,16 +162,31 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
-            result: return value of state, stored in the variable ``name``
+            input_path (str): state input filter JSONPath
+            output_path (str): state output filter JSONPath
+            result_path (str): task output location JSONPath
+            result: return value of state
 
         Returns:
             _states.Pass: pass state
         """
 
-        s = self._pass_state_class
-        return self._state(s, name, comment=comment, result=result)
+        return self._state(
+            self._pass_state_class,
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            result_path=result_path,
+            result=result)
 
-    def wait(self, name, until, comment=None):
+    def wait(
+            self,
+            name,
+            until,
+            comment=None,
+            input_path=None,
+            output_path=None):
         """Create a wait state.
 
         Waits until a time before continuing.
@@ -155,15 +198,28 @@ class StateMachine:  # TODO: unit-test
                 wait until; if ``str``, then name of variable containing
                 seconds to wait for
             comment (str): state description
+            input_path (str): state input filter JSONPath
+            output_path (str): state output filter JSONPath
 
         Returns:
             _states.Wait: wait state
         """
 
-        s = self._wait_state_class
-        return self._state(s, name, until, comment=comment)
+        return self._state(
+            self._wait_state_class,
+            name,
+            until,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path)
 
-    def parallel(self, name, comment=None):
+    def parallel(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            result_path=None):
         """Create a parallel state.
 
         Runs states-machines in parallel. These state-machines do not need to
@@ -176,15 +232,23 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
+            input_path (str): state input filter JSONPath
+            output_path (str): state output filter JSONPath
+            result_path (str): task output location JSONPath
 
         Returns:
             _states.Parallel: parallel state
         """
 
-        s = self._parallel_state_class
-        return self._state(s, name, comment=comment)
+        return self._state(
+            self._parallel_state_class,
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            result_path=result_path)
 
-    def choice(self, name, comment=None):
+    def choice(self, name, comment=None, input_path=None, output_path=None):
         """Create a choice state.
 
         Creates branches of possible execution based on conditions.
@@ -192,15 +256,29 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
+            input_path (str): state input filter JSONPath
+            output_path (str): state output filter JSONPath
 
         Returns:
             _states.Choice: choice state
         """
 
-        s = self._choice_state_class
-        return self._state(s, name, comment=comment)
+        return self._state(
+            self._choice_state_class,
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path)
 
-    def task(self, name, activity, comment=None, timeout=None):
+    def task(
+            self,
+            name,
+            activity,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            result_path="_task_result",
+            timeout=None):
         """Create a task state.
 
         Executes an activity.
@@ -211,14 +289,24 @@ class StateMachine:  # TODO: unit-test
                 the task is executed by an activity runner. If ``str``, the
                 task is run by the AWS Lambda function named ``activity``
             comment (str): state description
+            input_path (str): state input filter JSONPath
+            output_path (str): state output filter JSONPath
+            result_path (str): task output location JSONPath
             timeout (int): seconds before task time-out
 
         Returns:
             _states.Task: task state
         """
 
-        s = self._choice_state_class
-        return self._state(s, name, activity, comment=comment, timeout=timeout)
+        return self._state(
+            self._choice_state_class,
+            name,
+            activity,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            result_path=result_path,
+            timeout=timeout)
 
     def start_at(self, state):
         """Define starting state.
@@ -264,19 +352,21 @@ class StateMachine:  # TODO: unit-test
     def _sfn_create(self):
         """Create this state-machine in SFN."""
         _logger.info("Creating state-machine '%s' on SFN" % self)
+        _r = "arn:aws:iam::%s:role/sfiniGenerated"
         resp = self.session.sfn.create_state_machine(
             name=self.name,
             definition=json.dumps(self.to_dict(), indent=4),
-            roleArn=self.role_arn)
+            roleArn=self.role_arn or _r % self.session.account_id)
         assert resp["stateMachineArn"] == self.arn
         return resp
 
     def _sfn_update(self):
         """Update this state-machine in SFN."""
         _logger.info("Updating state-machine '%s' on SFN" % self)
+        _r = "arn:aws:iam::%s:role/sfiniGenerated"
         resp = self.session.sfn.update_state_machine(
             definition=json.dumps(self.to_dict(), indent=4),
-            roleArn=self.role_arn,
+            roleArn=self.role_arn or _r % self.session.account_id,
             stateMachineArn=self.arn)
         return resp
 

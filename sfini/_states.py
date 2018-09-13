@@ -18,12 +18,23 @@ class State:  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
+        input_path (str): state input filter JSONPath
+        output_path (str): state output filter JSONPath
         state_machine (StateMachine): state-machine this state is a part of
     """
 
-    def __init__(self, name, comment=None, *, state_machine):
+    def __init__(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            *,
+            state_machine):
         self.name = name
         self.comment = comment
+        self.input_path = input_path
+        self.output_path = output_path
         self.state_machine = state_machine
 
     def __str__(self):
@@ -33,10 +44,12 @@ class State:  # TODO: unit-test
             self.state_machine.name)
 
     def __repr__(self):
-        return "%s(%s%s%s)" % (
+        return "%s(%s%s%s%s%s)" % (
             type(self).__name__,
             repr(self.name),
-            "" if self.comment is None else (", " + repr(self.comment)),
+            "" if self.comment is None else ", " + repr(self.comment),
+            "" if self.input_path is None else ", " + repr(self.input_path),
+            "" if self.output_path is None else ", " + repr(self.output_path),
             ", state_machine=" + repr(self.state_machine))
 
     def to_dict(self):
@@ -49,12 +62,28 @@ class State:  # TODO: unit-test
         defn = {"Type": type(self).__name__}
         if self.comment is not None:
             defn["Comment"] = self.comment
+        if self.input_path is not None:
+            defn["InputPath"] = "$.%s" % self.input_path
+        if self.output_path is not None:
+            defn["OutputPath"] = "$.%s" % self.output_path
         return defn
 
 
 class _HasNext(State):  # TODO: unit-test
-    def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+    def __init__(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            state_machine=state_machine)
         self.next = None
 
     def goes_to(self, state):
@@ -82,9 +111,46 @@ class _HasNext(State):  # TODO: unit-test
         return defn
 
 
+class _HasResultPath(State):  # TODO: unit-test
+    def __init__(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            result_path=None,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            state_machine=state_machine)
+        self.result_path = result_path
+
+    def to_dict(self):
+        defn = super().to_dict()
+        if self.result_path is not None:
+            defn["ResultPath"] = "$.%s" % self.result_path
+        return defn
+
+
 class _CanRetry(_state_error._ExceptionCondition, State):  # TODO: unit-test
-    def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+    def __init__(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            state_machine=state_machine)
         self.retries = {}
 
     def retry_for(
@@ -152,8 +218,20 @@ class _CanRetry(_state_error._ExceptionCondition, State):  # TODO: unit-test
 
 
 class _CanCatch(_state_error._ExceptionCondition, State):  # TODO: unit-test
-    def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+    def __init__(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            state_machine=state_machine)
         self.catches = {}
 
     def catch(self, exc, next_state):
@@ -199,10 +277,12 @@ class Succeed(State):  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
+        input_path (str): state input filter JSONPath
+        output_path (str): state output filter JSONPath
+        state_machine (StateMachine): state-machine this state is a part of
     """
 
-    def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+    pass
 
 
 class Fail(State):  # TODO: unit-test
@@ -211,19 +291,29 @@ class Fail(State):  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
+        input_path (str): state input filter JSONPath
+        output_path (str): state output filter JSONPath
         cause (str): failure description
         error (str): name of failure error
+        state_machine (StateMachine): state-machine this state is a part of
     """
 
     def __init__(
             self,
             name,
             comment=None,
+            input_path=None,
+            output_path=None,
             cause=None,
             error=None,
             *,
             state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            state_machine=state_machine)
         self.cause = cause
         self.error = error
 
@@ -243,7 +333,7 @@ class Fail(State):  # TODO: unit-test
             ", " + repr(self.state_machine))
 
 
-class Pass(_HasNext, State):  # TODO: unit-test
+class Pass(_HasResultPath, _HasNext, State):  # TODO: unit-test
     """No-op state, possibly introducing data.
 
     The name specifies the location of any introduced data.
@@ -251,14 +341,33 @@ class Pass(_HasNext, State):  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
+        input_path (str): state input filter JSONPath
+        output_path (str): state output filter JSONPath
+        result_path (str): task output location JSONPath
         result: return value of state, stored in the variable ``name``
+        state_machine (StateMachine): state-machine this state is a part of
 
     Attributes:
         next (State): next state to execute
     """
 
-    def __init__(self, name, comment=None, result=None, *, state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+    def __init__(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            result_path=None,
+            result=None,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            result_path=result_path,
+            state_machine=state_machine)
         self.result = result
 
     def __repr__(self):
@@ -272,7 +381,6 @@ class Pass(_HasNext, State):  # TODO: unit-test
     def to_dict(self):
         defn = super().to_dict()
         if self.result is not None:
-            defn["ResultPath"] = "$.%s" % self.name
             defn["Result"] = self.result
         return defn
 
@@ -286,13 +394,29 @@ class Wait(_HasNext, State):  # TODO: unit-test
             seconds to wait; if ``datetime.datetime``, then time to wait until;
             if ``str``, then name of variable containing seconds to wait for
         comment (str): state description
+        input_path (str): state input filter JSONPath
+        output_path (str): state output filter JSONPath
+        state_machine (StateMachine): state-machine this state is a part of
 
     Attributes:
         next (State): next state to execute
     """
 
-    def __init__(self, name, until, comment=None, *, state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+    def __init__(
+            self,
+            name,
+            until,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            state_machine=state_machine)
         self.until = until
 
     def __repr__(self):
@@ -320,12 +444,17 @@ class Wait(_HasNext, State):  # TODO: unit-test
         return defn
 
 
-class Parallel(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
+# TODO: unit-test
+class Parallel(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
     """Run states-machines in parallel.
 
     Args:
         name (str): name of state
         comment (str): state description
+        input_path (str): state input filter JSONPath
+        output_path (str): state output filter JSONPath
+        result_path (str): task output location JSONPath
+        state_machine (StateMachine): state-machine this state is a part of
 
     Attributes:
         state_machines (list[StateMachine]): state-machines to run in parallel.
@@ -336,14 +465,27 @@ class Parallel(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
         catches (dict[Exception or str]): handled state errors
     """
 
-    def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+    def __init__(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            result_path=None,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            result_path=result_path,
+            state_machine=state_machine)
         self.state_machines = []
 
     def to_dict(self):
         defn = super().to_dict()
         defn["Branches"] = [sm.to_dict() for sm in self.state_machines]
-        defn["ResultPath"] = "$.%s" % self.name
         return defn
 
     def add(self, state_machine):
@@ -355,8 +497,8 @@ class Parallel(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
 
         Args:
             state_machine (sfini.StateMachine): state-machine to add. It will
-                be run when this task is executed. State-machines do not need
-                to be registered with AWS Step Functions
+                be run when this task is executed. Added state-machines do not
+                need to be registered with AWS Step Functions
         """
 
         self.state_machines.append(state_machine)
@@ -368,14 +510,29 @@ class Choice(State):  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
+        input_path (str): state input filter JSONPath
+        output_path (str): state output filter JSONPath
+        state_machine (StateMachine): state-machine this state is a part of
 
     Attributes:
         choices (list[_ChoiceRule]): choice rules determining branch conditions
         default (State): fall-back state if all comparisons fail
     """
 
-    def __init__(self, name, comment=None, *, state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+    def __init__(
+            self,
+            name,
+            comment=None,
+            input_path=None,
+            output_path=None,
+            *,
+            state_machine):
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            state_machine=state_machine)
         self.choices = []
         self.default = None
 
@@ -434,7 +591,8 @@ class Choice(State):  # TODO: unit-test
         self.default = state
 
 
-class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
+# TODO: unit-test
+class Task(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
     """Activity execution.
 
     Args:
@@ -443,7 +601,11 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
             the task is executed by an activity runner. If ``str``, the
             task is run by the AWS Lambda function named ``activity``
         comment (str): state description
+        input_path (str): state input filter JSONPath
+        output_path (str): state output filter JSONPath
+        result_path (str): task output location JSONPath
         timeout (int): seconds before task time-out
+        state_machine (StateMachine): state-machine this state is a part of
 
     Attributes:
         next (State): next state to execute
@@ -456,10 +618,19 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
             name,
             activity,
             comment=None,
+            input_path=None,
+            output_path=None,
+            result_path="_task_result",
             timeout=None,
             *,
             state_machine):
-        super().__init__(name, comment=comment, state_machine=state_machine)
+        super().__init__(
+            name,
+            comment=comment,
+            input_path=input_path,
+            output_path=output_path,
+            result_path=result_path,
+            state_machine=state_machine)
         self.activity = activity
         self.timeout = timeout
 
@@ -497,7 +668,6 @@ class Task(_HasNext, _CanRetry, _CanCatch, State):  # TODO: unit-test
     def to_dict(self):
         defn = super().to_dict()
         defn["Resource"] = self._get_resource_arn()
-        defn["ResultPath"] = "$._results.%s" % self.name
         if self.timeout is not None:
             defn["TimeoutSeconds"] = self.timeout
         if not self.is_lambda:
