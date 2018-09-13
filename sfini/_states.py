@@ -67,7 +67,6 @@ class _HasNext(State):  # TODO: unit-test
         if state not in self.state_machine.states.values():
             _s = "State '%s' is not part of this state-machine"
             raise ValueError(_s % state)
-
         self.next = state
 
     def remove_next(self):

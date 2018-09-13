@@ -27,6 +27,13 @@ class StateMachine:  # TODO: unit-test
     """
 
     _execution_class = _execution.Execution
+    _succeed_state_class = _states.Succeed
+    _fail_state_class = _states.Fail
+    _pass_state_class = _states.Pass
+    _wait_state_class = _states.Wait
+    _parallel_state_class = _states.Parallel
+    _choice_state_class = _states.Choice
+    _task_state_class = _states.Task
 
     def __init__(
             self,
@@ -42,7 +49,6 @@ class StateMachine:  # TODO: unit-test
         self.timeout = timeout
         self.session = session or _util.AWSSession()
         self._start_state = None
-        self._task_runner_threads = []
         self.states = {}
 
     def __str__(self):
@@ -66,6 +72,25 @@ class StateMachine:  # TODO: unit-test
         _s = "arn:aws:states:%s:%s:stateMachine:%s"
         return _s % (region, account, self.name)
 
+    def _state(self, cls, name, *args, **kwargs):
+        """Create a state in the state-machine.
+
+        Arguments:
+            cls (type): state to create
+            name (str): name of state
+            *args: positional arguments to ``cls``
+            **kwargs: keyword arguments to ``cls``
+
+        Returns:
+            _states.State: created state
+        """
+
+        if name in self.states:
+            raise ValueError("State name '%s' already registered" % name)
+        state = cls(name, *args, **kwargs, state_machine=self)
+        self.states[name] = state
+        return state
+
     def succeed(self, name, comment=None):
         """Create a succeed state.
 
@@ -79,11 +104,8 @@ class StateMachine:  # TODO: unit-test
             _states.Succeed: succeed state
         """
 
-        if name in self.states:
-            raise ValueError("State name '%s' already registered" % name)
-        state = _states.Succeed(name, comment=comment, state_machine=self)
-        self.states[name] = state
-        return state
+        s = self._succeed_state_class
+        return self._state(s, name, comment=comment)
 
     def fail(self, name, comment=None, cause=None, error=None):
         """Create a fail state.
@@ -100,16 +122,8 @@ class StateMachine:  # TODO: unit-test
             _states.Fail: fail state
         """
 
-        if name in self.states:
-            raise ValueError("State name '%s' already registered" % name)
-        state = _states.Fail(
-            name,
-            comment=comment,
-            cause=cause,
-            error=error,
-            state_machine=self)
-        self.states[name] = state
-        return state
+        s = self._fail_state_class
+        return self._state(s, name, comment=comment, cause=cause, error=error)
 
     def pass_(self, name, comment=None, result=None):
         """Create a pass state.
@@ -126,15 +140,8 @@ class StateMachine:  # TODO: unit-test
             _states.Pass: pass state
         """
 
-        if name in self.states:
-            raise ValueError("State name '%s' already registered" % name)
-        state = _states.Pass(
-            name,
-            comment=comment,
-            result=result,
-            state_machine=self)
-        self.states[name] = state
-        return state
+        s = self._pass_state_class
+        return self._state(s, name, comment=comment, result=result)
 
     def wait(self, name, until, comment=None):
         """Create a wait state.
@@ -153,11 +160,8 @@ class StateMachine:  # TODO: unit-test
             _states.Wait: wait state
         """
 
-        if name in self.states:
-            raise ValueError("State name '%s' already registered" % name)
-        state = _states.Wait(name, until, comment=comment, state_machine=self)
-        self.states[name] = state
-        return state
+        s = self._wait_state_class
+        return self._state(s, name, until, comment=comment)
 
     def parallel(self, name, comment=None):
         """Create a parallel state.
@@ -177,11 +181,8 @@ class StateMachine:  # TODO: unit-test
             _states.Parallel: parallel state
         """
 
-        if name in self.states:
-            raise ValueError("State name '%s' already registered" % name)
-        state = _states.Parallel(name, comment=comment, state_machine=self)
-        self.states[name] = state
-        return state
+        s = self._parallel_state_class
+        return self._state(s, name, comment=comment)
 
     def choice(self, name, comment=None):
         """Create a choice state.
@@ -196,11 +197,8 @@ class StateMachine:  # TODO: unit-test
             _states.Choice: choice state
         """
 
-        if name in self.states:
-            raise ValueError("State name '%s' already registered" % name)
-        state = _states.Choice(name, comment=comment, state_machine=self)
-        self.states[name] = state
-        return state
+        s = self._choice_state_class
+        return self._state(s, name, comment=comment)
 
     def task(self, name, activity, comment=None, timeout=None):
         """Create a task state.
@@ -219,16 +217,8 @@ class StateMachine:  # TODO: unit-test
             _states.Task: task state
         """
 
-        if name in self.states:
-            raise ValueError("State name '%s' already registered" % name)
-        state = _states.Task(
-            name,
-            activity,
-            comment=comment,
-            timeout=timeout,
-            state_machine=self)
-        self.states[name] = state
-        return state
+        s = self._choice_state_class
+        return self._state(s, name, activity, comment=comment, timeout=timeout)
 
     def start_at(self, state):
         """Define starting state.
