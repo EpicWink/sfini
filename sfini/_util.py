@@ -16,7 +16,7 @@ MAX_NAME_LENGTH = 79
 INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*$%\\^|~`$,;:/"
 
 
-def setup_logging():
+def setup_logging():  # TODO: unit-test
     """Setup logging for ``sfini``, if logs would otherwise be ignored."""
     package_logger = lg.getLogger(package_name)
     if not package_logger.propagate or package_logger.disabled:

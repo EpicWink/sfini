@@ -15,6 +15,7 @@ __all__ = [
     "Worker",
     "AWSSession",
     "Activities",
+    "Activity",
     "Execution",
     "WorkerCancel",
     "And",
@@ -42,6 +43,7 @@ from ._state_machine import StateMachine
 from ._worker import Worker
 from ._util import AWSSession
 from ._activity import Activities
+from ._activity import Activity
 from ._execution import Execution
 from ._state_error import WorkerCancel
 from ._choice_ops import And

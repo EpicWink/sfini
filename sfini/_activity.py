@@ -25,23 +25,65 @@ class Activity:  # TODO: unit-test
 
     Args:
         name (str): name of activity
+        heartbeat (int): seconds between heartbeat during activity running
+        session (_util.Session): session to use for AWS communication
+    """
+
+    def __init__(self, name, heartbeat=20, *, session=None):
+        self.name = name
+        self.heartbeat = heartbeat
+        self.session = session or _util.AWSSession()
+
+    def __str__(self):
+        return "%s '%s'" % (type(self).__name__, self.name)
+
+    def __repr__(self):
+        return type(self).__name__ + "(%s, session=%s)" % (
+            repr(self.name),
+            repr(self.session))
+
+    @_util.cached_property
+    def arn(self) -> str:
+        """Activity generated ARN."""
+        region = self.session.region
+        account = self.session.account_id
+        _s = "arn:aws:states:%s:%s:activity:%s"
+        return _s % (region, account, self.name)
+
+    def register(self):
+        """Register activity with AWS."""
+        _util.assert_valid_name(self.name)
+        resp = self.session.sfn.create_activity(name=self.name)
+        assert resp["activityArn"] == self.arn
+        _s = "Activity '%s' registered at %s"
+        _logger.info(_s % (self, resp["creationDate"]))
+
+
+class CallableActivity(Activity):
+    """Activity execution defined by a callable.
+
+    Note that activity names must be unique (within a region). It's
+    recommended to put your code's title and version in the activity name.
+    ``Activities`` makes this straight-forward.
+
+    An activity is attached to state-machine tasks, and is called when that
+    task is executed. A worker registers itself able to run some
+    activities using their names.
+
+    Args:
+        name (str): name of activity
         fn (callable): function to run activity
         heartbeat (int): seconds between heartbeat during activity running
         session (_util.Session): session to use for AWS communication
     """
 
     def __init__(self, name, fn, heartbeat=20, *, session=None):
-        self.name = name
+        super().__init__(name, heartbeat=heartbeat, session=session)
         self.fn = fn
-        self.heartbeat = heartbeat
-        self.session = session or _util.AWSSession()
         self.sig = inspect.Signature.from_callable(fn)
 
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
-
-    def __str__(self):
-        return "%s '%s'" % (type(self).__name__, self.name)
 
     def __repr__(self):
         return type(self).__name__ + "(%s, %s, session=%s)" % (
@@ -63,22 +105,6 @@ class Activity:  # TODO: unit-test
         activity = cls(name, fn, heartbeat=heartbeat, session=session)
         ft.update_wrapper(activity, fn)
         return activity
-
-    @_util.cached_property
-    def arn(self) -> str:
-        """Activity generated ARN."""
-        region = self.session.region
-        account = self.session.account_id
-        _s = "arn:aws:states:%s:%s:activity:%s"
-        return _s % (region, account, self.name)
-
-    def register(self):
-        """Register activity with AWS."""
-        _util.assert_valid_name(self.name)
-        resp = self.session.sfn.create_activity(name=self.name)
-        assert resp["activityArn"] == self.arn
-        _s = "Activity '%s' registered at %s"
-        _logger.info(_s % (self, resp["creationDate"]))
 
     def _get_input_from(self, task_input):
         """Parse task input for execution input.
@@ -142,7 +168,7 @@ class Activities:  # TODO: unit-test
         foo_1.0_myActivity
     """
 
-    _activity_class = Activity
+    _activity_class = CallableActivity
 
     def __init__(self, name, version="latest", *, session=None):
         self.name = name
@@ -181,7 +207,7 @@ class Activities:  # TODO: unit-test
             suff = fn.__name__ if name is None else name
             if suff in self.activities:
                 raise ValueError("Activity '%s' already registered" % suff)
-            activity = Activity.from_callable(
+            activity = self._activity_class.from_callable(
                 fn,
                 pref + suff,
                 heartbeat=heartbeat,
