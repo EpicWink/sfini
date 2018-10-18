@@ -1,7 +1,7 @@
 # --- 80 characters ----------------------------------------------------------
 # Created by: Laurie 2018/07/12
 
-"""Task runner."""
+"""SFN activity task execution and polling."""
 
 import json
 import uuid
