@@ -392,7 +392,8 @@ class Wait(_HasNext, State):  # TODO: unit-test
         name (str): name of state
         until (int or datetime.datetime or str): time to wait. If ``int``, then
             seconds to wait; if ``datetime.datetime``, then time to wait until;
-            if ``str``, then name of variable containing seconds to wait for
+            if ``str``, then name of state-variable containing time to wait
+            until
         comment (str): state description
         input_path (str): state input filter JSONPath
         output_path (str): state output filter JSONPath
@@ -437,7 +438,7 @@ class Wait(_HasNext, State):  # TODO: unit-test
                 raise ValueError("Wait time must be aware")
             defn["Timestamp"] = t.isoformat("T")
         elif isinstance(t, str):
-            defn["SecondsPath"] = "$.%s" % t
+            defn["TimestampPath"] = "$.%s" % t
         else:
             _s = "Invalid type for wait time: %s"
             raise TypeError(_s % type(t).__name__)

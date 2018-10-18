@@ -27,5 +27,7 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
   this will require a local graph to be generated to determine input and output
   paths
 - Catch socket read fail after closing worker task poll
-- Figure out usage of `TimestampPath` in `Wait` state (ie getting the time to
-  wait until from a timestamped stored in a state variable)
+- Close worker task polls when another worker picks up a task (currently not
+  working)
+- Figure out usage of `SecondsPath` in `Wait` state (ie getting the seconds to
+  wait from an integer stored in a state variable)
