@@ -144,7 +144,7 @@ class CallableActivity(Activity):  # TODO: unit-test
         return self.fn(**kwargs)
 
 
-class Activities:  # TODO: unit-test
+class ActivityRegistration:  # TODO: unit-test
     """Activities registration.
 
     Provides convenience for grouping activities, generating activity
@@ -165,7 +165,7 @@ class Activities:  # TODO: unit-test
         activities (dict[str, Activity]): registered activities
 
     Example:
-        >>> activities = Activities("foo", "1.0")
+        >>> activities = ActivitiesManager("foo", "1.0")
         >>> @activities.activity("myActivity")
         >>> def fn():
         ...     print("hi")
@@ -193,7 +193,7 @@ class Activities:  # TODO: unit-test
             repr(self.session))
 
     @property
-    def all_activities(self):
+    def all_activities(self) -> set:
         """All registered activities."""
         return set(self.activities.values())
 
@@ -244,6 +244,7 @@ class Activities:  # TODO: unit-test
             activity.register()
 
     def _get_name_and_version(self, activity_item_name):
+        """Get name and version of an activity."""
         name_splits = activity_item_name.split("!", 3)
         if len(name_splits) < 3:
             return None
@@ -253,6 +254,7 @@ class Activities:  # TODO: unit-test
         return version, activity_name
 
     def _list_activities(self):
+        """List activities in SFN."""
         resp = _util.collect_paginated(self.session.sfn.list_activities)
         acts = []
         for act in resp["activities"]:
@@ -264,6 +266,18 @@ class Activities:  # TODO: unit-test
         return acts
 
     def _filter_versions(self, activity_items, version=None):
+        """Filter activities by version.
+
+        Args:
+            activity_items (list[tuple]): details of activities to filter
+            version (str): return activities with this version, default:
+                return activities with a different version from this
+                activity registry
+
+        Returns:
+            list[tuple]: filtered activities
+        """
+
         acts = []
         for act in activity_items:
             if version is None and act[0] != self.version:
@@ -273,6 +287,7 @@ class Activities:  # TODO: unit-test
         return acts
 
     def _deregister_activities(self, activity_items):
+        """Deregister activities."""
         _logger.info("Deregistering %d activities" % len(activity_items))
         for act in activity_items:
             self.session.sfn.delete_activity(activityArn=act[2])

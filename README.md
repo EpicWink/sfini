@@ -38,7 +38,7 @@ import sfini
 import pathlib
 from PIL import Image
 
-activities = sfini.Activities("myPackage", "1.0")
+activities = sfini.ActivityRegistration("myPackage", "1.0")
 
 
 @activities.activity("resizeActivity")
@@ -69,7 +69,7 @@ list_images.goes_to(get_centres)
 activities.register()
 sm.register()
 
-workers = sfini.Workers([list_images_activity, get_centres_activity])
+workers = sfini.WorkersManager([list_images_activity, get_centres_activity])
 workers.start()
 
 execution = sm.start_execution(
@@ -103,7 +103,7 @@ tasks are provided in execution output.
 import sfini
 
 # Define activities
-activities = sfini.Activities("myPackage", "1.0")
+activities = sfini.ActivityRegistration("myPackage", "1.0")
 
 
 @activities.activity("buyCakeActivity")
@@ -153,7 +153,7 @@ activities.register()  # register activities with AWS
 sm.register()  # register state-machine with AWS
 
 # Start activity workers
-workers = sfini.Workers(activities.activities.values())
+workers = sfini.WorkersManager(activities.activities.values())
 
 # Run state-machine execution
 execution = sm.start_execution(

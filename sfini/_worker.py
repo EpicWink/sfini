@@ -265,7 +265,7 @@ class Worker:  # TODO: unit-test
         self.join()
 
 
-class Workers:  # TODO: unit-test
+class WorkersManager:  # TODO: unit-test
     """Simultaneously poll for multiple task executions.
 
     Arguments:
