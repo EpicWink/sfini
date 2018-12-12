@@ -3,10 +3,11 @@
 
 """Package utilities."""
 
-import boto3
-
 import logging as lg
 import functools as ft
+
+import boto3
+from botocore import credentials
 
 from . import __name__ as package_name
 
@@ -113,11 +114,15 @@ class AWSSession:  # TODO: unit-test
         self.session = session or boto3.Session()
 
     def __str__(self):
-        _k = self.session.get_credentials().access_key
+        _k = self.credentials.access_key
         return "Session[access key: %s, region: %s]" % (_k, self.region)
 
     def __repr__(self):
         return "%s(%s)" % (type(self).__name__, repr(self.session))
+
+    @cached_property
+    def credentials(self) -> credentials.Credentials:
+        return self.session.get_credentials()
 
     @cached_property
     def sfn(self):

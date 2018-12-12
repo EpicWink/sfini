@@ -42,7 +42,7 @@ activities = sfini.ActivityRegistration("myPackage", "1.0")
 
 
 @activities.activity("resizeActivity")
-def list_images_activity(image_dir, resized_image_dir, new_size=(64, 64)):
+def resize_activity(image_dir, resized_image_dir, new_size=(64, 64)):
     image_dir = pathlib.Path(image_dir)
     resized_image_dir = pathlib.Path(resized_image_dir)
     for path in image_dir.iterdir():
@@ -58,18 +58,18 @@ def get_centres_activity(resized_image_dir):
         im = Image.open(path)
         centres.append(im.getpixel(im.size[0] // 2, im.size[1] // 2))
     return centres
-    
+
 
 sm = sfini.StateMachine("myStateMachine", role_arn="...")
-list_images = sm.task("listImages", list_images_activity)
+resize_images = sm.task("resizeImages", resize_activity)
 get_centres = sm.task("getCentre", get_centres_activity)
-sm.start_at(list_images)
-list_images.goes_to(get_centres)
+sm.start_at(resize_images)
+resize_images.goes_to(get_centres)
 
 activities.register()
 sm.register()
 
-workers = sfini.WorkersManager([list_images_activity, get_centres_activity])
+workers = sfini.WorkersManager([resize_activity, get_centres_activity])
 workers.start()
 
 execution = sm.start_execution(
