@@ -65,8 +65,9 @@ class CLI:
             help="increase verbosity")
         subparsers = parser.add_subparsers(
             metavar="COMMAND",
-            help="is this field used?",
+            # help="description",
             dest="command")
+        subparsers.required = True  # Python 3.6 compatibility
 
         sma_str = {
             (True, True): "state-machine and/or activities",
@@ -78,6 +79,12 @@ class CLI:
             "register",
             help="register %s with SFN" % sma_str,
             description="register %s with SFN" % sma_str)
+        if self.state_machine:
+            register_parser.add_argument(
+                "-u",
+                "--allow-update",
+                action="store_true",
+                help="allow updating of existing state-machine")
         if self.state_machine and self.activities:
             _g = register_parser.add_mutually_exclusive_group()
             _g.add_argument(
@@ -95,12 +102,6 @@ class CLI:
             "deregister",
             help="deregister %s from SFN" % sma_str,
             description="deregister %s from SFN" % sma_str)
-        if self.state_machine:
-            deregister_parser.add_argument(
-                "-u",
-                "--allow-update",
-                action="store_true",
-                help="allow updating of existing state-machine")
         if self.state_machine and self.activities:
             _g = deregister_parser.add_mutually_exclusive_group()
             _g.add_argument(
@@ -156,7 +157,7 @@ class CLI:
 
         return parser
 
-    def _execute(self, args):
+    def _execute(self, args, parser):
         lg.getLogger().setLevel(max(lg.WARNING - 10 * args.verbose, lg.DEBUG))
 
         if args.command == "register":
@@ -209,10 +210,13 @@ class CLI:
                 self.state_machine.deregister()
             elif self.activities:
                 self.activities.deregister()
+        # else:
+        #     parser.error("Missing command")
 
     def parse_args(self):
         """Parse command-line arguments and run CLI."""
+        lg.getLogger(__name__).parent.handlers.clear()
         _util.setup_logging()
         parser = self._build_parser()
         args = parser.parse_args()
-        self._execute(args)
+        self._execute(args, parser)
