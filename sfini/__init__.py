@@ -38,6 +38,8 @@ __all__ = [
     "TimestampLessThanEquals",
     "CLI"]
 
+import logging as lg
+
 from ._state_machine import StateMachine
 from ._worker import WorkersManager
 from ._util import AWSSession
@@ -64,3 +66,5 @@ from ._choice_ops import TimestampGreaterThanEquals
 from ._choice_ops import TimestampLessThan
 from ._choice_ops import TimestampLessThanEquals
 from ._cli import CLI
+
+lg.getLogger(__name__).addHandler(lg.NullHandler)

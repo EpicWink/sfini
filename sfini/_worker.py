@@ -156,7 +156,7 @@ class Worker:  # TODO: unit-test
 
     def __init__(self, activity, name=None, *, session=None):
         self.activity = activity
-        self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
+        self.name = name or "%s-%s" % (_host_name, str(str(uuid.uuid4()))[:8])
         self.session = session or _util.AWSSession()
 
         self._poller = threading.Thread(target=self._worker)
@@ -272,7 +272,7 @@ class WorkersManager:  # TODO: unit-test
         activities (list[Activity]): activities to poll and run executions
             of
         name (str): name of worker, used for identification, default: a
-            combination of UUID and host's FQDN
+            combination of a short UUID and host's FQDN
         session (_util.Session): session to use for AWS communication
     """
 
@@ -280,7 +280,7 @@ class WorkersManager:  # TODO: unit-test
 
     def __init__(self, activities, name=None, *, session=None):
         self.activities = activities
-        self.name = name or "%s-%s" % (_host_name, uuid.uuid4())
+        self.name = name or "%s-%s" % (_host_name, str(uuid.uuid4())[:8])
         self.session = session or _util.AWSSession()
 
     def __str__(self):

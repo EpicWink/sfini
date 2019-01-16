@@ -36,3 +36,4 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
   - Include synchronousity
   - Include output handling?
   - Include error handling
+- Support resource tagging

@@ -434,7 +434,7 @@ class StateMachine:  # TODO: unit-test
         if status is not None:
             kwargs["statusFilter"] = status
         fn = self.session.sfn.list_executions
-        resp = _util.collect_paginated(fn, kwargs=kwargs)
+        resp = _util.collect_paginated(fn, **kwargs)
 
         executions = []
         for exec_info in resp["executions"]:

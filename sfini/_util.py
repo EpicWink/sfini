@@ -9,27 +9,18 @@ import functools as ft
 import boto3
 from botocore import credentials
 
-from . import __name__ as package_name
-
 _logger = lg.getLogger(__name__)
 
 MAX_NAME_LENGTH = 79
 INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*$%\\^|~`$,;:/"
+DEBUG = False
 
 
 def setup_logging():  # TODO: unit-test
     """Setup logging for ``sfini``, if logs would otherwise be ignored."""
-    package_logger = lg.getLogger(package_name)
-    if not package_logger.propagate or package_logger.disabled:
-        return
-    if not package_logger.hasHandlers():
-        handler = lg.StreamHandler()
-        fmt = "%(asctime)s \t%(levelname)s \t%(name)s \t%(message)s"
-        formatter = lg.Formatter(fmt)
-        handler.setFormatter(formatter)
-        package_logger.addHandler(handler)
-    if not package_logger.isEnabledFor(lg.INFO):
-        package_logger.setLevel(lg.INFO)
+    lg.basicConfig(
+        format="%(asctime)s [%(levelname)8s] %(name)s: %(message)s",
+        level=lg.INFO)
 
 
 def cached_property(fn):  # TODO: unit-test
@@ -55,6 +46,19 @@ def cached_property(fn):  # TODO: unit-test
             self.__cache__[name] = fn(self)
         return self.__cache__[name]
 
+    if DEBUG:
+        def fset(self, value):
+            if not hasattr(self, "__cache__"):
+                self.__cache__ = {}
+            self.__cache__[name] = value
+
+        def fdel(self):
+            if not hasattr(self, "__cache__"):
+                self.__cache__ = {}
+            del self.__cache__[name]
+
+        return property(wrapped, fset=fset, fdel=fdel)
+
     return property(wrapped)
 
 
@@ -74,32 +78,26 @@ def assert_valid_name(name):  # TODO: unit-test
         raise ValueError("Name contains invalid characters: '%s'" % name)
 
 
-def collect_paginated(fn, kwargs=None):  # TODO: unit-test
+def collect_paginated(fn, **kwargs):  # TODO: unit-test
     """Call SFN API paginated endpoint.
+
+    Calls ``fn`` until "nextToken" isn't in the return value, collating
+    results. Uses recursion: if recursion limit is reached, increase
+    ``maxResults`` if available, otherwise increase the maximum recursion
+    limit using the ``sys`` package.
 
     Arguments:
         fn (callable): SFN API function
-        kwargs (dict): arguments to ``fn``, default=``{}``
+        kwargs: arguments to ``fn``
 
     Returns:
         combined results of paginated API calls
     """
 
-    if kwargs is None:
-        kwargs = {}
-
-    if "nextToken" in kwargs:
-        raise ValueError("Can't start pagination with 'nextToken'")
-
     result = fn(**kwargs)
-    while "nextToken" in result:
-        next_token = result.pop("nextToken")
-        next_result = fn(nextToken=next_token, **kwargs)
-        for key, value in next_result.items():
-            if key == "nextToken":
-                result["nextToken"] = value
-            else:
-                result[key].extend(value)
+    if "nextToken" in result:
+        r2 = collect_paginated(fn, nextToken=result.pop("nextToken"), **kwargs)
+        [result[k].extend(v) for k, v in r2.items() if isinstance(v, list)]
     return result
 
 

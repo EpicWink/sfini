@@ -153,7 +153,7 @@ class Execution:  # TODO: unit-test
             raise RuntimeError("Execution not yet started")
         resp = _util.collect_paginated(
             self.session.sfn.get_execution_history,
-            kwargs={"executionArn": self._arn})
+            executionArn=self._arn)
         return _execution_history.parse_history(resp["events"])
 
     def print_history(self):
