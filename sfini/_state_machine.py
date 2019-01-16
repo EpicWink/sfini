@@ -429,7 +429,7 @@ class StateMachine:  # TODO: unit-test
         _s = "Starting execution of '%s' with: %s"
         _logger.info(_s % (self, execution_input))
 
-        _now = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        _now = datetime.datetime.now().isoformat()
         name = self.name + "_" + _now + "_" + str(uuid.uuid4())[:8]
         execution = self._execution_class(
             name,

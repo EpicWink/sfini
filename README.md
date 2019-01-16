@@ -173,6 +173,7 @@ sm.deregister()
 #### Parallel
 ```python
 import sfini
+import datetime
 import logging as lg
 
 # Define activities
@@ -187,7 +188,9 @@ def log_message_activity(data):
 @activities.activity("printActivity")
 def print_message_activity(message):
     print(message)
-    return len(message)
+    diff = datetime.timedelta(seconds=len(message) * 5)
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    return now + diff
 
 
 # Define state-machine
@@ -208,10 +211,10 @@ log_sm.start_at(log)
 print_sm = sfini.StateMachine("printSM")
 print_and_log.add(print_sm)
 
-print_ = print_sm.task("log", print_message_activity, result_path="$.len")
+print_ = print_sm.task("log", print_message_activity, result_path="$.until")
 print_sm.start_at(print_)
 
-wait = print_sm.wait("wait", "$.len")
+wait = print_sm.wait("wait", "$.until")
 print_.goes_to(wait)
 
 # Register state-machine and activities
@@ -225,12 +228,14 @@ workers.start()
 # Start execution
 execution = sm.start_execution(execution_input={"level": 20, "message": "foo"})
 print(execution.name)
-# myStateMachine_2018-07-11T19-07_0354d790
+# myStateMachine_2018-07-11T19-07-26.53_0354d790
 
 # Wait for execution and print output
 execution.wait()
 print(execution.output)
-# [{"level": 20, "message": "foo"}, {"level": 20, "message": "foo", "len": 3} 
+[
+    {"level": 20, "message": "foo"},
+    {"level": 20, "message": "foo", "until": "2018-07-11T19-07-42.53"}]
 
 # Stop activity workers
 workers.end()
