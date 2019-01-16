@@ -32,3 +32,7 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
 - Figure out usage of `SecondsPath` in `Wait` state (ie getting the seconds to
   wait from an integer stored in a state variable)
 - Handle Lambda task state exceptions
+- Support connected services
+  - Include synchronousity
+  - Include output handling?
+  - Include error handling

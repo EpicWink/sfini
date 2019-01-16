@@ -299,7 +299,7 @@ class StateMachine:  # TODO: unit-test
         """
 
         return self._state(
-            self._choice_state_class,
+            self._task_state_class,
             name,
             activity,
             comment=comment,

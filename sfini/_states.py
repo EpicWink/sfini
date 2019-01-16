@@ -132,7 +132,9 @@ class _HasResultPath(State):  # TODO: unit-test
     def to_dict(self):
         defn = super().to_dict()
         if self.result_path is not None:
-            defn["ResultPath"] = "$.%s" % self.result_path
+            _rp = self.result_path
+            _rp = _rp if _rp[:2] == "$." else ("$.%s" % _rp)
+            defn["ResultPath"] = _rp
         return defn
 
 
