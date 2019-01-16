@@ -182,46 +182,49 @@ class ActivityRegistration:  # TODO: unit-test
     Args:
         name (str): name of activities group, used in prefix of activity
             names
-        version (str): version of activities group, used in prefix of
-            activity names
         session (_util.Session): session to use for AWS communication
 
     Attributes:
         activities (dict[str, Activity]): registered activities
 
     Example:
-        >>> activities = ActivitiesManager("foo", "1.0")
+        >>> activities = ActivityRegistration("foo")
         >>> @activities.activity("myActivity")
         >>> def fn():
         ...     print("hi")
         >>> print(fn.name)
-        foo!1.0!myActivity
+        foo!myActivity
     """
 
     _activity_class = CallableActivity
     _smart_activity_class = SmartCallableActivity
     _external_activity_class = Activity
 
-    def __init__(self, name, version="latest", *, session=None):
+    def __init__(self, name, *, session=None):
         self.name = name
-        self.version = version
         self.activities = {}
         self.session = session or _util.AWSSession()
 
     def __str__(self):
-        return "%s '%s' [%s]" % (type(self).__name__, self.name, self.version)
+        return "%s '%s'" % (type(self).__name__, self.name)
 
     def __repr__(self):
-        return "%s(%s, %s, session=%s)" % (
+        return "%s(%s, session=%s)" % (
             type(self).__name__,
             repr(self.name),
-            repr(self.version),
             repr(self.session))
 
     @property
     def all_activities(self) -> set:
         """All registered activities."""
         return set(self.activities.values())
+
+    @property
+    def _pref(self) -> str:
+        """Activity name prefix."""
+        if "!" in self.name:
+            raise ValueError("Activities group name cannot contain '!'")
+        return ("%s!" % self.name) if self.name else self.name
 
     def _activity(self, activity_cls, name=None, heartbeat=20):
         """Activity function decorator.
@@ -232,17 +235,13 @@ class ActivityRegistration:  # TODO: unit-test
             heartbeat (int): seconds between heartbeat during activity running
         """
 
-        if "!" in self.name:
-            raise ValueError("Activities group name cannot contain '!'")
-        pref = "%s!%s!" % (self.name, self.version)
-
         def wrapper(fn):
             suff = fn.__name__ if name is None else name
             if suff in self.activities:
                 raise ValueError("Activity '%s' already registered" % suff)
             activity = activity_cls.from_callable(
                 fn,
-                pref + suff,
+                self._pref + suff,
                 heartbeat=heartbeat,
                 session=self.session)
             self.activities[suff] = activity
@@ -280,75 +279,43 @@ class ActivityRegistration:  # TODO: unit-test
             heartbeat (int): seconds between heartbeat during activity running
         """
 
-        if "!" in self.name:
-            raise ValueError("Activities group name cannot contain '!'")
-        pref = "%s!%s!" % (self.name, self.version)
-
         cls = self._external_activity_class
-        return cls(pref + name, heartbeat=heartbeat, session=self.session)
+        return cls(self._pref + name, heartbeat=heartbeat, session=self.session)
 
     def register(self):
         """Add registered activities to AWS SFN."""
         for activity in self.activities.values():
             activity.register()
 
-    def _get_name_and_version(self, activity_item_name):
-        """Get name and version of an activity."""
-        name_splits = activity_item_name.split("!", 3)
-        if len(name_splits) < 3:
+    def _get_name(self, activity_item_name):
+        """Get name of an activity."""
+        name_splits = activity_item_name.split("!", 2)
+        if len(name_splits) < 2:
             return None
-        group_name, version, activity_name = name_splits
+        group_name, activity_name = name_splits
         if group_name != self.name:
             return None
-        return version, activity_name
+        return activity_name
 
     def _list_activities(self):
         """List activities in SFN."""
         resp = _util.collect_paginated(self.session.sfn.list_activities)
         acts = []
         for act in resp["activities"]:
-            name_and_version = self._get_name_and_version(act["name"])
-            if name_and_version is None:
+            name = self._get_name(act["name"])
+            if name is None:
                 continue
-            version, name = name_and_version
-            acts.append((version, name, act["arn"], act["creationDate"]))
-        return acts
-
-    def _filter_versions(self, activity_items, version=None):
-        """Filter activities by version.
-
-        Args:
-            activity_items (list[tuple]): details of activities to filter
-            version (str): return activities with this version, default:
-                return activities with a different version from this
-                activity registry
-
-        Returns:
-            list[tuple]: filtered activities
-        """
-
-        acts = []
-        for act in activity_items:
-            if version is None and act[0] != self.version:
-                acts.append(act)
-            elif version is not None and act[0] == version:
-                acts.append(act)
+            acts.append((name, act["arn"], act["creationDate"]))
         return acts
 
     def _deregister_activities(self, activity_items):
         """Deregister activities."""
         _logger.info("Deregistering %d activities" % len(activity_items))
         for act in activity_items:
-            self.session.sfn.delete_activity(activityArn=act[2])
+            _logger.debug("Deregistering '%s'" % act[0])
+            self.session.sfn.delete_activity(activityArn=act[1])
 
-    def deregister(self, version=None):
-        """Remove activities in AWS SFN.
-
-        Args:
-            version (str): version of activities to remove, default: all other
-                versions
-        """
-
+    def deregister(self):
+        """Remove activities in AWS SFN."""
         acts = self._list_activities()
-        acts = self._filter_versions(acts, version=version)
         self._deregister_activities(acts)

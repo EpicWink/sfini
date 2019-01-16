@@ -38,7 +38,7 @@ import sfini
 import pathlib
 from PIL import Image
 
-activities = sfini.ActivityRegistration("myPackage", "1.0")
+activities = sfini.ActivityRegistration("myPackage")
 
 
 @activities.smart_activity("resizeActivity")
@@ -81,7 +81,7 @@ execution = sm.start_execution(
         "image_dir": "~/data/images/",
         "resized_image_dir": "~/data/images-small/"})
 print(execution.name)
-# myStateMachine_2018-07-11T19-07_0354d790-0b68-4849-a0ba-d4689fd86934
+# myStateMachine_2018-07-11T19-07_0354d790
 
 execution.wait()
 print(execution.output)
