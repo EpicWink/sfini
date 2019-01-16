@@ -80,7 +80,6 @@ class CallableActivity(Activity):  # TODO: unit-test
     def __init__(self, name, fn, heartbeat=20, *, session=None):
         super().__init__(name, heartbeat=heartbeat, session=session)
         self.fn = fn
-        self.sig = inspect.Signature.from_callable(fn)
 
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
@@ -106,30 +105,6 @@ class CallableActivity(Activity):  # TODO: unit-test
         ft.update_wrapper(activity, fn)
         return activity
 
-    def _get_input_from(self, task_input):
-        """Parse task input for execution input.
-
-        Args:
-            task_input (dict): task input
-
-        Returns:
-            dict: activity input
-        """
-
-        kwargs = {}
-        for param_name, param in self.sig.parameters.items():
-            val = task_input.get(param_name, param.default)
-            if val is param.empty:
-                _s = "Required parameter '%s' not in task input"
-                raise KeyError(_s % param_name)
-            kwargs[param_name] = val
-
-        _kws = inspect.Parameter.VAR_KEYWORD
-        if any(p.kind is _kws for p in self.sig.parameters.values()):
-            kwargs.update(task_input)
-
-        return kwargs
-
     def call_with(self, task_input):
         """Call with task-input context.
 
@@ -140,6 +115,56 @@ class CallableActivity(Activity):  # TODO: unit-test
             function return-value
         """
 
+        return self.fn(task_input)
+
+
+class SmartCallableActivity(CallableActivity):  # TODO: unit-test
+    """Activity execution defined by a callable, processing input.
+
+    Note that activity names must be unique (within a region). It's
+    recommended to put your code's title and version in the activity name.
+    ``Activities`` makes this straight-forward.
+
+    An activity is attached to state-machine tasks, and is called when that
+    task is executed. A worker registers itself able to run some
+    activities using their names.
+
+    Args:
+        name (str): name of activity
+        fn (callable): function to run activity
+        heartbeat (int): seconds between heartbeat during activity running
+        session (_util.Session): session to use for AWS communication
+    """
+
+    def __init__(self, name, fn, heartbeat=20, *, session=None):
+        super().__init__(name, fn, heartbeat=heartbeat, session=session)
+        self.sig = inspect.Signature.from_callable(fn)
+
+    def _get_input_from(self, task_input):
+        """Parse task input for execution input.
+
+        Args:
+            task_input (dict): task input
+
+        Returns:
+            dict: activity input
+        """
+
+        _kws = inspect.Parameter.VAR_KEYWORD
+        if any(p.kind is _kws for p in self.sig.parameters.values()):
+            return task_input
+
+        kwargs = {}
+        for param_name, param in self.sig.parameters.items():
+            val = task_input.get(param_name, param.default)
+            if val is param.empty:
+                _s = "Required parameter '%s' not in task input"
+                raise KeyError(_s % param_name)
+            kwargs[param_name] = val
+
+        return kwargs
+
+    def call_with(self, task_input):
         kwargs = self._get_input_from(task_input)
         return self.fn(**kwargs)
 
@@ -174,6 +199,7 @@ class ActivityRegistration:  # TODO: unit-test
     """
 
     _activity_class = CallableActivity
+    _smart_activity_class = SmartCallableActivity
     _external_activity_class = Activity
 
     def __init__(self, name, version="latest", *, session=None):
@@ -197,10 +223,11 @@ class ActivityRegistration:  # TODO: unit-test
         """All registered activities."""
         return set(self.activities.values())
 
-    def activity(self, name=None, heartbeat=20):
+    def _activity(self, activity_cls, name=None, heartbeat=20):
         """Activity function decorator.
 
         Args:
+            activity_cls (type[CallableActivity]): activity class
             name (str): name of activity, default: function name
             heartbeat (int): seconds between heartbeat during activity running
         """
@@ -213,7 +240,7 @@ class ActivityRegistration:  # TODO: unit-test
             suff = fn.__name__ if name is None else name
             if suff in self.activities:
                 raise ValueError("Activity '%s' already registered" % suff)
-            activity = self._activity_class.from_callable(
+            activity = activity_cls.from_callable(
                 fn,
                 pref + suff,
                 heartbeat=heartbeat,
@@ -222,6 +249,28 @@ class ActivityRegistration:  # TODO: unit-test
             ft.update_wrapper(activity, fn)
             return ft.wraps(fn)(activity)
         return wrapper
+
+    def activity(self, name=None, heartbeat=20):
+        """Activity function decorator.
+
+        Args:
+            name (str): name of activity, default: function name
+            heartbeat (int): seconds between heartbeat during activity running
+        """
+
+        _cls = self._activity_class
+        return self._activity(_cls, name=name, heartbeat=heartbeat)
+
+    def smart_activity(self, name=None, heartbeat=20):
+        """Smart activity function decorator.
+
+        Args:
+            name (str): name of activity, default: function name
+            heartbeat (int): seconds between heartbeat during activity running
+        """
+
+        _cls = self._smart_activity_class
+        return self._activity(_cls, name=name, heartbeat=heartbeat)
 
     def new_external_activity(self, name, heartbeat=20):
         """Declare an external activity.

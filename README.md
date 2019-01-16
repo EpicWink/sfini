@@ -41,7 +41,7 @@ from PIL import Image
 activities = sfini.ActivityRegistration("myPackage", "1.0")
 
 
-@activities.activity("resizeActivity")
+@activities.smart_activity("resizeActivity")
 def resize_activity(image_dir, resized_image_dir, new_size=(64, 64)):
     image_dir = pathlib.Path(image_dir)
     resized_image_dir = pathlib.Path(resized_image_dir)
@@ -62,7 +62,11 @@ def get_centres_activity(resized_image_dir):
 
 sm = sfini.StateMachine("myStateMachine", role_arn="...")
 resize_images = sm.task("resizeImages", resize_activity)
-get_centres = sm.task("getCentre", get_centres_activity)
+get_centres = sm.task(
+    "getCentre",
+    get_centres_activity,
+    input_path="$.resized_image_dir",
+    result_path="$.res")
 sm.start_at(resize_images)
 resize_images.goes_to(get_centres)
 
@@ -84,7 +88,7 @@ print(execution.output)
 # {
 #     "image_dir": "~/data/images/",
 #     "resized_image_dir": "~/data/images-small/"
-#     "_task_result": [(128, 128, 128), (128, 255, 0), (0, 0, 0), (0, 0, 255)]}
+#     "res": [(128, 128, 128), (128, 255, 0), (0, 0, 0), (0, 0, 255)]}
 
 workers.end()
 workers.join()
