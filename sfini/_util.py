@@ -16,6 +16,15 @@ INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*$%\\^|~`$,;:/"
 DEBUG = False
 
 
+class DefaultParameter:  # TODO: unit-test
+    """Default parameter for step-functions definition."""
+    def __bool__(self):
+        return False
+
+    def __eq__(self, other):
+        return isinstance(self, type(other))
+
+
 def setup_logging():  # TODO: unit-test
     """Setup logging for ``sfini``, if logs would otherwise be ignored."""
     lg.basicConfig(
@@ -86,7 +95,7 @@ def collect_paginated(fn, **kwargs):  # TODO: unit-test
     ``maxResults`` if available, otherwise increase the maximum recursion
     limit using the ``sys`` package.
 
-    Arguments:
+    Args:
         fn (callable): SFN API function
         kwargs: arguments to ``fn``
 

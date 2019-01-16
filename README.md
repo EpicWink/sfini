@@ -20,11 +20,13 @@ pip3 install sfini
 pydoc3 sfini
 ```
 
-See [AWS Step Functions](https://aws.amazon.com/step-functions/)
-[documentation](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html)
-for Step Functions usage.
+### AWS Step Functions
+[AWS Step Functions](https://aws.amazon.com/step-functions/) (SFN) is a
+workflow-management service, providing the ability to coordinate tasks in a
+straight-forward fashion.
 
-You're free to run workers in other processes.
+Further documentation can be found at
+[documentation](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html)
 
 ### Role ARN
 Every state-machine needs a role ARN. This is an AWS IAM role ARN which allows
@@ -32,12 +34,13 @@ the state-machine to process state executions. See AWS Step Functions
 documentation for more information.
 
 ### Examples
-#### File-processing example
+#### File-processing
 ```python
 import sfini
 import pathlib
 from PIL import Image
 
+# Define activities
 activities = sfini.ActivityRegistration("myPackage")
 
 
@@ -60,22 +63,29 @@ def get_centres_activity(resized_image_dir):
     return centres
 
 
-sm = sfini.StateMachine("myStateMachine", role_arn="...")
-resize_images = sm.task("resizeImages", resize_activity)
+# Define state-machine
+sm = sfini.StateMachine("myStateMachine")
+
+resize_images = sm.task("resizeImages", resize_activity, result_path=None)
+sm.start_at(resize_images)
+
 get_centres = sm.task(
     "getCentre",
     get_centres_activity,
+    comment="get pixel values of centres of images",
     input_path="$.resized_image_dir",
     result_path="$.res")
-sm.start_at(resize_images)
 resize_images.goes_to(get_centres)
 
+# Register state-machine and activities
 activities.register()
 sm.register()
 
+# Start activity workers
 workers = sfini.WorkersManager([resize_activity, get_centres_activity])
 workers.start()
 
+# Start execution
 execution = sm.start_execution(
     execution_input={
         "image_dir": "~/data/images/",
@@ -83,6 +93,7 @@ execution = sm.start_execution(
 print(execution.name)
 # myStateMachine_2018-07-11T19-07_0354d790
 
+# Wait for execution and print output
 execution.wait()
 print(execution.output)
 # {
@@ -90,6 +101,224 @@ print(execution.output)
 #     "resized_image_dir": "~/data/images-small/"
 #     "res": [(128, 128, 128), (128, 255, 0), (0, 0, 0), (0, 0, 255)]}
 
+# Stop activity workers
 workers.end()
 workers.join()
+
+# Deregister state-machine and activities
+activities.deregister()
+sm.deregister()
+```
+
+#### Looping
+```python
+import sfini
+
+# Define activities
+activities = sfini.ActivityRegistration("myPackage")
+
+
+@activities.activity("increment")
+def increment_activity(data):
+    return data["counter"] + data["increment"]
+
+
+# Define state-machine
+sm = sfini.StateMachine("myStateMachine")
+
+initialise = sm.pass_("initialise", result=0, result_path="$.counter")
+sm.start_at(initialise)
+
+increment = sm.task(
+    "increment",
+    increment_activity,
+    result_path="$.counter")
+initialise.goes_to(increment)
+
+check_counter = sm.choice("checkCounter", input_path="counter")
+increment.goes_to(check_counter)
+
+check_counter.add(sfini.NumericLessThan("$.counter", 10, increment))
+
+end = sm.succeed("end", output_path="$.counter")
+check_counter.set_default(end)
+
+# Register state-machine and activities
+activities.register()
+sm.register()
+
+# Start activity workers
+workers = sfini.WorkersManager([increment_activity])
+workers.start()
+
+# Start execution
+execution = sm.start_execution(execution_input={"increment": 3})
+print(execution.name)
+# myStateMachine_2018-07-11T19-07_0354d790
+
+# Wait for execution and print output
+execution.wait()
+print(execution.output)
+# 12
+
+# Stop activity workers
+workers.end()
+workers.join()
+
+# Deregister state-machine and activities
+activities.deregister()
+sm.deregister()
+```
+
+#### Parallel
+```python
+import sfini
+import logging as lg
+
+# Define activities
+activities = sfini.ActivityRegistration("myPackage")
+
+
+@activities.activity("logActivity")
+def log_message_activity(data):
+    lg.log(data["level"], data["message"])
+
+
+@activities.activity("printActivity")
+def print_message_activity(message):
+    print(message)
+    return len(message)
+
+
+# Define state-machine
+sm = sfini.StateMachine("myStateMachine")
+
+print_and_log = sm.parallel(
+    "printAndLog",
+    result_path="$.parallel",
+    output_path="$.parallel")
+sm.start_at(print_and_log)
+
+log_sm = sfini.StateMachine("logSM")
+print_and_log.add(log_sm)
+
+log = log_sm.task("log", log_message_activity, result_path=None)
+log_sm.start_at(log)
+
+print_sm = sfini.StateMachine("printSM")
+print_and_log.add(print_sm)
+
+print_ = print_sm.task("log", print_message_activity, result_path="$.len")
+print_sm.start_at(print_)
+
+wait = print_sm.wait("wait", "$.len")
+print_.goes_to(wait)
+
+# Register state-machine and activities
+activities.register()
+sm.register()
+
+# Start activity workers
+workers = sfini.WorkersManager([log_message_activity, print_message_activity])
+workers.start()
+
+# Start execution
+execution = sm.start_execution(execution_input={"level": 20, "message": "foo"})
+print(execution.name)
+# myStateMachine_2018-07-11T19-07_0354d790
+
+# Wait for execution and print output
+execution.wait()
+print(execution.output)
+# [{"level": 20, "message": "foo"}, {"level": 20, "message": "foo", "len": 3} 
+
+# Stop activity workers
+workers.end()
+workers.join()
+
+# Deregister state-machine and activities
+activities.deregister()
+sm.deregister()
+```
+
+#### CLI
+```python
+import sfini
+
+# Define activities
+activities = sfini.ActivityRegistration("myPackage")
+
+
+@activities.activity("printActivity")
+def print_activity(data):
+    print(data)
+
+
+# Define state-machine
+sm = sfini.StateMachine("myStateMachine")
+sm.start_at(sm.task("print", print_activity))
+
+# Parse arguments
+sfini.CLI(sm, activities, role_arn="...", version="1.0").parse_args()
+```
+
+#### Error handling
+```python
+import sfini
+import time
+
+# Define activities
+activities = sfini.ActivityRegistration("myPackage")
+
+sleep_time = 15
+
+
+class MyError(Exception):
+    pass
+
+
+@activities.activity("raiseActivity")
+def raise_activity(data):
+    global sleep_time
+    time.sleep(sleep_time)
+    sleep_time -= 10
+    raise MyError("foobar")
+
+
+# Define state-machine
+sm = sfini.StateMachine("myStateMachine")
+
+raise_ = sm.task("raise", raise_activity, timeout=10)
+sm.start_at(raise_)
+
+raise_.retry_for("Timeout", interval=3)
+
+fail = sm.fail("fail", error="WorkerError", cause="MyError was raised")
+raise_.catch(MyError, fail, result_path="$.error-info")
+
+# Register state-machine and activities
+activities.register()
+sm.register()
+
+# Start activity workers
+workers = sfini.WorkersManager([raise_activity])
+workers.start()
+
+# Start execution
+execution = sm.start_execution(execution_input={})
+print(execution.name)
+# myStateMachine_2018-07-11T19-07_0354d790
+
+# Wait for execution and print output
+execution.wait()
+print(execution.output)
+# [{"level": 20, "message": "foo"}, {"level": 20, "message": "foo", "len": 3} 
+
+# Stop activity workers
+workers.end()
+workers.join()
+
+# Deregister state-machine and activities
+activities.deregister()
+sm.deregister()
 ```

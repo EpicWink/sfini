@@ -180,7 +180,7 @@ class Worker:  # TODO: unit-test
     def _execute_on(self, task_input, task_token):
         """Execute the provided task.
 
-        Arguments:
+        Args:
             task_input: activity task execution input
             task_token (str): task execuion identifier
         """
@@ -268,7 +268,7 @@ class Worker:  # TODO: unit-test
 class WorkersManager:  # TODO: unit-test
     """Simultaneously poll for multiple task executions.
 
-    Arguments:
+    Args:
         activities (list[Activity]): activities to poll and run executions
             of
         name (str): name of worker, used for identification, default: a
@@ -301,7 +301,7 @@ class WorkersManager:  # TODO: unit-test
     def _cancel_poll(self, j):
         """Cancel polling for all but one worker.
 
-        Arguments:
+        Args:
             j (int): index of worker to not cancel polling for
         """
 

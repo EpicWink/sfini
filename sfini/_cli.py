@@ -21,6 +21,7 @@ class CLI:
     Args:
         state_machine (sfini.StateMachine): state-machine interact with
         activities (sfini.ActivityRegistration): activities to poll for
+        role_arn (str): AWS ARN for state-machine IAM role
         version (str): version to display, default: no version display
         prog (str): program name displayed in program help,
             default: ``sys.argv[0]``
@@ -30,10 +31,12 @@ class CLI:
             self,
             state_machine=None,
             activities=None,
+            role_arn=None,
             version=None,
             prog=None):
         self.state_machine = state_machine
         self.activities = activities
+        self.role_arn = role_arn
         self.version = version
         self.prog = prog
         assert state_machine or activities
@@ -159,14 +162,20 @@ class CLI:
         if args.command == "register":
             if self.state_machine and self.activities:
                 if args.state_machine_only:
-                    self.state_machine.register(allow_update=args.allow_update)
+                    self.state_machine.register(
+                        self.role_arn,
+                        allow_update=args.allow_update)
                 elif args.activities_only:
                     self.activities.register()
                 else:
-                    self.state_machine.register(allow_update=args.allow_update)
+                    self.state_machine.register(
+                        self.role_arn,
+                        allow_update=args.allow_update)
                     self.activities.register()
             elif self.state_machine:
-                self.state_machine.register(allow_update=args.allow_update)
+                self.state_machine.register(
+                    self.role_arn,
+                    allow_update=args.allow_update)
             elif self.activities:
                 self.activities.register()
         elif args.command == "start":

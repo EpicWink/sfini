@@ -52,7 +52,7 @@ _type_key_map = {
 class _Event:  # TODO: unit-test
     """An execution history event.
 
-    Arguments:
+    Args:
         timestamp (datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event
@@ -81,7 +81,7 @@ class _Event:  # TODO: unit-test
     def _get_args(history_event):
         """Get initialisation arguments by parsing history event.
 
-        Arguments:
+        Args:
             history_event (dict[str]): execution history event date, provided
                 by AWS API
 
@@ -100,7 +100,7 @@ class _Event:  # TODO: unit-test
     def from_history_event(cls, history_event):
         """Parse an history event.
 
-        Arguments:
+        Args:
             history_event (dict[str]): execution history event date, provided
                 by AWS API
 
@@ -125,7 +125,7 @@ class _Event:  # TODO: unit-test
 class _Failed(_Event):  # TODO: unit-test
     """An execution history failure event.
 
-    Arguments:
+    Args:
         timestamp (datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event
@@ -171,7 +171,7 @@ class _Failed(_Event):  # TODO: unit-test
 class _LambdaFunctionScheduled(_Event):  # TODO: unit-test
     """An execution history AWS Lambda task-schedule event.
 
-    Arguments:
+    Args:
         timestamp (datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event
@@ -222,7 +222,7 @@ class _LambdaFunctionScheduled(_Event):  # TODO: unit-test
 class _ActivityScheduled(_LambdaFunctionScheduled):  # TODO: unit-test
     """An execution history activity task-schedule event.
 
-    Arguments:
+    Args:
         timestamp (datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event
@@ -275,7 +275,7 @@ class _ActivityScheduled(_LambdaFunctionScheduled):  # TODO: unit-test
 class _ActivityStarted(_Event):  # TODO: unit-test
     """An execution history activity task-start event.
 
-    Arguments:
+    Args:
         timestamp (datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event
@@ -316,7 +316,7 @@ class _ActivityStarted(_Event):  # TODO: unit-test
 class _ObjectSucceeded(_Event):  # TODO: unit-test
     """An execution history succeed event.
 
-    Arguments:
+    Args:
         timestamp (datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event
@@ -353,7 +353,7 @@ class _ObjectSucceeded(_Event):  # TODO: unit-test
 class _ExecutionStarted(_Event):  # TODO: unit-test
     """An execution history execution-start event.
 
-    Arguments:
+    Args:
         timestamp (datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event
@@ -395,7 +395,7 @@ class _ExecutionStarted(_Event):  # TODO: unit-test
 class _StateEntered(_Event):  # TODO: unit-test
     """An execution history state-enter event.
 
-    Arguments:
+    Args:
         timestamp (datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event
@@ -441,7 +441,7 @@ class _StateEntered(_Event):  # TODO: unit-test
 class _StateExited(_Event):  # TODO: unit-test
     """An execution history state-exit event.
 
-    Arguments:
+    Args:
         timestamp (datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event

@@ -18,7 +18,7 @@ class WorkerCancel(KeyboardInterrupt):  # TODO: unit-test
         super().__init__(_msg, *args, **kwargs)
 
 
-class _ExceptionCondition:  # TODO: unit-test
+class ExceptionCondition:  # TODO: unit-test
     @staticmethod
     def _process_exc(exc):
         """Process exception condition.
@@ -90,7 +90,7 @@ class _ExceptionCondition:  # TODO: unit-test
     def _excs_to_errors(self, excs):
         """Convert exceptions to error codes.
 
-        Arguments:
+        Args:
             excs (list[type or str]): exception conditions
 
         Returns:
@@ -100,10 +100,10 @@ class _ExceptionCondition:  # TODO: unit-test
         errors = []
         for exc in excs:
             if isinstance(exc, str):
-                _ = self._process_exc(exc)
+                exc = self._process_exc(exc)
                 error = "States." + exc
             elif issubclass(exc, Exception):
-                error = str(exc)
+                error = type(exc).__name__
             else:
                 raise TypeError("Error must be exception or accepted string")
             errors.append(error)

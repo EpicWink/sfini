@@ -13,6 +13,7 @@ from . import _execution
 from . import _states
 
 _logger = lg.getLogger(__name__)
+_default = _util.DefaultParameter()
 
 
 class StateMachine:  # TODO: unit-test
@@ -20,7 +21,6 @@ class StateMachine:  # TODO: unit-test
 
     Args:
         name (str): name of state-machine
-        role_arn (str): AWS ARN for state-machine IAM role
         comment (str): description of state-maching
         timeout (int): execution time-out (seconds)
         session (_util.AWSSession): session to use for AWS communication
@@ -38,13 +38,11 @@ class StateMachine:  # TODO: unit-test
     def __init__(
             self,
             name,
-            role_arn,
-            comment=None,
-            timeout=None,
+            comment=_default,
+            timeout=_default,
             *,
             session=None):
         self.name = name
-        self.role_arn = role_arn
         self.comment = comment
         self.timeout = timeout
         self.session = session or _util.AWSSession()
@@ -55,27 +53,31 @@ class StateMachine:  # TODO: unit-test
         return "State-machine '%s' (%s states)" % (self.name, len(self.states))
 
     def __repr__(self):
-        tottl = ", %s" % ("timeout=" if self.comment is None else "")
-        return "%s(%s, %s%s%s%s)" % (
+        tottl = ", %s" % ("timeout=" if self.comment == _default else "")
+        return "%s(%s, %s%s%s)" % (
             type(self).__name__,
             repr(self.name),
-            repr(self.role_arn),
-            "" if self.comment is None else ", " + repr(self.comment),
-            "" if self.timeout is None else tottl + repr(self.timeout),
-            ", session=" + repr(self.session))
+            "" if self.comment == _default else ", %r" % self.comment,
+            "" if self.timeout == _default else tottl + repr(self.timeout),
+            ", session=%r" % self.session)
 
     @_util.cached_property
-    def arn(self):
+    def arn(self) -> str:
         """State-machine generated ARN."""
         region = self.session.region
         account = self.session.account_id
         _s = "arn:aws:states:%s:%s:stateMachine:%s"
         return _s % (region, account, self.name)
 
+    @_util.cached_property
+    def default_role_arn(self) -> str:
+        """sfini-generated state-machine IAM role ARN."""
+        return "arn:aws:iam::%s:role/sfiniGenerated" % self.session.account_id
+
     def _state(self, cls, name, *args, **kwargs):
         """Create a state in the state-machine.
 
-        Arguments:
+        Args:
             cls (type): state to create
             name (str): name of state
             *args: positional arguments to ``cls``
@@ -91,7 +93,12 @@ class StateMachine:  # TODO: unit-test
         self.states[name] = state
         return state
 
-    def succeed(self, name, comment=None, input_path=None, output_path=None):
+    def succeed(
+            self,
+            name,
+            comment=_default,
+            input_path=_default,
+            output_path=_default):
         """Create a succeed state.
 
         Ends execution successfully.
@@ -99,8 +106,8 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
-            input_path (str): state input filter JSONPath
-            output_path (str): state output filter JSONPath
+            input_path (str or None): state input filter JSONPath
+            output_path (str or None): state output filter JSONPath
 
         Returns:
             _states.Succeed: succeed state
@@ -116,11 +123,11 @@ class StateMachine:  # TODO: unit-test
     def fail(
             self,
             name,
-            comment=None,
-            cause=None,
-            error=None,
-            input_path=None,
-            output_path=None):
+            comment=_default,
+            cause=_default,
+            error=_default,
+            input_path=_default,
+            output_path=_default):
         """Create a fail state.
 
         Ends execution unsuccessfully.
@@ -128,8 +135,8 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
-            input_path (str): state input filter JSONPath
-            output_path (str): state output filter JSONPath
+            input_path (str or None): state input filter JSONPath
+            output_path (str or None): state output filter JSONPath
             cause (str): failure description
             error (str): name of failure error
 
@@ -149,11 +156,11 @@ class StateMachine:  # TODO: unit-test
     def pass_(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
-            result_path=None,
-            result=None):
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
+            result_path=_default,
+            result=_default):
         """Create a pass state.
 
         No-op state, but can introduce data. The name specifies the location of
@@ -162,9 +169,9 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
-            input_path (str): state input filter JSONPath
-            output_path (str): state output filter JSONPath
-            result_path (str): task output location JSONPath
+            input_path (str or None): state input filter JSONPath
+            output_path (str or None): state output filter JSONPath
+            result_path (str or None): task output location JSONPath
             result: return value of state
 
         Returns:
@@ -184,9 +191,9 @@ class StateMachine:  # TODO: unit-test
             self,
             name,
             until,
-            comment=None,
-            input_path=None,
-            output_path=None):
+            comment=_default,
+            input_path=_default,
+            output_path=_default):
         """Create a wait state.
 
         Waits until a time before continuing.
@@ -198,8 +205,8 @@ class StateMachine:  # TODO: unit-test
                 wait until; if ``str``, then name of variable containing
                 seconds to wait for
             comment (str): state description
-            input_path (str): state input filter JSONPath
-            output_path (str): state output filter JSONPath
+            input_path (str or None): state input filter JSONPath
+            output_path (str or None): state output filter JSONPath
 
         Returns:
             _states.Wait: wait state
@@ -216,10 +223,10 @@ class StateMachine:  # TODO: unit-test
     def parallel(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
-            result_path=None):
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
+            result_path=_default):
         """Create a parallel state.
 
         Runs states-machines in parallel. These state-machines do not need to
@@ -232,9 +239,9 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
-            input_path (str): state input filter JSONPath
-            output_path (str): state output filter JSONPath
-            result_path (str): task output location JSONPath
+            input_path (str or None): state input filter JSONPath
+            output_path (str or None): state output filter JSONPath
+            result_path (str or None): task output location JSONPath
 
         Returns:
             _states.Parallel: parallel state
@@ -256,8 +263,8 @@ class StateMachine:  # TODO: unit-test
         Args:
             name (str): name of state
             comment (str): state description
-            input_path (str): state input filter JSONPath
-            output_path (str): state output filter JSONPath
+            input_path (str or None): state input filter JSONPath
+            output_path (str or None): state output filter JSONPath
 
         Returns:
             _states.Choice: choice state
@@ -274,11 +281,11 @@ class StateMachine:  # TODO: unit-test
             self,
             name,
             activity,
-            comment=None,
-            input_path=None,
-            output_path=None,
-            result_path="_task_result",
-            timeout=None):
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
+            result_path=_default,
+            timeout=_default):
         """Create a task state.
 
         Executes an activity.
@@ -289,9 +296,9 @@ class StateMachine:  # TODO: unit-test
                 the task is executed by an activity runner. If ``str``, the
                 task is run by the AWS Lambda function named ``activity``
             comment (str): state description
-            input_path (str): state input filter JSONPath
-            output_path (str): state output filter JSONPath
-            result_path (str): task output location JSONPath
+            input_path (str or None): state input filter JSONPath
+            output_path (str or None): state output filter JSONPath
+            result_path (str or None): task output location JSONPath
             timeout (int): seconds before task time-out
 
         Returns:
@@ -330,11 +337,12 @@ class StateMachine:  # TODO: unit-test
             dict: definition
         """
 
+        _logger.debug("Converting '%s' to dictionary" % self)
         state_defns = {n: s.to_dict() for n, s in self.states.items()}
         defn = {"StartAt": self._start_state.name, "States": state_defns}
-        if self.comment is not None:
+        if self.comment != _default:
             defn["Comment"] = self.comment
-        if self.timeout is not None:
+        if self.timeout != _default:
             defn["TimeoutSeconds"] = self.timeout
         return defn
 
@@ -345,65 +353,74 @@ class StateMachine:  # TODO: unit-test
             bool: if this state-machine is registered
         """
 
+        _logger.debug("Testing for registration of '%s' on SFN" % self)
         resp = _util.collect_paginated(self.session.sfn.list_state_machines)
         arns = {sm["stateMachineArn"] for sm in resp["stateMachines"]}
         return self.arn in arns
 
-    def _sfn_create(self):
-        """Create this state-machine in SFN."""
-        _logger.info("Creating state-machine '%s' on SFN" % self)
-        _r = "arn:aws:iam::%s:role/sfiniGenerated"
+    def _sfn_create(self, role_arn):
+        """Create this state-machine in SFN.
+
+        Args:
+            role_arn (str): AWS ARN for state-machine IAM role
+        """
+
+        _logger.info("Creating '%s' on SFN" % self)
         resp = self.session.sfn.create_state_machine(
             name=self.name,
             definition=json.dumps(self.to_dict(), indent=4),
-            roleArn=self.role_arn or _r % self.session.account_id)
+            roleArn=role_arn)
         assert resp["stateMachineArn"] == self.arn
-        return resp
+        _arn = resp["stateMachineArn"]
+        _date = resp["creationDate"]
+        _s = "'%s' created with ARN '%s' at %s"
+        _logger.info(_s % (self, _arn, _date))
 
-    def _sfn_update(self):
-        """Update this state-machine in SFN."""
-        _logger.info("Updating state-machine '%s' on SFN" % self)
-        _r = "arn:aws:iam::%s:role/sfiniGenerated"
+    def _sfn_update(self, role_arn):
+        """Update this state-machine in SFN.
+
+        Args:
+            role_arn (str): AWS ARN for state-machine IAM role
+        """
+
+        _logger.info("Updating '%s' on SFN" % self)
         resp = self.session.sfn.update_state_machine(
             definition=json.dumps(self.to_dict(), indent=4),
-            roleArn=self.role_arn or _r % self.session.account_id,
+            roleArn=role_arn,
             stateMachineArn=self.arn)
-        return resp
+        _s = "'%s' updated at %s"
+        _logger.info(_s % (self, resp["updateDate"]))
 
-    def register(self, allow_update=False):
+    def register(self, role_arn=None, allow_update=False):
         """Register state-machine with AWS Step Functions.
 
         Args:
-            allow_update (bool): if ``True``, allow overwriting of an
-                existing state-machine with the same name
+            role_arn (str): AWS ARN for state-machine IAM role
+            allow_update (bool): allow overwriting of an existing state-machine
+                with the same name
         """
 
+        role_arn = role_arn or self.default_role_arn
         _util.assert_valid_name(self.name)
 
         if allow_update and self.is_registered():
-            resp = self._sfn_update()
-            _s = "State machine '%s' updated at %s"
-            _logger.info(_s % (self, resp["updateDate"]))
+            self._sfn_update(role_arn)
         else:
-            resp = self._sfn_create()
-            _arn = resp["stateMachineArn"]
-            _date = resp["creationDate"]
-            _s = "State machine '%s' created with ARN '%s' at %s"
-            _logger.info(_s % (self, _arn, _date))
+            self._sfn_create(role_arn)
 
     def deregister(self):
         """Remove state-machine from AWS SFN."""
         if not self.is_registered():
             raise RuntimeError("Cannot de-register unregistered state-machine")
 
-        _logger.info("Deleting state-machine '%s' from SFN" % self)
+        _logger.info("Deleting '%s' from SFN" % self)
         _ = self.session.sfn.delete_state_machine(stateMachineArn=self.arn)
 
     def start_execution(self, execution_input):
         """Start an execution.
 
         Args:
-            execution_input (dict): input to first state in state-machine
+            execution_input: input to first state in state-machine
 
         Returns:
             Execution: started execution
@@ -425,10 +442,13 @@ class StateMachine:  # TODO: unit-test
     def list_executions(self, status=None):
         """List all executions of this state-machine.
 
-        Arguments:
+        Args:
             status (str): only list executions with this status. Choose from
                 'RUNNING', 'SUCCEEDED', 'FAILED', 'TIMED_OUT' or 'ABORTED'
         """
+
+        _s = " with status '%s'" % status if status else ""
+        _logger.info("Listing executions of '%s'" % self + _s)
 
         kwargs = {"stateMachineArn": self.arn}
         if status is not None:

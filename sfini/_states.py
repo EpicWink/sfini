@@ -7,9 +7,11 @@ import math
 import datetime
 import logging as lg
 
+from . import _util
 from . import _state_error
 
 _logger = lg.getLogger(__name__)
+_default = _util.DefaultParameter()
 
 
 class State:  # TODO: unit-test
@@ -18,17 +20,18 @@ class State:  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
-        input_path (str): state input filter JSONPath
-        output_path (str): state output filter JSONPath
-        state_machine (StateMachine): state-machine this state is a part of
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        state_machine (sfini.StateMachine): state-machine this state is a
+            part of
     """
 
     def __init__(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
             *,
             state_machine):
         self.name = name
@@ -38,19 +41,31 @@ class State:  # TODO: unit-test
         self.state_machine = state_machine
 
     def __str__(self):
-        return "%s '%s' [%s]" % (
-            type(self).__name__,
-            self.name,
-            self.state_machine.name)
+        _sm_n = self.state_machine.name
+        return "%s '%s' [%s]" % (type(self).__name__, self.name, _sm_n)
 
     def __repr__(self):
         return "%s(%s%s%s%s%s)" % (
             type(self).__name__,
             repr(self.name),
-            "" if self.comment is None else ", " + repr(self.comment),
-            "" if self.input_path is None else ", " + repr(self.input_path),
-            "" if self.output_path is None else ", " + repr(self.output_path),
-            ", state_machine=" + repr(self.state_machine))
+            "" if self.comment == _default else ", %r" % self.comment,
+            "" if self.input_path == _default else ", %r" % self.input_path,
+            "" if self.output_path == _default else ", %r" % self.output_path,
+            ", state_machine=%r" % self.state_machine)
+
+    def _validate_state(self, state):
+        """Ensure state is of the same state-machine.
+
+        Args:
+            state (State): state to validate
+
+        Raises:
+            ValueError: if state is not of the same state-machine
+        """
+
+        if state.state_machine is not self.state_machine:
+            _s = "State '%s' is not part of this state-machine"
+            raise ValueError(_s % state)
 
     def to_dict(self):
         """Convert this state to a definition dictionary.
@@ -60,22 +75,35 @@ class State:  # TODO: unit-test
         """
 
         defn = {"Type": type(self).__name__}
-        if self.comment is not None:
+        if self.comment != _default:
             defn["Comment"] = self.comment
-        if self.input_path is not None:
-            defn["InputPath"] = "$.%s" % self.input_path
-        if self.output_path is not None:
-            defn["OutputPath"] = "$.%s" % self.output_path
+        if self.input_path != _default:
+            defn["InputPath"] = self.input_path
+        if self.output_path != _default:
+            defn["OutputPath"] = self.output_path
         return defn
 
 
 class _HasNext(State):  # TODO: unit-test
+    """Activity execution.
+
+    Args:
+        name (str): name of state
+        comment (str): state description
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        state_machine (StateMachine): state-machine this state is a part of
+
+    Attributes:
+        next (State): next state to execute
+    """
+
     def __init__(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
             *,
             state_machine):
         super().__init__(
@@ -93,9 +121,9 @@ class _HasNext(State):  # TODO: unit-test
             state (State): state to execute next
         """
 
-        if state not in self.state_machine.states.values():
-            _s = "State '%s' is not part of this state-machine"
-            raise ValueError(_s % state)
+        self._validate_state(state)
+        if self.next is not None:
+            _logger.warning("Overriding current next state: %s" % self.next)
         self.next = state
 
     def remove_next(self):
@@ -112,13 +140,24 @@ class _HasNext(State):  # TODO: unit-test
 
 
 class _HasResultPath(State):  # TODO: unit-test
+    """Activity execution.
+
+    Args:
+        name (str): name of state
+        comment (str): state description
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        result_path (str or None): task output location JSONPath
+        state_machine (StateMachine): state-machine this state is a part of
+    """
+
     def __init__(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
-            result_path=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
+            result_path=_default,
             *,
             state_machine):
         super().__init__(
@@ -131,20 +170,31 @@ class _HasResultPath(State):  # TODO: unit-test
 
     def to_dict(self):
         defn = super().to_dict()
-        if self.result_path is not None:
-            _rp = self.result_path
-            _rp = _rp if _rp[:2] == "$." else ("$.%s" % _rp)
-            defn["ResultPath"] = _rp
+        if self.result_path != _default:
+            defn["ResultPath"] = self.result_path
         return defn
 
 
-class _CanRetry(_state_error._ExceptionCondition, State):  # TODO: unit-test
+class _CanRetry(_state_error.ExceptionCondition, State):  # TODO: unit-test
+    """Activity execution.
+
+    Args:
+        name (str): name of state
+        comment (str): state description
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        state_machine (StateMachine): state-machine this state is a part of
+
+    Attributes:
+        retries (dict[Exception or str]): retry conditions
+    """
+
     def __init__(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
             *,
             state_machine):
         super().__init__(
@@ -158,9 +208,9 @@ class _CanRetry(_state_error._ExceptionCondition, State):  # TODO: unit-test
     def retry_for(
             self,
             exc,
-            interval=None,
-            max_attempts=None,
-            backoff_rate=None):
+            interval=_default,
+            max_attempts=_default,
+            backoff_rate=_default):
         """Add a retry condition.
 
         Args:
@@ -180,11 +230,11 @@ class _CanRetry(_state_error._ExceptionCondition, State):  # TODO: unit-test
             raise ValueError("Error '%s' already registered" % exc)
 
         retry = {}
-        if interval is not None:
+        if interval != _default:
             retry["interval"] = interval
-        if max_attempts is not None:
+        if max_attempts != _default:
             retry["max_attempts"] = max_attempts
-        if backoff_rate is not None:
+        if backoff_rate != _default:
             retry["backoff_rate"] = backoff_rate
         self.retries[exc] = retry
 
@@ -219,13 +269,26 @@ class _CanRetry(_state_error._ExceptionCondition, State):  # TODO: unit-test
         return defn
 
 
-class _CanCatch(_state_error._ExceptionCondition, State):  # TODO: unit-test
+class _CanCatch(_state_error.ExceptionCondition, State):  # TODO: unit-test
+    """Activity execution.
+
+    Args:
+        name (str): name of state
+        comment (str): state description
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        state_machine (StateMachine): state-machine this state is a part of
+
+    Attributes:
+        catches (dict[Exception or str]): handled state errors
+    """
+
     def __init__(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
             *,
             state_machine):
         super().__init__(
@@ -236,7 +299,7 @@ class _CanCatch(_state_error._ExceptionCondition, State):  # TODO: unit-test
             state_machine=state_machine)
         self.catches = {}
 
-    def catch(self, exc, next_state):
+    def catch(self, exc, next_state, result_path=_default):
         """Add a catch clause.
 
         Args:
@@ -244,26 +307,28 @@ class _CanCatch(_state_error._ExceptionCondition, State):  # TODO: unit-test
                 string, must be one of '*', 'ALL', 'Timeout', 'TaskFailed', or
                 'Permissions' (see AWS Step Functions documentation)
             next_state (State): state to execute for catch clause
+            result_path (str or None): error details location JSONPath
         """
 
-        if next_state not in self.state_machine.states.values():
-            _s = "State '%s' is not part of this state-machine '%s'"
-            raise ValueError(_s % (next_state, self.state_machine))
+        self._validate_state(next_state)
 
         exc = self._process_exc(exc)
-
         if exc in self.catches:
             raise ValueError("Error '%s' already registered" % exc)
-
-        self.catches[exc] = next_state
-
-    @staticmethod
-    def _rules_similar(next_state_a, next_stateb_b):
-        return next_state_a.name == next_stateb_b.name
+        self.catches[exc] = (next_state, result_path)
 
     @staticmethod
-    def _rule_defn(next_state):
-        return {"Next": next_state.name}
+    def _rules_similar(rule_a, rule_b):
+        same_state = rule_a[0].name == rule_b[0].name
+        same_result_path = rule_a[1] == rule_b[1]
+        return same_state and same_result_path
+
+    @staticmethod
+    def _rule_defn(rule):
+        defn = {"Next": rule[0].name}
+        if rule[1] != _default:
+            defn["ResultPath"] = rule[1]
+        return defn
 
     def to_dict(self):
         defn = super().to_dict()
@@ -279,9 +344,10 @@ class Succeed(State):  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
-        input_path (str): state input filter JSONPath
-        output_path (str): state output filter JSONPath
-        state_machine (StateMachine): state-machine this state is a part of
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        state_machine (sfini.StateMachine): state-machine this state is a
+            part of
     """
 
     pass
@@ -293,21 +359,22 @@ class Fail(State):  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
-        input_path (str): state input filter JSONPath
-        output_path (str): state output filter JSONPath
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
         cause (str): failure description
         error (str): name of failure error
-        state_machine (StateMachine): state-machine this state is a part of
+        state_machine (sfini.StateMachine): state-machine this state is a
+            part of
     """
 
     def __init__(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
-            cause=None,
-            error=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
+            cause=_default,
+            error=_default,
             *,
             state_machine):
         super().__init__(
@@ -321,18 +388,20 @@ class Fail(State):  # TODO: unit-test
 
     def to_dict(self):
         defn = super().to_dict()
-        defn["Cause"] = self.cause
-        defn["Error"] = self.error
+        if self.cause != _default:
+            defn["Cause"] = self.cause
+        if self.error != _default:
+            defn["Error"] = self.error
         return defn
 
     def __repr__(self):
         return "%s(%s%s%s%s%s)" % (
             type(self).__name__,
             repr(self.name),
-            "" if self.comment is None else (", " + repr(self.comment)),
-            "" if self.cause is None else (", " + repr(self.cause)),
-            "" if self.error is None else (", " + repr(self.error)),
-            ", " + repr(self.state_machine))
+            "" if self.comment == _default else ", %r" % self.comment,
+            "" if self.cause == _default else ", %r" % self.cause,
+            "" if self.error == _default else ", %r" % self.error,
+            ", %r" % self.state_machine)
 
 
 class Pass(_HasResultPath, _HasNext, State):  # TODO: unit-test
@@ -343,11 +412,12 @@ class Pass(_HasResultPath, _HasNext, State):  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
-        input_path (str): state input filter JSONPath
-        output_path (str): state output filter JSONPath
-        result_path (str): task output location JSONPath
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        result_path (str or None): task output location JSONPath
         result: return value of state, stored in the variable ``name``
-        state_machine (StateMachine): state-machine this state is a part of
+        state_machine (sfini.StateMachine): state-machine this state is a
+            part of
 
     Attributes:
         next (State): next state to execute
@@ -356,11 +426,11 @@ class Pass(_HasResultPath, _HasNext, State):  # TODO: unit-test
     def __init__(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
-            result_path=None,
-            result=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
+            result_path=_default,
+            result=_default,
             *,
             state_machine):
         super().__init__(
@@ -376,13 +446,13 @@ class Pass(_HasResultPath, _HasNext, State):  # TODO: unit-test
         return "%s(%s%s%s%s)" % (
             type(self).__name__,
             repr(self.name),
-            "" if self.comment is None else (", " + repr(self.comment)),
-            "" if self.result is None else (", " + repr(self.result)),
-            ", " + repr(self.state_machine))
+            "" if self.comment == _default else ", %r" % self.comment,
+            "" if self.result == _default else ", %r" % self.result,
+            ", %r" % self.state_machine)
 
     def to_dict(self):
         defn = super().to_dict()
-        if self.result is not None:
+        if self.result != _default:
             defn["Result"] = self.result
         return defn
 
@@ -392,14 +462,14 @@ class Wait(_HasNext, State):  # TODO: unit-test
 
     Args:
         name (str): name of state
-        until (int or datetime.datetime or str): time to wait. If ``int``, then
-            seconds to wait; if ``datetime.datetime``, then time to wait until;
-            if ``str``, then name of state-variable containing time to wait
-            until
+        until (int or datetime.datetime or str): time to wait. If ``int``,
+            then seconds to wait; if ``datetime.datetime``, then time to
+            wait until; if ``str``, then name of state-variable containing
+            time to wait until
         comment (str): state description
-        input_path (str): state input filter JSONPath
-        output_path (str): state output filter JSONPath
-        state_machine (StateMachine): state-machine this state is a part of
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        state_machine (sfini.StateMachine): state-machine this state is a part of
 
     Attributes:
         next (State): next state to execute
@@ -409,9 +479,9 @@ class Wait(_HasNext, State):  # TODO: unit-test
             self,
             name,
             until,
-            comment=None,
-            input_path=None,
-            output_path=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
             *,
             state_machine):
         super().__init__(
@@ -427,8 +497,8 @@ class Wait(_HasNext, State):  # TODO: unit-test
             type(self).__name__,
             repr(self.name),
             repr(self.until),
-            "" if self.comment is None else (", " + repr(self.comment)),
-            ", " + repr(self.state_machine))
+            "" if self.comment == _default else ", %r" % self.comment,
+            ", %r" % self.state_machine)
 
     def to_dict(self):
         defn = super().to_dict()
@@ -440,7 +510,7 @@ class Wait(_HasNext, State):  # TODO: unit-test
                 raise ValueError("Wait time must be aware")
             defn["Timestamp"] = t.isoformat("T")
         elif isinstance(t, str):
-            defn["TimestampPath"] = "$.%s" % t
+            defn["TimestampPath"] = t
         else:
             _s = "Invalid type for wait time: %s"
             raise TypeError(_s % type(t).__name__)
@@ -454,10 +524,11 @@ class Parallel(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
     Args:
         name (str): name of state
         comment (str): state description
-        input_path (str): state input filter JSONPath
-        output_path (str): state output filter JSONPath
-        result_path (str): task output location JSONPath
-        state_machine (StateMachine): state-machine this state is a part of
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        result_path (str or None): task output location JSONPath
+        state_machine (sfini.StateMachine): state-machine this state is a
+            part of
 
     Attributes:
         state_machines (list[StateMachine]): state-machines to run in parallel.
@@ -471,10 +542,10 @@ class Parallel(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
     def __init__(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
-            result_path=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
+            result_path=_default,
             *,
             state_machine):
         super().__init__(
@@ -513,8 +584,8 @@ class Choice(State):  # TODO: unit-test
     Args:
         name (str): name of state
         comment (str): state description
-        input_path (str): state input filter JSONPath
-        output_path (str): state output filter JSONPath
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
         state_machine (StateMachine): state-machine this state is a part of
 
     Attributes:
@@ -525,9 +596,9 @@ class Choice(State):  # TODO: unit-test
     def __init__(
             self,
             name,
-            comment=None,
-            input_path=None,
-            output_path=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
             *,
             state_machine):
         super().__init__(
@@ -560,10 +631,7 @@ class Choice(State):  # TODO: unit-test
                 state-machine
         """
 
-        if rule.next_state.state_machine is not self.state_machine:
-            _s = "Rule '%s' has next-state which is not part of this "
-            _s += "state-machine"
-            raise RuntimeError(_s % rule)
+        self._validate_state(rule.next_state)
         self.choices.append(rule)
 
     def remove(self, rule):
@@ -588,6 +656,7 @@ class Choice(State):  # TODO: unit-test
             state (State): default state to execute
         """
 
+        self._validate_state(state)
         if self.default is not None:
             _s = "Overwriting current default state '%s'"
             _logger.warning(_s % self.default)
@@ -604,9 +673,9 @@ class Task(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
             the task is executed by an activity runner. If ``str``, the
             task is run by the AWS Lambda function named ``activity``
         comment (str): state description
-        input_path (str): state input filter JSONPath
-        output_path (str): state output filter JSONPath
-        result_path (str): task output location JSONPath
+        input_path (str or None): state input filter JSONPath
+        output_path (str or None): state output filter JSONPath
+        result_path (str or None): task output location JSONPath
         timeout (int): seconds before task time-out
         state_machine (StateMachine): state-machine this state is a part of
 
@@ -616,15 +685,17 @@ class Task(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
         catches (dict[Exception or str]): handled state errors
     """
 
+    _heartbeat_extra = 5
+
     def __init__(
             self,
             name,
             activity,
-            comment=None,
-            input_path=None,
-            output_path=None,
-            result_path="_task_result",
-            timeout=None,
+            comment=_default,
+            input_path=_default,
+            output_path=_default,
+            result_path=_default,
+            timeout=_default,
             *,
             state_machine):
         super().__init__(
@@ -638,15 +709,15 @@ class Task(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
         self.timeout = timeout
 
     def __repr__(self):
-        to_cm_str = ", timeout=" if self.comment is None else ", "
-        _to = "" if self.timeout is None else (to_cm_str + repr(self.timeout))
+        to_cm_str = ", timeout=%r" if self.comment is None else ", %r"
+        _to = "" if self.timeout == _default else to_cm_str % self.timeout
         return "%s(%s%s%s%s%s)" % (
             type(self).__name__,
             repr(self.name),
             repr(self.activity),
-            "" if self.comment is None else (", " + repr(self.comment)),
+            "" if self.comment is None else ", %r" % self.comment,
             _to,
-            ", state_machine=" + repr(self.state_machine))
+            ", state_machine=%r" % self.state_machine)
 
     @property
     def is_lambda(self) -> bool:
@@ -671,8 +742,9 @@ class Task(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
     def to_dict(self):
         defn = super().to_dict()
         defn["Resource"] = self._get_resource_arn()
-        if self.timeout is not None:
+        if self.timeout != _default:
             defn["TimeoutSeconds"] = self.timeout
-        if not self.is_lambda:
-            defn["HeartbeatSeconds"] = self.activity.heartbeat
+        if hasattr(self.activity, "heartbeat"):
+            _h = self._heartbeat_extra
+            defn["HeartbeatSeconds"] = self.activity.heartbeat + _h
         return defn

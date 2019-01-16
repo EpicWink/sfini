@@ -37,11 +37,15 @@ class Execution:  # TODO: unit-test
         return _s % (type(self).__name__, self.name, self.state_machine)
 
     def __repr__(self):
-        return "%s(%s, %s, len(execution_input)=%s, session=%s)" % (
+        _eii = isinstance(self.execution_input, (dict, list, tuple))
+        _ei = len(self.execution_input) if _eii else repr(self.execution_input)
+        _eips = "len(execution_input)=" if _eii else ""
+        return "%s(%s, %s, %s%s, session=%s)" % (
             type(self).__name__,
             repr(self.name),
             repr(self.state_machine),
-            len(self.execution_input),
+            _eips,
+            _ei,
             repr(self.session))
 
     @classmethod

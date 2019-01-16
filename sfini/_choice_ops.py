@@ -135,7 +135,7 @@ class StringLessThanEquals(_StringdRule):
     pass
 
 
-class _TimestampdRule(_ChoiceRule):  # TODO: unit-test
+class _TimestampRule(_ChoiceRule):  # TODO: unit-test
     """Compare date/time variable value.
 
     Args:
@@ -163,23 +163,23 @@ class _TimestampdRule(_ChoiceRule):  # TODO: unit-test
             "Next": self.next_state.name}
 
 
-class TimestampEquals(_TimestampdRule):
+class TimestampEquals(_TimestampRule):
     pass
 
 
-class TimestampGreaterThan(_TimestampdRule):
+class TimestampGreaterThan(_TimestampRule):
     pass
 
 
-class TimestampGreaterThanEquals(_TimestampdRule):
+class TimestampGreaterThanEquals(_TimestampRule):
     pass
 
 
-class TimestampLessThan(_TimestampdRule):
+class TimestampLessThan(_TimestampRule):
     pass
 
 
-class TimestampLessThanEquals(_TimestampdRule):
+class TimestampLessThanEquals(_TimestampRule):
     pass
 
 
