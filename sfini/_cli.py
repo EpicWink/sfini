@@ -63,6 +63,12 @@ class CLI:
             default=0,
             action="count",
             help="increase verbosity")
+        parser.add_argument(
+            "-q",
+            "--quiet",
+            default=0,
+            action="count",
+            help="decrease verbosity")
         subparsers = parser.add_subparsers(
             metavar="COMMAND",
             # help="description",
@@ -157,8 +163,9 @@ class CLI:
 
         return parser
 
-    def _execute(self, args, parser):
-        lg.getLogger().setLevel(max(lg.WARNING - 10 * args.verbose, lg.DEBUG))
+    def _execute(self, args):
+        _lvl = lg.WARNING - 10 * (args.verbose - args.quiet)
+        lg.getLogger().setLevel(max(_lvl, lg.DEBUG))
 
         if args.command == "register":
             if self.state_machine and self.activities:
@@ -210,13 +217,10 @@ class CLI:
                 self.state_machine.deregister()
             elif self.activities:
                 self.activities.deregister()
-        # else:
-        #     parser.error("Missing command")
 
     def parse_args(self):
         """Parse command-line arguments and run CLI."""
-        lg.getLogger(__name__).parent.handlers.clear()
         _util.setup_logging()
         parser = self._build_parser()
         args = parser.parse_args()
-        self._execute(args, parser)
+        self._execute(args)

@@ -67,4 +67,4 @@ from ._choice_ops import TimestampLessThan
 from ._choice_ops import TimestampLessThanEquals
 from ._cli import CLI
 
-lg.getLogger(__name__).addHandler(lg.NullHandler)
+lg.getLogger(__name__).addHandler(lg.NullHandler())
