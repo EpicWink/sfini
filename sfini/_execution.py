@@ -4,12 +4,14 @@
 """SFN state-machine execution."""
 
 import time
+import json
 import logging as lg
 
 from . import _util
 from . import _execution_history
 
 _logger = lg.getLogger(__name__)
+_default = _util.DefaultParameter()
 
 
 class Execution:  # TODO: unit-test
@@ -17,10 +19,13 @@ class Execution:  # TODO: unit-test
 
     Args:
         name (str): name of execution
-        state_machine (StateMachine): state-machine to execute
+        state_machine (sfini.StateMachine): state-machine to execute
         execution_input: execution input (must be JSON-serialisable)
-        session (AWSSession): AWS session to use for AWS communication
+        session (_util.AWSSession): AWS session to use for AWS
+            communication
     """
+
+    _wait_sleep_time = 3.0
 
     def __init__(self, name, state_machine, execution_input, *, session=None):
         self.name = name
@@ -30,7 +35,7 @@ class Execution:  # TODO: unit-test
 
         self._start_time = None
         self._arn = None
-        self._output = None
+        self._output = _default
 
     def __str__(self):
         _s = "%s '%s' on '%s'"
@@ -54,7 +59,8 @@ class Execution:  # TODO: unit-test
 
         Args:
             arn (str): existing execution ARN
-            session (AWSSession): AWS session to use for AWS communication
+            session (_util.AWSSession): AWS session to use for AWS
+                communication
 
         Returns:
             Execution: described execution. Note that the ``state_machine``
@@ -68,7 +74,31 @@ class Execution:  # TODO: unit-test
         self = cls(resp["name"], sm_arn, resp["input"], session=session)
         self._start_time = resp["startDate"]
         self._arn = arn
-        self._output = resp.get("output", None)
+        self._output = resp.get("output", _default)
+        return self
+
+    @classmethod
+    def from_execution_list_item(cls, item, *, session=None):
+        """Construct an ``Execution`` from a list response item.
+
+        Args:
+            item (dict[str]): execution list item
+            session (_util.AWSSession): AWS session to use for AWS
+                communication
+
+        Returns:
+            Execution: described execution. Note that the ``state_machine``
+                attribute will be the ARN of the state-machine, not a
+                ``StateMachine`` instance
+        """
+
+        self = cls(
+            item["name"],
+            item["stateMachineArn"],
+            None,
+            session=session)
+        self._start_time = item["startDate"]
+        self._arn = item["executionArn"]
         return self
 
     def start(self):
@@ -80,7 +110,7 @@ class Execution:  # TODO: unit-test
         resp = self.session.sfn.start_execution(
             stateMachineArn=self.state_machine.arn,
             name=self.name,
-            input=self.execution_input)
+            input=json.dumps(self.execution_input))
         self._arn = resp["executionArn"]
         self._start_time = resp["startDate"]
 
@@ -91,19 +121,19 @@ class Execution:  # TODO: unit-test
             str: execution status
         """
 
-        if self._output is not None:
+        if self._output != _default:
             return "SUCCEEDED"
         if self._start_time is None:
             raise RuntimeError("Execution not yet started")
         resp = self.session.sfn.describe_execution(executionArn=self._arn)
-        if resp["status"] == "SUCCEEDED" and self._output is None:
+        if resp["status"] == "SUCCEEDED" and "output" in resp["output"]:
             self._output = resp["output"]
         return resp["status"]
 
     @property
     def output(self):
         """Output of execution."""
-        if self._output is None:
+        if self._output == _default:
             if self._get_execution_status() != "SUCCEEDED":
                 raise RuntimeError("Execution not yet finished")
         return self._output
@@ -128,11 +158,11 @@ class Execution:  # TODO: unit-test
                 if status == "SUCCEEDED" or not raise_on_error:
                     break
                 raise RuntimeError("Execution '%s' %s" % (self, status))
-            if time.time() - t > timeout:
+            if timeout is not None and time.time() - t > timeout:
                 raise RuntimeError("Time-out waiting on execution '%s'" % self)
-            time.sleep(3.0)
+            time.sleep(self._wait_sleep_time)
 
-    def stop(self, error_code=None, details=None):
+    def stop(self, error_code=_default, details=_default):
         """Stop an existing execution.
 
         Args:
@@ -144,9 +174,9 @@ class Execution:  # TODO: unit-test
         if status != "RUNNING":
             raise RuntimeError("Cannot stop execution; execution %s" % status)
         _kw = {}
-        if error_code:
+        if error_code != _default:
             _kw["error"] = error_code
-        if details:
+        if details != _default:
             _kw["cause"] = details
         resp = self.session.sfn.stop_execution(executionArn=self._arn, **_kw)
         _logger.info("Execution stopped on %s" % resp["stopDate"])
@@ -160,9 +190,18 @@ class Execution:  # TODO: unit-test
             executionArn=self._arn)
         return _execution_history.parse_history(resp["events"])
 
-    def print_history(self):
-        """Print the execution history."""
+    def format_history(self):
+        """Format the execution history for printing.
+
+        Returns:
+            str: history formatted
+        """
+
         events = self.get_history()
+        lines = []
         for event in events:
             _d = event.details_str
-            print(("%s:\n  %s" % (event, _d)) if _d else event)
+            lines.append("%s:\n  %s" % (event, _d) if _d else str(event))
+        if self._output != _default:
+            lines.append("Output: %s" % json.dumps(self._output))
+        return "\n".join(lines)

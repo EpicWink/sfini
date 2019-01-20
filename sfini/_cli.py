@@ -15,7 +15,7 @@ from . import _util
 from . import _worker
 
 
-class CLI:
+class CLI:  # TODO: unit-test
     """``sfini`` command-line interface.
 
     Args:
@@ -42,6 +42,12 @@ class CLI:
         assert state_machine or activities
 
     def _build_parser(self):
+        """Build argument parser.
+
+        Returns:
+            argparse.ArgumentParser: configured command-line argument parser
+        """
+
         d = None
         if self.state_machine and self.activities:
             _s = "Control %s and '%s' activities"
@@ -145,7 +151,9 @@ class CLI:
                 nargs="+",
                 choices=self.activities.activities,
                 metavar="NAME",
-                help="name of activity to poll (can specify multiple)")
+                help=(
+                    "name of activity to poll (can specify multiple, "
+                    "choose from: %(choices)s)"))
 
         if self.state_machine:
             executions_parser = subparsers.add_parser(
@@ -163,64 +171,115 @@ class CLI:
 
         return parser
 
-    def _execute(self, args):
-        _lvl = lg.WARNING - 10 * (args.verbose - args.quiet)
-        lg.getLogger().setLevel(max(_lvl, lg.DEBUG))
+    def _register(self, args):
+        """Register state-machine and/or activities.
 
-        if args.command == "register":
-            if self.state_machine and self.activities:
-                if args.state_machine_only:
-                    self.state_machine.register(
-                        self.role_arn,
-                        allow_update=args.allow_update)
-                elif args.activities_only:
-                    self.activities.register()
-                else:
-                    self.state_machine.register(
-                        self.role_arn,
-                        allow_update=args.allow_update)
-                    self.activities.register()
-            elif self.state_machine:
+        Args:
+            args (argparse.Namespace): parsed command-line arguments
+        """
+
+        if self.state_machine and self.activities:
+            if args.state_machine_only:
                 self.state_machine.register(
                     self.role_arn,
                     allow_update=args.allow_update)
-            elif self.activities:
+            elif args.activities_only:
                 self.activities.register()
-        elif args.command == "start":
-            _ijp = args.input_json
-            _eis = input() if _ijp == "-" else pathlib.Path(_ijp).read_text()
-            execution_input = json.loads(_eis)
-            execution = self.state_machine.start_execution(execution_input)
-            if args.wait:
-                execution.wait()
-                print(execution.output)
-        elif args.command == "worker":
-            all_activities = self.activities.activities
-            activities = [all_activities[n] for n in args.activity_name]
-            workers = _worker.WorkersManager(activities)
-            workers.run()
-        elif args.command == "executions":
-            execs = self.state_machine.list_executions(status=args.status)
-            for execution in execs:
-                print(execution)
-                execution.print_history()
-        elif args.command == "deregister":
-            if self.state_machine and self.activities:
-                if args.state_machine_only:
-                    self.state_machine.deregister()
-                elif args.activities_only:
-                    self.activities.deregister()
-                else:
-                    self.state_machine.deregister()
-                    self.activities.deregister()
-            elif self.state_machine:
+            else:
+                self.state_machine.register(
+                    self.role_arn,
+                    allow_update=args.allow_update)
+                self.activities.register()
+        elif self.state_machine:
+            if not args.activities_only:
+                self.state_machine.register(
+                    self.role_arn,
+                    allow_update=args.allow_update)
+        elif self.activities:
+            if not args.state_machine_only:
+                self.activities.register()
+
+    def _deregister(self, args):
+        """Deregister state-machine and/or activities.
+
+        Args:
+            args (argparse.Namespace): parsed command-line arguments
+        """
+
+        if self.state_machine and self.activities:
+            if args.state_machine_only:
                 self.state_machine.deregister()
-            elif self.activities:
+            elif args.activities_only:
                 self.activities.deregister()
+            else:
+                self.state_machine.deregister()
+                self.activities.deregister()
+        elif self.state_machine:
+            if not args.activities_only:
+                self.state_machine.deregister()
+        elif self.activities:
+            if not args.state_machine_only:
+                self.activities.deregister()
+
+    def _start(self, args):
+        """Start a state-machine execution.
+
+        Args:
+            args (argparse.Namespace): parsed command-line arguments
+        """
+
+        _ijp = args.input_json
+        _eis = input() if _ijp == "-" else pathlib.Path(_ijp).read_text()
+        execution_input = json.loads(_eis)
+        execution = self.state_machine.start_execution(execution_input)
+        if args.wait:
+            execution.wait()
+            print(execution.output)
+
+    def _worker(self, args):
+        """Run an activity worker.
+
+        Args:
+            args (argparse.Namespace): parsed command-line arguments
+        """
+
+        all_activities = self.activities.activities
+        activities = [all_activities[n] for n in args.activity_name]
+        workers = _worker.WorkersManager(activities)
+        workers.run()
+
+    def _executions(self, args):
+        """List state-machine executions.
+
+        Args:
+            args (argparse.Namespace): parsed command-line arguments
+        """
+
+        execs = self.state_machine.list_executions(status=args.status)
+        for execution in execs:
+            print(execution.format_history())
+
+    def _parse_and_run(self, args):
+        """Parse and execute command-line arguments.
+
+        Args:
+            args (argparse.Namespace): parsed command-line arguments
+        """
+
+        _lvl = max(lg.WARNING - 10 * (args.verbose - args.quiet), lg.DEBUG)
+        _util.setup_logging(level=_lvl)
+
+        command = {
+            "register": self._register,
+            "deregister": self._deregister,
+            "start": self._start,
+            "worker": self._worker,
+            "executions": self._executions}
+        command[args.command](args)
 
     def parse_args(self):
         """Parse command-line arguments and run CLI."""
         _util.setup_logging()
         parser = self._build_parser()
         args = parser.parse_args()
-        self._execute(args)
+        self._parse_and_run(args)

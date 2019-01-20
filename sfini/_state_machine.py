@@ -255,7 +255,12 @@ class StateMachine:  # TODO: unit-test
             output_path=output_path,
             result_path=result_path)
 
-    def choice(self, name, comment=None, input_path=None, output_path=None):
+    def choice(
+            self,
+            name,
+            comment=_default,
+            input_path=_default,
+            output_path=_default):
         """Create a choice state.
 
         Creates branches of possible execution based on conditions.
@@ -429,7 +434,7 @@ class StateMachine:  # TODO: unit-test
         _s = "Starting execution of '%s' with: %s"
         _logger.info(_s % (self, execution_input))
 
-        _now = datetime.datetime.now().isoformat()
+        _now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
         name = self.name + "_" + _now + "_" + str(uuid.uuid4())[:8]
         execution = self._execution_class(
             name,
@@ -459,16 +464,13 @@ class StateMachine:  # TODO: unit-test
         executions = []
         for exec_info in resp["executions"]:
             assert exec_info["stateMachineArn"] == self.arn
-            execution = _execution.Execution(
-                name=exec_info["name"],
-                state_machine=self,
-                execution_input=None,
-                session=self)
-            execution._arn = exec_info["executionArn"]
-            execution._start_time = exec_info["startDate"]
+            execution = self._execution_class.from_execution_list_item(
+                exec_info,
+                session=self.session)
+            execution.state_machine = self
             executions.append(execution)
 
-            status, stop_date = exec_info["status"], exec_info["stopDate"]
+            status, stop_date = exec_info["status"], exec_info.get("stopDate")
             _s = "Found execution '%s' with status '%s' and stop-date: %s"
             _logger.debug(_s % (execution, status, stop_date))
 

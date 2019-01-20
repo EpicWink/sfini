@@ -289,7 +289,7 @@ class ActivityRegistration:  # TODO: unit-test
 
     def _get_name(self, activity_item_name):
         """Get name of an activity."""
-        name_splits = activity_item_name.split("!", 2)
+        name_splits = activity_item_name.split("!", 1)
         if len(name_splits) < 2:
             return None
         group_name, activity_name = name_splits

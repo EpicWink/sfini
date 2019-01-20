@@ -20,15 +20,13 @@ style, with 4 spaces for indentation. No lines with just a closing bracket!
 ## TODO
 - Write AWS Step Functions overview
 - Write unit tests
-- Properly deal with state-machine output?
-- Improve CLI service helper?
 - Allow the use of state-variable objects to track task inputs and outputs:
   this will require a local graph to be generated to determine input and output
   paths (development on hold)
 - Catch socket read fail after closing worker task poll
 - Close worker task polls when another worker picks up a task (currently not
   working)
-- Figure out usage of `SecondsPath` in `Wait` state (ie getting the seconds to
+- Figure out usage of `SecondsPath` in `Wait` state (getting the seconds to
   wait from an integer stored in a state variable)
 - Handle Lambda task state exceptions
 - Support connected services

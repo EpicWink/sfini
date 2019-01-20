@@ -9,6 +9,7 @@ import logging as lg
 from . import _util
 
 _logger = lg.getLogger(__name__)
+_default = _util.DefaultParameter()
 _type_key_map = {
     "ActivityFailed": "activityFailedEventDetails",
     "ActivityScheduleFailed": "activityScheduleFailedEventDetails",
@@ -16,8 +17,8 @@ _type_key_map = {
     "ActivityStarted": "activityStartedEventDetails",
     "ActivitySucceeded": "activitySucceededEventDetails",
     "ActivityTimedOut": "activityTimedOutEventDetails",
-    "ChoiceStateEntered": "choiceStateEnteredEventDetails",
-    "ChoiceStateExited": "choiceStateExitedEventDetails",
+    "ChoiceStateEntered": "stateEnteredEventDetails",
+    "ChoiceStateExited": "stateExitedEventDetails",
     "ExecutionFailed": "executionFailedEventDetails",
     "ExecutionStarted": "executionStartedEventDetails",
     "ExecutionSucceeded": "executionSucceededEventDetails",
@@ -53,7 +54,7 @@ class _Event:  # TODO: unit-test
     """An execution history event.
 
     Args:
-        timestamp (datetime): event time-stamp
+        timestamp (datetime.datetime): event time-stamp
         event_type (str): type of event
         event_id (int): identifying index of event
         previous_event_id (int): identifying index of causal event
@@ -89,10 +90,11 @@ class _Event:  # TODO: unit-test
             tuple[tuple, dict]: initialisation arguments, and event details
         """
 
+        # _logger.debug("history_event: %s" % history_event)
         timestamp = history_event["timestamp"]
         event_type = history_event["type"]
         event_id = history_event["id"]
-        previous_event_id = history_event.get("previousEventId")
+        previous_event_id = history_event.get("previousEventId", _default)
         details = history_event[_type_key_map[event_type]]
         return (timestamp, event_type, event_id, previous_event_id), details
 
@@ -158,7 +160,7 @@ class _Failed(_Event):  # TODO: unit-test
 
     @staticmethod
     def _get_args(history_event):
-        args, details = super()._get_args(history_event)
+        args, details = _Event._get_args(history_event)
         error = details["error"]
         cause = details["cause"]
         return args + (error, cause), details
@@ -208,10 +210,10 @@ class _LambdaFunctionScheduled(_Event):  # TODO: unit-test
 
     @staticmethod
     def _get_args(history_event):
-        args, details = super()._get_args(history_event)
+        args, details = _Event._get_args(history_event)
         resource = details["resource"]
         task_input = json.loads(details["input"])
-        timeout = details["timeoutInSeconds"]
+        timeout = details.get("timeoutInSeconds", _default)
         return args + (resource, task_input, timeout), details
 
     @_util.cached_property
@@ -267,7 +269,7 @@ class _ActivityScheduled(_LambdaFunctionScheduled):  # TODO: unit-test
 
     @staticmethod
     def _get_args(history_event):
-        args, details = super()._get_args(history_event)
+        args, details = _LambdaFunctionScheduled._get_args(history_event)
         heartbeat = details["heartbeatInSeconds"]
         return args + (heartbeat,), details
 
@@ -304,7 +306,7 @@ class _ActivityStarted(_Event):  # TODO: unit-test
 
     @staticmethod
     def _get_args(history_event):
-        args, details = super()._get_args(history_event)
+        args, details = _Event._get_args(history_event)
         worker_name = details["workerName"]
         return args + (worker_name,), details
 
@@ -345,7 +347,7 @@ class _ObjectSucceeded(_Event):  # TODO: unit-test
 
     @staticmethod
     def _get_args(history_event):
-        args, details = super()._get_args(history_event)
+        args, details = _Event._get_args(history_event)
         output = json.loads(details["output"])
         return args + (output,), details
 
@@ -386,7 +388,7 @@ class _ExecutionStarted(_Event):  # TODO: unit-test
 
     @staticmethod
     def _get_args(history_event):
-        args, details = super()._get_args(history_event)
+        args, details = _Event._get_args(history_event)
         execution_input = json.loads(details["input"])
         role_arn = details["roleArn"]
         return args + (execution_input, role_arn), details
@@ -428,7 +430,7 @@ class _StateEntered(_Event):  # TODO: unit-test
 
     @staticmethod
     def _get_args(history_event):
-        args, details = super()._get_args(history_event)
+        args, details = _Event._get_args(history_event)
         state_name = details["name"]
         state_input = json.loads(details["input"])
         return args + (state_name, state_input), details
@@ -474,7 +476,7 @@ class _StateExited(_Event):  # TODO: unit-test
 
     @staticmethod
     def _get_args(history_event):
-        args, details = super()._get_args(history_event)
+        args, details = _Event._get_args(history_event)
         state_name = details["name"]
         state_output = json.loads(details["output"])
         return args + (state_name, state_output), details

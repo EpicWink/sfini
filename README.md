@@ -135,7 +135,7 @@ increment = sm.task(
     result_path="$.counter")
 initialise.goes_to(increment)
 
-check_counter = sm.choice("checkCounter", input_path="counter")
+check_counter = sm.choice("checkCounter")
 increment.goes_to(check_counter)
 
 check_counter.add(sfini.NumericLessThan("$.counter", 10, increment))
@@ -233,9 +233,9 @@ print(execution.name)
 # Wait for execution and print output
 execution.wait()
 print(execution.output)
-[
-    {"level": 20, "message": "foo"},
-    {"level": 20, "message": "foo", "until": "2018-07-11T19-07-42.53"}]
+# [
+#     {"level": 20, "message": "foo"},
+#     {"level": 20, "message": "foo", "until": "2018-07-11T19-07-42.53"}]
 
 # Stop activity workers
 workers.end()
@@ -317,7 +317,7 @@ print(execution.name)
 # Wait for execution and print output
 execution.wait()
 print(execution.output)
-# [{"level": 20, "message": "foo"}, {"level": 20, "message": "foo", "len": 3} 
+# {"error-info": {"error": "WorkerError", "cause": "MyError was raised"}}
 
 # Stop activity workers
 workers.end()

@@ -24,12 +24,27 @@ class DefaultParameter:  # TODO: unit-test
     def __eq__(self, other):
         return isinstance(self, type(other))
 
+    def __str__(self):
+        return "<Unspecified>"
 
-def setup_logging():  # TODO: unit-test
-    """Setup logging for ``sfini``, if logs would otherwise be ignored."""
+    def __repr__(self):
+        return "%s()" % type(self).__name__
+
+
+def setup_logging(level=None):  # TODO: unit-test
+    """Setup logging for ``sfini``, if logs would otherwise be ignored.
+
+    Args:
+        level (int): logging level (see ``logging``), default: leave
+            unchanged
+    """
+
     lg.basicConfig(
         format="%(asctime)s [%(levelname)8s] %(name)s: %(message)s",
-        level=lg.INFO)
+        level=level)
+    if level is not None:
+        lg.getLogger().setLevel(level)
+        [h.setLevel(level) for h in lg.getLogger().handlers]
 
 
 def cached_property(fn):  # TODO: unit-test

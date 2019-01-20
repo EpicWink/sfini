@@ -95,7 +95,7 @@ class _TaskExecution:  # TODO: unit-test
             return
 
         _s = "Report task success for '%s' with output: %s"
-        _logger.info(_s % (self, res))
+        _logger.debug(_s % (self, res))
 
         self._request_stop = True
         self.session.sfn.send_task_success(
