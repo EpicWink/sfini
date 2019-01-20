@@ -126,7 +126,7 @@ class Execution:  # TODO: unit-test
         if self._start_time is None:
             raise RuntimeError("Execution not yet started")
         resp = self.session.sfn.describe_execution(executionArn=self._arn)
-        if resp["status"] == "SUCCEEDED" and "output" in resp["output"]:
+        if resp["status"] == "SUCCEEDED" and "output" in resp:
             self._output = resp["output"]
         return resp["status"]
 
