@@ -10,7 +10,7 @@ build-package:
   stage: build
   only:
     - master
-    - develop
+    - /ver\/.*$/
     - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
   script:
     - rm -rf build/*
@@ -25,7 +25,7 @@ test-package:
   stage: test
   only:
     - master
-    - develop
+    - /ver\/.*$/
     - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
   dependencies:
     - build-package
