@@ -7,8 +7,8 @@ import pathlib
 import setuptools
 
 _parent = pathlib.Path(__file__).parent
-_long_description = _parent.joinpath("README.md").read_text()
-_version = _parent.joinpath("VERSION").read_text().strip()
+_long_description = (_parent / "README.md").read_text()
+_version = (_parent / "VERSION").read_text().strip()
 _classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
@@ -27,7 +27,7 @@ setuptools.setup(
     author_email="laurie@sitesee.com.au",
     maintainer="Laurie",
     maintainer_email="laurie@sitesee.com.au",
-    description="Create AWS Step Functions easily",
+    description="Create, run and manage AWS Step Functions easily",
     long_description=_long_description,
     long_description_content_type="text/markdown",
     url="https://gitlab.com/Epic_Wink/aws-sfn-service",
@@ -36,5 +36,4 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=["tests/*"]),
     python_requires="~=3.3",
     install_requires=["boto3"],
-    extras_require={
-        "dev": ["pytest", "pytest-cov", "mock", "moto"]})
+    extras_require={"dev": ["pytest", "pytest-cov", "mock", "moto"]})

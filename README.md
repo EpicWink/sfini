@@ -25,8 +25,8 @@ pydoc3 sfini
 workflow-management service, providing the ability to coordinate tasks in a
 straight-forward fashion.
 
-Further documentation can be found at
-[documentation](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html)
+Further documentation can be found in the [AWS documentation](
+https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html).
 
 ### Role ARN
 Every state-machine needs a role ARN. This is an AWS IAM role ARN which allows
