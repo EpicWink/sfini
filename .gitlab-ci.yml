@@ -2,6 +2,7 @@ image: registry.gitlab.com/epic_wink/aws-sfn-service/ci
 
 stages:
   - build
+  - build-doc
   - test
   - release
 
@@ -22,7 +23,7 @@ build-package:
       - dist/
 
 build-documentation:
-  stage: build
+  stage: build-doc
   only:
     - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
   dependencies:
