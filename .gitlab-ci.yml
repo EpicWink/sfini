@@ -25,6 +25,8 @@ build-package:
 build-documentation:
   stage: build-doc
   only:
+    - master
+    - /ver\/.*$/
     - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
   dependencies:
     - build-package
