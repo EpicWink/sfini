@@ -36,4 +36,4 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=["tests/*"]),
     python_requires="~=3.3",
     install_requires=["boto3"],
-    extras_require={"dev": ["pytest", "pytest-cov", "mock", "moto"]})
+    extras_require={"dev": ["pytest", "pytest-cov", "moto"]})

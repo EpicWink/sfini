@@ -5,7 +5,7 @@
 
 from sfini import _cli as tscr
 import pytest
-import mock
+from unittest import mock
 
 
 @pytest.mark.xfail(reason="Need to write tests.")
