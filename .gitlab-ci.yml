@@ -21,6 +21,20 @@ build-package:
       - build-wheel/
       - dist/
 
+build-documentation:
+  stage: build
+  only:
+    - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
+  dependencies:
+    - build-package
+  script:
+    - pip3 install $(find build-wheel/ -name sfini-*.whl | head -n1)[dev]
+    - sphinx-build -b html docs/src/ docs/_build/
+  allow_failure: true
+  artifacts:
+    paths:
+      - docs/_build/
+
 test-package:
   stage: test
   only:
@@ -49,3 +63,16 @@ release-package:
   script:
     - pip3 install twine
     - twine upload dist/*
+
+pages:
+  stage: release
+  only:
+    - /^v(\d+)\.(\d+)\.(\d+)?$/
+  when: manual
+  dependencies:
+    - build-documentation
+  script:
+    - cp -r docs/_build/ public/
+  artifacts:
+    paths:
+      - public/

@@ -16,8 +16,21 @@ pip3 install sfini
 ```
 
 ## Usage
+### Documentation
+Check the [documentation](https://Epic_Wink.gitlab.io/aws-sfn-service) or use the
+built-in help:
 ```bash
 pydoc3 sfini
+```
+
+```python
+import sfini
+help(sfini)
+```
+
+#### Build documentation
+```bash
+sphinx-build -b html docs/src/ docs/_build/
 ```
 
 ### AWS Step Functions
