@@ -26,8 +26,17 @@ class ExceptionCondition:  # TODO: unit-test
     Exc = T.TypeVar("Exc", T.Type[BaseException], str)
     Rule = T.TypeVar("Rule", bound=_util.JSONable)
 
-    @staticmethod
-    def _process_exc(exc: Exc) -> Exc:
+    states_errors = (
+        "ALL",
+        "Timeout",
+        "TaskFailed",
+        "Permissions",
+        "ResultPathMatchFailure",
+        "ParameterPathFailure",
+        "BranchFailed",
+        "NoChoiceMatched")
+
+    def _process_exc(self, exc: Exc) -> Exc:
         """Process exception condition.
 
         Args:
@@ -40,12 +49,12 @@ class ExceptionCondition:  # TODO: unit-test
             ValueError: bad type-name
         """
 
-        errs = ("*", "ALL", "Timeout", "TaskFailed", "Permissions")
+        errs = ("*",) + self.states_errors
 
         if isinstance(exc, str):
             if exc not in errs:
                 _s = "Error name was '%s', must be one of: %s"
-                raise ValueError(_s % (exc, errs))
+                raise ValueError(_s % (exc, self.states_errors))
             return "ALL" if exc == "*" else exc
         elif issubclass(exc, BaseException):
             return exc

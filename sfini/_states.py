@@ -222,9 +222,8 @@ class _CanRetry(_state_error.ExceptionCondition, State):  # TODO: unit-test
         """Add a retry condition.
 
         Args:
-            exc: error for retry to be executed. If a string, must be one
-                of '*', 'ALL', 'Timeout', 'TaskFailed', or 'Permissions'
-                (see AWS Step Functions documentation)
+            exc: error for retry to be executed. If a string, must be one of
+                the pre-defined errors (see AWS Step Functions documentation)
             interval: (initial) retry interval (seconds)
             max_attempts: maximum number of attempts before re-raising error
             backoff_rate: retry interval increase factor between attempts
@@ -314,9 +313,9 @@ class _CanCatch(_state_error.ExceptionCondition, State):  # TODO: unit-test
         """Add a catch clause.
 
         Args:
-            exc: error for catch clause to be executed. If a string, must
-                be one of '*', 'ALL', 'Timeout', 'TaskFailed', or
-                'Permissions' (see AWS Step Functions documentation)
+            exc: error for catch clause to be executed. If a string, must be
+                one of the pre-defined errors (see AWS Step Functions
+                documentation)
             next_state: state to execute for catch clause
             result_path: error details location JSONPath
         """
