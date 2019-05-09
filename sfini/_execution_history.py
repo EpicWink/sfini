@@ -164,9 +164,9 @@ class _Failed(_Event):  # TODO: unit-test
             repr(self.error),
             repr(self.cause))
 
-    @staticmethod
-    def _get_args(history_event):
-        args, details = _Event._get_args(history_event)
+    @classmethod
+    def _get_args(cls, history_event):
+        args, details = super()._get_args(history_event)
         error = details["error"]
         cause = details["cause"]
         return args + (error, cause), details
@@ -214,9 +214,9 @@ class _LambdaFunctionScheduled(_Event):  # TODO: unit-test
             repr(self.task_input),
             repr(self.timeout))
 
-    @staticmethod
-    def _get_args(history_event):
-        args, details = _Event._get_args(history_event)
+    @classmethod
+    def _get_args(cls, history_event):
+        args, details = super()._get_args(history_event)
         resource = details["resource"]
         task_input = json.loads(details["input"])
         timeout = details.get("timeoutInSeconds", _default)
@@ -273,9 +273,9 @@ class _ActivityScheduled(_LambdaFunctionScheduled):  # TODO: unit-test
             repr(self.timeout),
             repr(self.heartbeat))
 
-    @staticmethod
-    def _get_args(history_event):
-        args, details = _LambdaFunctionScheduled._get_args(history_event)
+    @classmethod
+    def _get_args(cls, history_event):
+        args, details = super()._get_args(history_event)
         heartbeat = details["heartbeatInSeconds"]
         return args + (heartbeat,), details
 
@@ -310,9 +310,9 @@ class _ActivityStarted(_Event):  # TODO: unit-test
             repr(self.previous_event_id),
             repr(self.worker_name))
 
-    @staticmethod
-    def _get_args(history_event):
-        args, details = _Event._get_args(history_event)
+    @classmethod
+    def _get_args(cls, history_event):
+        args, details = super()._get_args(history_event)
         worker_name = details["workerName"]
         return args + (worker_name,), details
 
@@ -351,9 +351,9 @@ class _ObjectSucceeded(_Event):  # TODO: unit-test
             repr(self.previous_event_id),
             repr(self.output))
 
-    @staticmethod
-    def _get_args(history_event):
-        args, details = _Event._get_args(history_event)
+    @classmethod
+    def _get_args(cls, history_event):
+        args, details = super()._get_args(history_event)
         output = json.loads(details["output"])
         return args + (output,), details
 
@@ -392,9 +392,9 @@ class _ExecutionStarted(_Event):  # TODO: unit-test
             repr(self.execution_input),
             repr(self.role_arn))
 
-    @staticmethod
-    def _get_args(history_event):
-        args, details = _Event._get_args(history_event)
+    @classmethod
+    def _get_args(cls, history_event):
+        args, details = super()._get_args(history_event)
         execution_input = json.loads(details["input"])
         role_arn = details["roleArn"]
         return args + (execution_input, role_arn), details
@@ -434,9 +434,9 @@ class _StateEntered(_Event):  # TODO: unit-test
             repr(self.state_name),
             repr(self.state_input))
 
-    @staticmethod
-    def _get_args(history_event):
-        args, details = _Event._get_args(history_event)
+    @classmethod
+    def _get_args(cls, history_event):
+        args, details = super()._get_args(history_event)
         state_name = details["name"]
         state_input = json.loads(details["input"])
         return args + (state_name, state_input), details
@@ -480,9 +480,9 @@ class _StateExited(_Event):  # TODO: unit-test
             repr(self.state_name),
             repr(self.state_output))
 
-    @staticmethod
-    def _get_args(history_event):
-        args, details = _Event._get_args(history_event)
+    @classmethod
+    def _get_args(cls, history_event):
+        args, details = super()._get_args(history_event)
         state_name = details["name"]
         state_output = json.loads(details["output"])
         return args + (state_name, state_output), details
