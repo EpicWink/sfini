@@ -10,6 +10,7 @@ stages:
 build-package:
   stage: build
   only:
+    - pages-init
     - master
     - /ver\/.*$/
     - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
@@ -25,6 +26,7 @@ build-package:
 build-documentation:
   stage: build-doc
   only:
+    - pages-init
     - master
     - /ver\/.*$/
     - /^v(\d+)\.(\d+)\.(\d+)((a|b|A|B|(rc)|(RC))(\d+))?$/
@@ -70,7 +72,7 @@ release-package:
 pages:
   stage: release
   only:
-    - /^v(\d+)\.(\d+)\.(\d+)?$/
+    - pages-init
   when: manual
   dependencies:
     - build-documentation
