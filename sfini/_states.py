@@ -685,10 +685,8 @@ class Task(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
 
     Args:
         name: name of state
-        activity (sfini._activity.Activity or str): activity to execute. If
-            ``Activity``, the task is executed by an activity runner. If
-            ``str``, the task is run by the AWS Lambda function named
-            ``activity``
+        resource (sfini._task_resource.TaskResource): task executor, eg
+            activity or Lambda function
         comment: state description
         input_path: state input filter JSONPath, ``None`` for empty input
         output_path: state output filter JSONPath, ``None`` for discarded
@@ -709,7 +707,7 @@ class Task(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
     def __init__(
             self,
             name,
-            activity,
+            resource,
             comment=_default,
             input_path=_default,
             output_path=_default,
@@ -724,7 +722,7 @@ class Task(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
             output_path=output_path,
             result_path=result_path,
             state_machine=state_machine)
-        self.activity = activity
+        self.resource = resource
         self.timeout = timeout
 
     def __repr__(self):
@@ -733,37 +731,17 @@ class Task(_HasResultPath, _HasNext, _CanRetry, _CanCatch, State):
         return "%s(%s%s%s%s%s)" % (
             type(self).__name__,
             repr(self.name),
-            repr(self.activity),
+            repr(self.resource),
             "" if self.comment is None else ", %r" % self.comment,
             _to,
             ", state_machine=%r" % self.state_machine)
 
-    @property
-    def is_lambda(self) -> bool:
-        """This task is run by an AWS Lambda Function."""
-        return isinstance(self.activity, str)
-
-    def _get_resource_arn(self) -> str:
-        """Get the activity resource ARN.
-
-        Returns:
-            activity ARN
-        """
-
-        if self.is_lambda:
-            region = self.state_machine.session.region
-            account = self.state_machine.session.account_id
-            _s = "arn:aws:lambda:%s:%s:function:%s"
-            return _s % (region, account, self.activity)
-        else:
-            return self.activity.arn
-
     def to_dict(self):
         defn = super().to_dict()
-        defn["Resource"] = self._get_resource_arn()
+        defn["Resource"] = self.resource.arn
         if self.timeout != _default:
             defn["TimeoutSeconds"] = self.timeout
-        if hasattr(self.activity, "heartbeat"):
+        if hasattr(self.resource, "heartbeat"):
             _h = self._heartbeat_extra
-            defn["HeartbeatSeconds"] = self.activity.heartbeat + _h
+            defn["HeartbeatSeconds"] = self.resource.heartbeat + _h
         return defn

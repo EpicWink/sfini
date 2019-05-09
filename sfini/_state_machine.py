@@ -301,7 +301,7 @@ class StateMachine:  # TODO: unit-test
     def task(
             self,
             name: str,
-            activity,
+            resource,
             comment: str = _default,
             input_path: T.Union[str, None] = _default,
             output_path: T.Union[str, None] = _default,
@@ -314,10 +314,8 @@ class StateMachine:  # TODO: unit-test
 
         Args:
             name (str): name of state
-            activity (sfini._activity.Activity or str): activity to execute. If
-                ``Activity``, the task is executed by an activity runner. If
-                ``str``, the task is run by the AWS Lambda function named
-                ``activity``
+            resource (sfini._task_resource.TaskResource): task executor, eg
+                activity or Lambda function
             comment: state description
             input_path: state input filter JSONPath, ``None`` for empty input
             output_path: state output filter JSONPath, ``None`` for discarded
@@ -333,7 +331,7 @@ class StateMachine:  # TODO: unit-test
         return self._state(
             self._task_state_class,
             name,
-            activity,
+            resource,
             comment=comment,
             input_path=input_path,
             output_path=output_path,

@@ -9,11 +9,12 @@ import logging as lg
 import functools as ft
 
 from . import _util
+from . import _task_resource
 
 _logger = lg.getLogger(__name__)
 
 
-class Activity:  # TODO: unit-test
+class Activity(_task_resource.TaskResource):  # TODO: unit-test
     """Activity execution.
 
     Note that activity names must be unique (within a region). It's
@@ -30,31 +31,12 @@ class Activity:  # TODO: unit-test
         session: session to use for AWS communication
     """
 
-    def __init__(
-            self,
-            name: str,
-            heartbeat: int = 20,
-            *,
-            session: _util.AWSSession = None):
+    _service = "activity"
+
+    def __init__(self, name, heartbeat: int = 20, *, session=None):
+        super().__init__(name, session=session)
         self.name = name
         self.heartbeat = heartbeat
-        self.session = session or _util.AWSSession()
-
-    def __str__(self):
-        return "%s '%s'" % (type(self).__name__, self.name)
-
-    def __repr__(self):
-        return type(self).__name__ + "(%s, session=%s)" % (
-            repr(self.name),
-            repr(self.session))
-
-    @_util.cached_property
-    def arn(self) -> str:
-        """Activity generated ARN."""
-        region = self.session.region
-        account = self.session.account_id
-        _s = "arn:aws:states:%s:%s:activity:%s"
-        return _s % (region, account, self.name)
 
     def register(self):
         """Register activity with AWS."""

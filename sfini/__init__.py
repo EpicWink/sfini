@@ -17,6 +17,7 @@ __all__ = [
     "ActivityRegistration",
     "Execution",
     "WorkerCancel",
+    "Lambda",
     "And",
     "Or",
     "Not",
@@ -46,6 +47,7 @@ from ._util import AWSSession
 from ._activity import ActivityRegistration
 from ._execution import Execution
 from ._state_error import WorkerCancel
+from ._task_resource import Lambda
 from ._choice_ops import And
 from ._choice_ops import Or
 from ._choice_ops import Not
