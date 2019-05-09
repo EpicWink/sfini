@@ -9,6 +9,7 @@ import time
 import socket
 import threading
 import traceback
+import typing as T
 import logging as lg
 
 from botocore import exceptions as bc_exc
@@ -42,6 +43,7 @@ class _TaskExecution:  # TODO: unit-test
         self.task_token = task_token
         self.task_input = task_input
         self.session = session or _util.AWSSession()
+
         self._heartbeat_thread = threading.Thread(target=self._heartbeat)
         self._request_stop = False
 
@@ -56,12 +58,46 @@ class _TaskExecution:  # TODO: unit-test
             len(self.task_input),
             repr(self.session))
 
+    def _send(self, send_fn: T.Callable, **kw):
+        """Send execution update to SFN."""
+        if self._request_stop:
+            _logger.warning("Skipping sending update as we've already quit")
+            return
+        return send_fn(taskToken=self.task_token, **kw)
+
+    def _report_exception(self, exc: BaseException):
+        """Report failure."""
+        _logger.info("Reporting task failure for '%s'" % self, exc_info=exc)
+        tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
+        self._send(
+            self.session.sfn.send_task_failure,
+            error=type(exc).__name__,
+            cause="".join(tb))
+        self._request_stop = True
+
+    def report_cancelled(self):
+        """Cancel a task execution: stop interaction with SFN."""
+        _s = "Reporting task failure for '%s' due to cancellation"
+        _logger.info(_s % self)
+        self._send(
+            self.session.sfn.send_task_failure,
+            error=_state_error.WorkerCancel.__name__,
+            cause=str(_state_error.WorkerCancel()))
+        self._request_stop = True
+
+    def _report_success(self, res: _util.JSONable):
+        """Report success."""
+        _s = "Reporting task success for '%s' with output: %s"
+        _logger.debug(_s % (self, res))
+        self._send(self.session.sfn.send_task_success, output=json.dumps(res))
+        self._request_stop = True
+
     def _send_heartbeat(self):
         """Send a heartbeat."""
         _logger.debug("Sending heartbeat for '%s'" % self)
 
         try:
-            _ = self.session.sfn.send_task_heartbeat(taskToken=self.task_token)
+            self._send(self.session.sfn.send_task_heartbeat)
         except bc_exc.ClientError as e:
             if e.response["Error"]["Code"] != "TaskTimedOut":
                 raise
@@ -79,36 +115,6 @@ class _TaskExecution:  # TODO: unit-test
             self._send_heartbeat()
             time.sleep(heartbeat - (time.time() - t))
 
-    def _send_failure(self, exc: BaseException):
-        """Report failure."""
-        if self._request_stop:
-            _logger.warning("Skipping sending failure as we're quitting")
-            return
-
-        _logger.info("Report task failure for '%s'" % self, exc_info=exc)
-
-        self._request_stop = True
-        cause = traceback.format_exception(type(exc), exc, exc.__traceback__)
-        cause = "".join(cause)
-        self.session.sfn.send_task_failure(
-            taskToken=self.task_token,
-            error=type(exc).__name__,
-            cause=cause)
-
-    def _send_success(self, res: _util.JSONable):
-        """Report success."""
-        if self._request_stop:
-            _logger.warning("Skipping sending failure as we're quitting")
-            return
-
-        _s = "Report task success for '%s' with output: %s"
-        _logger.debug(_s % (self, res))
-
-        self._request_stop = True
-        self.session.sfn.send_task_success(
-            taskToken=self.task_token,
-            output=json.dumps(res))
-
     def run(self):
         """Run task."""
         self._heartbeat_thread.start()
@@ -120,31 +126,16 @@ class _TaskExecution:  # TODO: unit-test
             self.report_cancelled()
             return
         except Exception as e:
-            self._send_failure(e)
+            self._report_exception(e)
             return
 
         _s = "Task '%s' completed in %.6f seconds"
         _logger.debug(_s % (self, time.time() - t))
-        self._send_success(res)
-
-    def report_cancelled(self):
-        """Cancel a task execution before beginning."""
-        if self._request_stop:
-            _logger.warning("Skipping sending cancellation as we're quitting")
-            return
-
-        _s = "Reporting task failure for '%s' due to cancellation"
-        _logger.info(_s % self)
-
-        self._request_stop = True
-        self.session.sfn.send_task_failure(
-            taskToken=self.task_token,
-            error=_state_error.WorkerCancel.__name__,
-            cause=str(_state_error.WorkerCancel()))
+        self._report_success(res)
 
 
 class Worker:  # TODO: unit-test
-    """Worker to poll for task executions.
+    """Worker to poll for activity task executions.
 
     Args:
         activity (sfini._activity.CallableActivity): activity to poll and
