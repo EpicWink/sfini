@@ -9,6 +9,7 @@ import time
 import socket
 import threading
 import traceback
+import typing as T
 import logging as lg
 
 from botocore import exceptions as bc_exc
@@ -24,13 +25,20 @@ class _TaskExecution:  # TODO: unit-test
     """Execute a task, providing heartbeats and catching failures.
 
     Args:
-        activity (Activity): activity to execute task of
-        task_token (str): task token for execution identification
+        activity (sfini._activity.CallableActivity): activity to execute
+            task of
+        task_token: task token for execution identification
         task_input: task input
-        session (_util.AWSSession): session to communicate to AWS with
+        session: session to use for AWS communication
     """
 
-    def __init__(self, activity, task_token, task_input, *, session=None):
+    def __init__(
+            self,
+            activity,
+            task_token: str,
+            task_input: _util.JSONable,
+            *,
+            session: _util.AWSSession = None):
         self.activity = activity
         self.task_token = task_token
         self.task_input = task_input
@@ -72,7 +80,7 @@ class _TaskExecution:  # TODO: unit-test
             self._send_heartbeat()
             time.sleep(heartbeat - (time.time() - t))
 
-    def _send_failure(self, exc):
+    def _send_failure(self, exc: BaseException):
         """Report failure."""
         if self._request_stop:
             _logger.warning("Skipping sending failure as we're quitting")
@@ -88,7 +96,7 @@ class _TaskExecution:  # TODO: unit-test
             error=type(exc).__name__,
             cause=cause)
 
-    def _send_success(self, res):
+    def _send_success(self, res: _util.JSONable):
         """Report success."""
         if self._request_stop:
             _logger.warning("Skipping sending failure as we're quitting")
@@ -140,21 +148,25 @@ class Worker:  # TODO: unit-test
     """Worker to poll for task executions.
 
     Args:
-        activity (Activity): activity to poll and run executions of
-        name (str): name of worker, used for identification, default: a
+        activity (sfini._activity.CallableActivity): activity to poll and
+            run executions of
+        name: name of worker, used for identification, default: a
             combination of UUID and host's FQDN
-        session (_util.Session): session to use for AWS communication
+        session: session to use for AWS communication
 
     Attributes:
-        pre_execute_hooks (list[callable]): functions to call before task
-            execution
-        post_execute_hooks (list[callable]): functions to call after task
-            execution
+        pre_execute_hooks: functions to call before task execution
+        post_execute_hooks: functions to call after task execution
     """
 
     _task_execution_class = _TaskExecution
 
-    def __init__(self, activity, name=None, *, session=None):
+    def __init__(
+            self,
+            activity,
+            name: str = None,
+            *,
+            session: _util.AWSSession = None):
         self.activity = activity
         self.name = name or "%s-%s" % (_host_name, str(str(uuid.uuid4()))[:8])
         self.session = session or _util.AWSSession()
@@ -162,8 +174,8 @@ class Worker:  # TODO: unit-test
         self._poller = threading.Thread(target=self._worker)
         self._request_finish = False
         self._exc = None
-        self.pre_execute_hooks = []
-        self.post_execute_hooks = []
+        self.pre_execute_hooks: T.List[T.Callable] = []
+        self.post_execute_hooks: T.List[T.Callable] = []
         self._allow_poll = threading.Lock()
 
     def __str__(self):
@@ -177,12 +189,12 @@ class Worker:  # TODO: unit-test
             repr(self.name),
             repr(self.session))
 
-    def _execute_on(self, task_input, task_token):
+    def _execute_on(self, task_input: _util.JSONable, task_token: str):
         """Execute the provided task.
 
         Args:
             task_input: activity task execution input
-            task_token (str): task execuion identifier
+            task_token (str): task execution identifier
         """
 
         _logger.debug("Got task input: %s" % task_input)
@@ -269,16 +281,21 @@ class WorkersManager:  # TODO: unit-test
     """Simultaneously poll for multiple task executions.
 
     Args:
-        activities (list[Activity]): activities to poll and run executions
-            of
-        name (str): name of worker, used for identification, default: a
+        activities (list[sfini._activity.CallableActivity]): activities to
+            poll and run executions of
+        name: name of worker, used for identification, default: a
             combination of a short UUID and host's FQDN
-        session (_util.Session): session to use for AWS communication
+        session: session to use for AWS communication
     """
 
     _worker_class = Worker
 
-    def __init__(self, activities, name=None, *, session=None):
+    def __init__(
+            self,
+            activities,
+            name: str = None,
+            *,
+            session: _util.AWSSession = None):
         self.activities = activities
         self.name = name or "%s-%s" % (_host_name, str(uuid.uuid4())[:8])
         self.session = session or _util.AWSSession()
@@ -293,16 +310,16 @@ class WorkersManager:  # TODO: unit-test
         return "%s(%s, name=%s, session=%s)" % (_t, _a, _n, _s)
 
     @_util.cached_property
-    def workers(self) -> list:
+    def workers(self) -> T.List[_worker_class]:
         """Activity workers."""
         _n, _s, _a = self.name, self.session, self.activities
         return [self._worker_class(a, name=_n, session=_s) for a in _a]
 
-    def _cancel_poll(self, j):
+    def _cancel_poll(self, j: int):
         """Cancel polling for all but one worker.
 
         Args:
-            j (int): index of worker to not cancel polling for
+            j: index of worker to not cancel polling for
         """
 
         [w.cancel_poll() for k, w in enumerate(self.workers) if k != j]

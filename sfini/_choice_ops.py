@@ -4,20 +4,43 @@
 """SFN choice rule operations."""
 
 import datetime
+import typing as T
 import logging as lg
+
+from . import _util
 
 _logger = lg.getLogger(__name__)
 
 
 class _ChoiceOp:  # TODO: unit-test
-    pass
+    """A choice case for the 'Choice' state.
+
+    Args:
+        next_state (sfini._states.State): state to execute on success
+    """
+
+    def __init__(self, next_state):
+        self.next_state = next_state
+
+    def to_dict(self) -> T.Dict[str, _util.JSONable]:
+        """Convert this rule to a definition dictionary.
+
+        Returns:
+            definition
+        """
+
+        raise NotImplementedError
 
 
 class _ChoiceRule(_ChoiceOp):  # TODO: unit-test
-    def __init__(self, variable_name, comparison_value, next_state):
+    def __init__(
+            self,
+            variable_name: str,
+            comparison_value: T.Any,
+            next_state):
+        super().__init__(next_state)
         self.variable_name = variable_name
         self.comparison_value = comparison_value
-        self.next_state = next_state
 
     def __str__(self):
         return "'%s' %s %s [%s]" % (
@@ -33,13 +56,7 @@ class _ChoiceRule(_ChoiceOp):  # TODO: unit-test
             repr(self.comparison_value),
             repr(self.next_state))
 
-    def to_dict(self):
-        """Convert this rule to a definition dictionary.
-
-        Returns:
-            dict: definition
-        """
-
+    def to_dict(self) -> T.Dict[str, T.Any]:
         op_name = type(self).__name__
         if op_name.startswith("_"):
             raise RuntimeError("'%s' is not a valid choice rule" % op_name)
@@ -53,12 +70,12 @@ class BooleanEquals(_ChoiceRule):  # TODO: unit-test
     """Compare boolean variable value.
 
     Args:
-        variable_name (str): name of variable to compare
-        comparison_value (bool): value to compare against
-        next_state (_state.State): state to execute on success
+        variable_name: name of variable to compare
+        comparison_value: value to compare against
+        next_state: state to execute on success
     """
 
-    def __init__(self, variable_name, comparison_value, next_state):
+    def __init__(self, variable_name: str, comparison_value: bool, next_state):
         super().__init__(variable_name, comparison_value, next_state)
         if not isinstance(comparison_value, bool):
             raise TypeError("Boolean comparison value must be `bool`")
@@ -68,12 +85,16 @@ class _NumericRule(_ChoiceRule):  # TODO: unit-test
     """Compare numeric variable value.
 
     Args:
-        variable_name (str): name of variable to compare
-        comparison_value (int or float): value to compare against
-        next_state (_state.State): state to execute on success
+        variable_name: name of variable to compare
+        comparison_value: value to compare against
+        next_state: state to execute on success
     """
 
-    def __init__(self, variable_name, comparison_value, next_state):
+    def __init__(
+            self,
+            variable_name: str,
+            comparison_value: T.Union[int, float],
+            next_state):
         super().__init__(variable_name, comparison_value, next_state)
         if not isinstance(comparison_value, (int, float)):
             _s = "Numeric comparison value must be `int` or `float`"
@@ -100,38 +121,42 @@ class NumericLessThanEquals(_NumericRule):
     pass
 
 
-class _StringdRule(_ChoiceRule):  # TODO: unit-test
+class _StringRule(_ChoiceRule):  # TODO: unit-test
     """Compare string variable value.
 
     Args:
-        variable_name (str): name of variable to compare
-        comparison_value (str): value to compare against
-        next_state (_state.State): state to execute on success
+        variable_name: name of variable to compare
+        comparison_value: value to compare against
+        next_state: state to execute on success
     """
 
-    def __init__(self, variable_name, comparison_value, next_state):
+    def __init__(
+            self,
+            variable_name: str,
+            comparison_value: str,
+            next_state):
         super().__init__(variable_name, comparison_value, next_state)
         if not isinstance(comparison_value, str):
             raise TypeError("String comparison value must be `str`")
 
 
-class StringEquals(_StringdRule):
+class StringEquals(_StringRule):
     pass
 
 
-class StringGreaterThan(_StringdRule):
+class StringGreaterThan(_StringRule):
     pass
 
 
-class StringGreaterThanEquals(_StringdRule):
+class StringGreaterThanEquals(_StringRule):
     pass
 
 
-class StringLessThan(_StringdRule):
+class StringLessThan(_StringRule):
     pass
 
 
-class StringLessThanEquals(_StringdRule):
+class StringLessThanEquals(_StringRule):
     pass
 
 
@@ -139,12 +164,16 @@ class _TimestampRule(_ChoiceRule):  # TODO: unit-test
     """Compare date/time variable value.
 
     Args:
-        variable_name (str): name of variable to compare
-        comparison_value (datetime.datetime): value to compare against
-        next_state (_state.State): state to execute on success
+        variable_name: name of variable to compare
+        comparison_value: value to compare against
+        next_state: state to execute on success
     """
 
-    def __init__(self, variable_name, comparison_value, next_state):
+    def __init__(
+            self,
+            variable_name: str,
+            comparison_value: datetime.datetime,
+            next_state):
         super().__init__(variable_name, comparison_value, next_state)
         if not isinstance(comparison_value, datetime.datetime):
             _s = "Timestamp comparison value must be `datetime.datetime`"
@@ -184,9 +213,16 @@ class TimestampLessThanEquals(_TimestampRule):
 
 
 class _LogicalRule(_ChoiceOp):  # TODO: unit-test
-    def __init__(self, choice_rules, next_state):
+    """Logical operation on choice rules.
+
+    Args:
+        choice_rules: choice rules to operate on
+        next_state: state to execute on success
+    """
+
+    def __init__(self, choice_rules: T.List[_ChoiceRule], next_state):
+        super().__init__(next_state)
         self.choice_rules = choice_rules
-        self.next_state = next_state
 
     def __str__(self):
         _t = " %s " % type(self).__name__
@@ -199,11 +235,11 @@ class _LogicalRule(_ChoiceOp):  # TODO: unit-test
             repr(self.choice_rules),
             repr(self.next_state))
 
-    def _get_choice_rule_defns(self):
+    def _get_choice_rule_defns(self) -> T.List[T.Dict[str, T.Any]]:
         """Build choice rule definitions.
 
         Returns:
-            list[dict]: choice rule definitions
+            choice rule definitions
         """
 
         choice_rule_defns = []
@@ -213,13 +249,7 @@ class _LogicalRule(_ChoiceOp):  # TODO: unit-test
             choice_rule_defns.append(defn)
         return choice_rule_defns
 
-    def to_dict(self):
-        """Convert this rule to a definition dictionary.
-
-        Returns:
-            dict: definition
-        """
-
+    def to_dict(self) -> T.Dict[str, T.Any]:
         op_name = type(self).__name__
         if op_name.startswith("_"):
             raise RuntimeError("'%s' is not a valid choice rule")
@@ -236,7 +266,14 @@ class Or(_LogicalRule):
 
 
 class Not(_LogicalRule):  # TODO: unit-test
-    def __init__(self, choice_rule, next_state):
+    """Logical 'not' operation on a choice rule.
+
+    Args:
+        choice_rule: choice rule to operate on
+        next_state: state to execute on success
+    """
+
+    def __init__(self, choice_rule: _ChoiceRule, next_state):
         super().__init__([choice_rule], next_state)
 
     def __str__(self):
@@ -249,7 +286,7 @@ class Not(_LogicalRule):  # TODO: unit-test
             repr(self.choice_rules[0]),
             repr(self.next_state))
 
-    def _get_choice_rule_defns(self):
+    def _get_choice_rule_defns(self) -> T.Dict[str, T.Any]:
         defn = self.choice_rules[0].to_dict().copy()
         del defn["Next"]
         return defn

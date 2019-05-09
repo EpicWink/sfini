@@ -3,6 +3,7 @@
 
 """Package utilities."""
 
+import typing as T
 import logging as lg
 import functools as ft
 
@@ -14,6 +15,7 @@ _logger = lg.getLogger(__name__)
 MAX_NAME_LENGTH = 79
 INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*$%\\^|~`$,;:/"
 DEBUG = False
+JSONable = T.Union[None, bool, str, int, float, list, T.Dict[str, T.Any]]
 
 
 class DefaultParameter:  # TODO: unit-test
@@ -31,12 +33,11 @@ class DefaultParameter:  # TODO: unit-test
         return "%s()" % type(self).__name__
 
 
-def setup_logging(level=None):  # TODO: unit-test
+def setup_logging(level: int = None):  # TODO: unit-test
     """Setup logging for ``sfini``, if logs would otherwise be ignored.
 
     Args:
-        level (int): logging level (see ``logging``), default: leave
-            unchanged
+        level: logging level (see ``logging``), default: leave unchanged
     """
 
     lg.basicConfig(
@@ -47,17 +48,17 @@ def setup_logging(level=None):  # TODO: unit-test
         [h.setLevel(level) for h in lg.getLogger().handlers]
 
 
-def cached_property(fn):  # TODO: unit-test
+def cached_property(fn: T.Callable) -> property:  # TODO: unit-test
     """Decorate a method as a cached property.
 
     The wrapped method's result is stored in the instance's ``__cache__``
     dictionary, with the method's name as key.
 
     Args:
-        fn (callable): method to decorate
+        fn: method to decorate
 
     Returns:
-        property: cached property
+        cached property
     """
 
     name = fn.__name__
@@ -70,7 +71,7 @@ def cached_property(fn):  # TODO: unit-test
             self.__cache__[name] = fn(self)
         return self.__cache__[name]
 
-    if DEBUG:
+    if DEBUG:  # for testing
         def fset(self, value):
             if not hasattr(self, "__cache__"):
                 self.__cache__ = {}
@@ -86,11 +87,11 @@ def cached_property(fn):  # TODO: unit-test
     return property(wrapped)
 
 
-def assert_valid_name(name):  # TODO: unit-test
+def assert_valid_name(name: str):  # TODO: unit-test
     """Ensure a valid name of activity, state-machine or state.
 
     Args:
-        name (str): name to analyse
+        name: name to analyse
 
     Raises:
         ValueError: name is invalid
@@ -102,7 +103,10 @@ def assert_valid_name(name):  # TODO: unit-test
         raise ValueError("Name contains invalid characters: '%s'" % name)
 
 
-def collect_paginated(fn, **kwargs):  # TODO: unit-test
+def collect_paginated(
+        fn: T.Callable[..., T.Dict[str, T.Any]],
+        **kwargs
+) -> T.Dict[str, T.Any]:  # TODO: unit-test
     """Call SFN API paginated endpoint.
 
     Calls ``fn`` until "nextToken" isn't in the return value, collating
@@ -111,7 +115,7 @@ def collect_paginated(fn, **kwargs):  # TODO: unit-test
     limit using the ``sys`` package.
 
     Args:
-        fn (callable): SFN API function
+        fn: SFN API function
         kwargs: arguments to ``fn``
 
     Returns:
@@ -120,6 +124,7 @@ def collect_paginated(fn, **kwargs):  # TODO: unit-test
 
     result = fn(**kwargs)
     if "nextToken" in result:
+        kwargs.pop("nextToken", None)
         r2 = collect_paginated(fn, nextToken=result.pop("nextToken"), **kwargs)
         [result[k].extend(v) for k, v in r2.items() if isinstance(v, list)]
     return result
@@ -129,10 +134,10 @@ class AWSSession:  # TODO: unit-test
     """AWS session, for preconfigure communication with AWS.
 
     Args:
-        session (boto3.Session): session to use
+        session: session to use
     """
 
-    def __init__(self, session=None):
+    def __init__(self, session: boto3.Session = None):
         self.session = session or boto3.Session()
 
     def __str__(self):
@@ -144,10 +149,11 @@ class AWSSession:  # TODO: unit-test
 
     @cached_property
     def credentials(self) -> credentials.Credentials:
+        """AWS session credentials."""
         return self.session.get_credentials()
 
     @cached_property
-    def sfn(self):
+    def sfn(self) -> boto3.session.botocore.session.botocore.client.BaseClient:
         """Step Functions client."""
         setup_logging()
         return self.session.client("stepfunctions")

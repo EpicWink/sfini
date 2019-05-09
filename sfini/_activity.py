@@ -4,6 +4,7 @@
 """Activity wrapper."""
 
 import inspect
+import typing as T
 import logging as lg
 import functools as ft
 
@@ -24,12 +25,17 @@ class Activity:  # TODO: unit-test
     activities using their names.
 
     Args:
-        name (str): name of activity
-        heartbeat (int): seconds between heartbeat during activity running
-        session (_util.Session): session to use for AWS communication
+        name: name of activity
+        heartbeat: seconds between heartbeat during activity running
+        session: session to use for AWS communication
     """
 
-    def __init__(self, name, heartbeat=20, *, session=None):
+    def __init__(
+            self,
+            name: str,
+            heartbeat: int = 20,
+            *,
+            session: _util.AWSSession = None):
         self.name = name
         self.heartbeat = heartbeat
         self.session = session or _util.AWSSession()
@@ -71,13 +77,13 @@ class CallableActivity(Activity):  # TODO: unit-test
     activities using their names.
 
     Args:
-        name (str): name of activity
-        fn (callable): function to run activity
-        heartbeat (int): seconds between heartbeat during activity running
-        session (_util.Session): session to use for AWS communication
+        name: name of activity
+        fn: function to run activity
+        heartbeat: seconds between heartbeat during activity running
+        session: session to use for AWS communication
     """
 
-    def __init__(self, name, fn, heartbeat=20, *, session=None):
+    def __init__(self, name, fn: T.Callable, heartbeat=20, *, session=None):
         super().__init__(name, heartbeat=heartbeat, session=session)
         self.fn = fn
 
@@ -91,25 +97,32 @@ class CallableActivity(Activity):  # TODO: unit-test
             repr(self.session))
 
     @classmethod
-    def from_callable(cls, fn, name, heartbeat=20, *, session=None):
+    def from_callable(
+            cls,
+            fn: T.Callable,
+            name: str,
+            heartbeat: int = 20,
+            *,
+            session: _util.AWSSession = None
+    ) -> "CallableActivity":
         """Create an activity from the callable.
 
         Args:
-            fn (callable): function to run activity
-            name (str): name of activity
-            heartbeat (int): seconds between heartbeat during activity running
-            session (_util.Session): session to use for AWS communication
+            fn: function to run activity
+            name: name of activity
+            heartbeat: seconds between heartbeat during activity running
+            session: session to use for AWS communication
         """
 
         activity = cls(name, fn, heartbeat=heartbeat, session=session)
         ft.update_wrapper(activity, fn)
         return activity
 
-    def call_with(self, task_input):
+    def call_with(self, task_input: T.Dict[str, T.Any]) -> T.Any:
         """Call with task-input context.
 
         Args:
-            task_input (dict): task input
+            task_input: task input
 
         Returns:
             function return-value
@@ -130,24 +143,30 @@ class SmartCallableActivity(CallableActivity):  # TODO: unit-test
     activities using their names.
 
     Args:
-        name (str): name of activity
-        fn (callable): function to run activity
-        heartbeat (int): seconds between heartbeat during activity running
-        session (_util.Session): session to use for AWS communication
+        name: name of activity
+        fn: function to run activity
+        heartbeat: seconds between heartbeat during activity running
+        session: session to use for AWS communication
+
+    Attributes:
+        sig: function signature
     """
 
-    def __init__(self, name, fn, heartbeat=20, *, session=None):
+    def __init__(self, name, fn: T.Callable, heartbeat=20, *, session=None):
         super().__init__(name, fn, heartbeat=heartbeat, session=session)
-        self.sig = inspect.Signature.from_callable(fn)
+        self.sig: inspect.Signature = inspect.Signature.from_callable(fn)
 
-    def _get_input_from(self, task_input):
+    def _get_input_from(
+            self,
+            task_input: T.Dict[str, T.Any]
+    ) -> T.Dict[str, T.Any]:
         """Parse task input for execution input.
 
         Args:
-            task_input (dict): task input
+            task_input: task input
 
         Returns:
-            dict: activity input
+            activity input
         """
 
         _kws = inspect.Parameter.VAR_KEYWORD
@@ -180,12 +199,12 @@ class ActivityRegistration:  # TODO: unit-test
     using their names.
 
     Args:
-        name (str): name of activities group, used in prefix of activity
+        name: name of activities group, used in prefix of activity
             names
-        session (_util.Session): session to use for AWS communication
+        session: session to use for AWS communication
 
     Attributes:
-        activities (dict[str, Activity]): registered activities
+        activities: registered activities
 
     Example:
         >>> activities = ActivityRegistration("foo")
@@ -200,9 +219,9 @@ class ActivityRegistration:  # TODO: unit-test
     _smart_activity_class = SmartCallableActivity
     _external_activity_class = Activity
 
-    def __init__(self, name, *, session=None):
+    def __init__(self, name: str, *, session: _util.AWSSession = None):
         self.name = name
-        self.activities = {}
+        self.activities: T.Dict[str, Activity] = {}
         self.session = session or _util.AWSSession()
 
     def __str__(self):
@@ -215,7 +234,7 @@ class ActivityRegistration:  # TODO: unit-test
             repr(self.session))
 
     @property
-    def all_activities(self) -> set:
+    def all_activities(self) -> T.Set[Activity]:
         """All registered activities."""
         return set(self.activities.values())
 
@@ -226,13 +245,18 @@ class ActivityRegistration:  # TODO: unit-test
             raise ValueError("Activities group name cannot contain '!'")
         return ("%s!" % self.name) if self.name else self.name
 
-    def _activity(self, activity_cls, name=None, heartbeat=20):
+    def _activity(
+            self,
+            activity_cls: T.Type[CallableActivity],
+            name: str = None,
+            heartbeat: int = 20
+    ) -> T.Callable:
         """Activity function decorator.
 
         Args:
-            activity_cls (type[CallableActivity]): activity class
-            name (str): name of activity, default: function name
-            heartbeat (int): seconds between heartbeat during activity running
+            activity_cls: activity class
+            name: name of activity, default: function name
+            heartbeat: seconds between heartbeat during activity running
         """
 
         def wrapper(fn):
@@ -249,29 +273,41 @@ class ActivityRegistration:  # TODO: unit-test
             return ft.wraps(fn)(activity)
         return wrapper
 
-    def activity(self, name=None, heartbeat=20):
+    def activity(
+            self,
+            name: str = None,
+            heartbeat: int = 20
+    ) -> T.Callable:
         """Activity function decorator.
 
         Args:
-            name (str): name of activity, default: function name
-            heartbeat (int): seconds between heartbeat during activity running
+            name: name of activity, default: function name
+            heartbeat: seconds between heartbeat during activity running
         """
 
         _cls = self._activity_class
         return self._activity(_cls, name=name, heartbeat=heartbeat)
 
-    def smart_activity(self, name=None, heartbeat=20):
+    def smart_activity(
+            self,
+            name: str = None,
+            heartbeat: int = 20
+    ) -> T.Callable:
         """Smart activity function decorator.
 
         Args:
-            name (str): name of activity, default: function name
-            heartbeat (int): seconds between heartbeat during activity running
+            name: name of activity, default: function name
+            heartbeat: seconds between heartbeat during activity running
         """
 
         _cls = self._smart_activity_class
         return self._activity(_cls, name=name, heartbeat=heartbeat)
 
-    def new_external_activity(self, name, heartbeat=20):
+    def new_external_activity(
+            self,
+            name: str,
+            heartbeat: int = 20
+    ) -> _external_activity_class:
         """Declare an external activity.
 
         Args:
@@ -287,7 +323,7 @@ class ActivityRegistration:  # TODO: unit-test
         for activity in self.activities.values():
             activity.register()
 
-    def _get_name(self, activity_item_name):
+    def _get_name(self, activity_item_name: str) -> T.Optional[str]:
         """Get name of an activity."""
         name_splits = activity_item_name.split("!", 1)
         if len(name_splits) < 2:
@@ -297,7 +333,7 @@ class ActivityRegistration:  # TODO: unit-test
             return None
         return activity_name
 
-    def _list_activities(self):
+    def _list_activities(self) -> T.List[T.Tuple[str, str, str]]:
         """List activities in SFN."""
         resp = _util.collect_paginated(self.session.sfn.list_activities)
         acts = []
@@ -308,7 +344,9 @@ class ActivityRegistration:  # TODO: unit-test
             acts.append((name, act["arn"], act["creationDate"]))
         return acts
 
-    def _deregister_activities(self, activity_items):
+    def _deregister_activities(
+            self,
+            activity_items: T.Sequence[T.Tuple[str, str, str]]):
         """Deregister activities."""
         _logger.info("Deregistering %d activities" % len(activity_items))
         for act in activity_items:

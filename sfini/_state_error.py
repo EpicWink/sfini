@@ -3,7 +3,10 @@
 
 """SFN state execution error utitilies."""
 
+import typing as T
 import logging as lg
+
+from . import _util
 
 _logger = lg.getLogger(__name__)
 
@@ -19,15 +22,19 @@ class WorkerCancel(KeyboardInterrupt):  # TODO: unit-test
 
 
 class ExceptionCondition:  # TODO: unit-test
+    """Exception condition and rule processing mix-in."""
+    Exc = T.TypeVar("Exc", T.Type[BaseException], str)
+    Rule = T.TypeVar("Rule", bound=_util.JSONable)
+
     @staticmethod
-    def _process_exc(exc):
+    def _process_exc(exc: Exc) -> Exc:
         """Process exception condition.
 
         Args:
-            exc (type or str): exception type-name
+            exc: exception type or type-name
 
         Returns:
-            type or str: process exception
+            processed exception
 
         Raises:
             ValueError: bad type-name
@@ -40,13 +47,13 @@ class ExceptionCondition:  # TODO: unit-test
                 _s = "Error name was '%s', must be one of: %s"
                 raise ValueError(_s % (exc, errs))
             return "ALL" if exc == "*" else exc
-        elif issubclass(exc, Exception):
+        elif issubclass(exc, BaseException):
             return exc
         else:
             raise TypeError("Error must be exception or predefined string")
 
     @staticmethod
-    def _rules_similar(rule_a, rule_b):
+    def _rules_similar(rule_a: Rule, rule_b: Rule) -> bool:
         """Check if rules are similar.
 
         Args:
@@ -54,21 +61,24 @@ class ExceptionCondition:  # TODO: unit-test
             rule_b: RHS rule
 
         Returns:
-            bool: rules are similar
+            rules are similar
         """
 
         raise NotImplementedError
 
-    def _collapse_conditions(self, rules):
+    def _collapse_conditions(
+            self,
+            rules: T.Dict[Exc, Rule]
+    ) -> T.List[T.Dict[str, T.Union[T.List[Exc], Rule]]]:
         """Combine exception rules into lists of exceptions.
 
         Puts "States.ALL" at the end separately, if it exists.
 
         Args:
-            rules (dict[type or str]): exception rules to group
+            rules: exception rules to group
 
         Returns:
-            list[dict]: rule groups, names put in ``excs``
+            rule groups, names put in ``excs``
         """
 
         all_rule = None
@@ -87,14 +97,14 @@ class ExceptionCondition:  # TODO: unit-test
             rule_groups.append({"excs": ["ALL"], "rule": all_rule})
         return rule_groups
 
-    def _excs_to_errors(self, excs):
+    def _excs_to_errors(self, excs: T.List[Exc]) -> T.List[str]:
         """Convert exceptions to error codes.
 
         Args:
-            excs (list[type or str]): exception conditions
+            excs: exception conditions
 
         Returns:
-            list[str]: corresponding error codes
+            corresponding error codes
         """
 
         errors = []
@@ -110,7 +120,7 @@ class ExceptionCondition:  # TODO: unit-test
         return errors
 
     @staticmethod
-    def _rule_defn(rule):
+    def _rule_defn(rule: Rule) -> T.Dict[str, _util.JSONable]:
         """Get extra definition details from a rule.
 
         Args:
@@ -122,17 +132,20 @@ class ExceptionCondition:  # TODO: unit-test
 
         raise NotImplementedError
 
-    def _rule_defns(self, conditions):
+    def _rule_defns(
+            self,
+            conditions: T.Dict[Exc, Rule]
+    ) -> T.List[T.Dict[str, _util.JSONable]]:
         """Build exception rule definitions.
 
         Collapses rules by similarity into groups, converts exception
         conditions to error codes, then gets the definition for each rule.
 
         Args:
-            conditions (dict[str]): conditions produce definitions from
+            conditions: conditions produce definitions from
 
         Returns:
-            list[dict]: definitions
+            definitions
         """
 
         cond_groups = self._collapse_conditions(conditions)

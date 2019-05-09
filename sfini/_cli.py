@@ -21,9 +21,9 @@ class CLI:  # TODO: unit-test
     Args:
         state_machine (sfini.StateMachine): state-machine interact with
         activities (sfini.ActivityRegistration): activities to poll for
-        role_arn (str): AWS ARN for state-machine IAM role
-        version (str): version to display, default: no version display
-        prog (str): program name displayed in program help,
+        role_arn: AWS ARN for state-machine IAM role
+        version: version to display, default: no version display
+        prog : program name displayed in program help,
             default: ``sys.argv[0]``
     """
 
@@ -31,9 +31,9 @@ class CLI:  # TODO: unit-test
             self,
             state_machine=None,
             activities=None,
-            role_arn=None,
-            version=None,
-            prog=None):
+            role_arn: str = None,
+            version: str = None,
+            prog: str = None):
         self.state_machine = state_machine
         self.activities = activities
         self.role_arn = role_arn
@@ -41,11 +41,11 @@ class CLI:  # TODO: unit-test
         self.prog = prog
         assert state_machine or activities
 
-    def _build_parser(self):
+    def _build_parser(self) -> argparse.ArgumentParser:
         """Build argument parser.
 
         Returns:
-            argparse.ArgumentParser: configured command-line argument parser
+            configured command-line argument parser
         """
 
         d = None
@@ -171,11 +171,11 @@ class CLI:  # TODO: unit-test
 
         return parser
 
-    def _register(self, args):
+    def _register(self, args: argparse.Namespace):
         """Register state-machine and/or activities.
 
         Args:
-            args (argparse.Namespace): parsed command-line arguments
+            args: parsed command-line arguments
         """
 
         if self.state_machine and self.activities:
@@ -199,11 +199,11 @@ class CLI:  # TODO: unit-test
             if not args.state_machine_only:
                 self.activities.register()
 
-    def _deregister(self, args):
+    def _deregister(self, args: argparse.Namespace):
         """Deregister state-machine and/or activities.
 
         Args:
-            args (argparse.Namespace): parsed command-line arguments
+            args: parsed command-line arguments
         """
 
         if self.state_machine and self.activities:
@@ -221,11 +221,11 @@ class CLI:  # TODO: unit-test
             if not args.state_machine_only:
                 self.activities.deregister()
 
-    def _start(self, args):
+    def _start(self, args: argparse.Namespace):
         """Start a state-machine execution.
 
         Args:
-            args (argparse.Namespace): parsed command-line arguments
+            args: parsed command-line arguments
         """
 
         _ijp = args.input_json
@@ -236,11 +236,11 @@ class CLI:  # TODO: unit-test
             execution.wait()
             print(execution.output)
 
-    def _worker(self, args):
+    def _worker(self, args: argparse.Namespace):
         """Run an activity worker.
 
         Args:
-            args (argparse.Namespace): parsed command-line arguments
+            args: parsed command-line arguments
         """
 
         all_activities = self.activities.activities
@@ -248,22 +248,22 @@ class CLI:  # TODO: unit-test
         workers = _worker.WorkersManager(activities)
         workers.run()
 
-    def _executions(self, args):
+    def _executions(self, args: argparse.Namespace):
         """List state-machine executions.
 
         Args:
-            args (argparse.Namespace): parsed command-line arguments
+            args: parsed command-line arguments
         """
 
         execs = self.state_machine.list_executions(status=args.status)
         for execution in execs:
             print(execution.format_history())
 
-    def _parse_and_run(self, args):
+    def _parse_and_run(self, args: argparse.Namespace):
         """Parse and execute command-line arguments.
 
         Args:
-            args (argparse.Namespace): parsed command-line arguments
+            args: parsed command-line arguments
         """
 
         _lvl = max(lg.WARNING - 10 * (args.verbose - args.quiet), lg.DEBUG)

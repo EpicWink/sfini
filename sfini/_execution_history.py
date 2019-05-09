@@ -4,6 +4,7 @@
 """SFN state-machine execution history events."""
 
 import json
+import typing as T
 import logging as lg
 
 from . import _util
@@ -55,12 +56,17 @@ class _Event:  # TODO: unit-test
 
     Args:
         timestamp (datetime.datetime): event time-stamp
-        event_type (str): type of event
-        event_id (int): identifying index of event
-        previous_event_id (int): identifying index of causal event
+        event_type: type of event
+        event_id: identifying index of event
+        previous_event_id: identifying index of causal event
     """
 
-    def __init__(self, timestamp, event_type, event_id, previous_event_id):
+    def __init__(
+            self,
+            timestamp,
+            event_type: str,
+            event_id: int,
+            previous_event_id: int):
         self.timestamp = timestamp
         self.event_type = event_type
         self.event_id = event_id
@@ -79,15 +85,16 @@ class _Event:  # TODO: unit-test
             repr(self.previous_event_id))
 
     @staticmethod
-    def _get_args(history_event):
+    def _get_args(
+            history_event: T.Dict[str, T.Any]
+    ) -> T.Tuple[tuple, T.Dict[str, T.Any]]:
         """Get initialisation arguments by parsing history event.
 
         Args:
-            history_event (dict[str]): execution history event date, provided
-                by AWS API
+            history_event: execution history event date, provided by AWS API
 
         Returns:
-            tuple[tuple, dict]: initialisation arguments, and event details
+            initialisation arguments, and event details
         """
 
         # _logger.debug("history_event: %s" % history_event)
@@ -99,12 +106,11 @@ class _Event:  # TODO: unit-test
         return (timestamp, event_type, event_id, previous_event_id), details
 
     @classmethod
-    def from_history_event(cls, history_event):
+    def from_history_event(cls, history_event: T.Dict[str, T.Any]) -> "_Event":
         """Parse an history event.
 
         Args:
-            history_event (dict[str]): execution history event date, provided
-                by AWS API
+            history_event: execution history event date, provided by AWS API
 
         Returns:
             _Event: constructed execution history event
@@ -114,7 +120,7 @@ class _Event:  # TODO: unit-test
         return cls(*args)
 
     @_util.cached_property
-    def details_str(self):
+    def details_str(self) -> str:
         """Format the event details.
 
         Returns:
@@ -128,12 +134,12 @@ class _Failed(_Event):  # TODO: unit-test
     """An execution history failure event.
 
     Args:
-        timestamp (datetime): event time-stamp
-        event_type (str): type of event
-        event_id (int): identifying index of event
-        previous_event_id (int): identifying index of causal event
-        error (str): error name
-        cause (str): failure details
+        timestamp: event time-stamp
+        event_type: type of event
+        event_id: identifying index of event
+        previous_event_id: identifying index of causal event
+        error error name
+        cause failure details
     """
 
     def __init__(
@@ -142,8 +148,8 @@ class _Failed(_Event):  # TODO: unit-test
             event_type,
             event_id,
             previous_event_id,
-            error,
-            cause):
+            error: str,
+            cause: str):
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.error = error
         self.cause = cause
@@ -174,13 +180,13 @@ class _LambdaFunctionScheduled(_Event):  # TODO: unit-test
     """An execution history AWS Lambda task-schedule event.
 
     Args:
-        timestamp (datetime): event time-stamp
-        event_type (str): type of event
-        event_id (int): identifying index of event
-        previous_event_id (int): identifying index of causal event
-        resource (str): AWS Lambda function ARN
+        timestamp: event time-stamp
+        event_type: type of event
+        event_id: identifying index of event
+        previous_event_id: identifying index of causal event
+        resource: AWS Lambda function ARN
         task_input: task input
-        timeout (int): time-out (seconds) of task execution
+        timeout: time-out (seconds) of task execution
     """
 
     def __init__(
@@ -189,9 +195,9 @@ class _LambdaFunctionScheduled(_Event):  # TODO: unit-test
             event_type,
             event_id,
             previous_event_id,
-            resource,
-            task_input,
-            timeout):
+            resource: str,
+            task_input: _util.JSONable,
+            timeout: int):
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.resource = resource
         self.task_input = task_input
@@ -225,14 +231,14 @@ class _ActivityScheduled(_LambdaFunctionScheduled):  # TODO: unit-test
     """An execution history activity task-schedule event.
 
     Args:
-        timestamp (datetime): event time-stamp
-        event_type (str): type of event
-        event_id (int): identifying index of event
-        previous_event_id (int): identifying index of causal event
-        resource (str): AWS Lambda function ARN
+        timestamp: event time-stamp
+        event_type: type of event
+        event_id: identifying index of event
+        previous_event_id: identifying index of causal event
+        resource: AWS Lambda function ARN
         task_input: task input
-        timeout (int): time-out (seconds) of task execution
-        heartbeat (int): heartbeat time-out (seconds)
+        timeout: time-out (seconds) of task execution
+        heartbeat: heartbeat time-out (seconds)
     """
 
     def __init__(
@@ -244,7 +250,7 @@ class _ActivityScheduled(_LambdaFunctionScheduled):  # TODO: unit-test
             resource,
             task_input,
             timeout,
-            heartbeat):
+            heartbeat: int):
         super().__init__(
             timestamp,
             event_type,
@@ -278,11 +284,11 @@ class _ActivityStarted(_Event):  # TODO: unit-test
     """An execution history activity task-start event.
 
     Args:
-        timestamp (datetime): event time-stamp
-        event_type (str): type of event
-        event_id (int): identifying index of event
-        previous_event_id (int): identifying index of causal event
-        worker_name (str): name of activity worker executing activity task
+        timestamp: event time-stamp
+        event_type: type of event
+        event_id: identifying index of event
+        previous_event_id: identifying index of causal event
+        worker_name: name of activity worker executing activity task
     """
 
     def __init__(
@@ -291,7 +297,7 @@ class _ActivityStarted(_Event):  # TODO: unit-test
             event_type,
             event_id,
             previous_event_id,
-            worker_name):
+            worker_name: str):
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.worker_name = worker_name
 
@@ -319,10 +325,10 @@ class _ObjectSucceeded(_Event):  # TODO: unit-test
     """An execution history succeed event.
 
     Args:
-        timestamp (datetime): event time-stamp
-        event_type (str): type of event
-        event_id (int): identifying index of event
-        previous_event_id (int): identifying index of causal event
+        timestamp: event time-stamp
+        event_type: type of event
+        event_id: identifying index of event
+        previous_event_id: identifying index of causal event
         output: output of state/execution
     """
 
@@ -332,7 +338,7 @@ class _ObjectSucceeded(_Event):  # TODO: unit-test
             event_type,
             event_id,
             previous_event_id,
-            output):
+            output: _util.JSONable):
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.output = output
 
@@ -356,12 +362,12 @@ class _ExecutionStarted(_Event):  # TODO: unit-test
     """An execution history execution-start event.
 
     Args:
-        timestamp (datetime): event time-stamp
-        event_type (str): type of event
-        event_id (int): identifying index of event
-        previous_event_id (int): identifying index of causal event
+        timestamp: event time-stamp
+        event_type: type of event
+        event_id: identifying index of event
+        previous_event_id: identifying index of causal event
         execution_input: execution input
-        role_arn (str): execution AWS IAM role ARN
+        role_arn: execution AWS IAM role ARN
     """
 
     def __init__(
@@ -370,8 +376,8 @@ class _ExecutionStarted(_Event):  # TODO: unit-test
             event_type,
             event_id,
             previous_event_id,
-            execution_input,
-            role_arn):
+            execution_input: _util.JSONable,
+            role_arn: str):
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.execution_input = execution_input
         self.role_arn = role_arn
@@ -398,11 +404,11 @@ class _StateEntered(_Event):  # TODO: unit-test
     """An execution history state-enter event.
 
     Args:
-        timestamp (datetime): event time-stamp
-        event_type (str): type of event
-        event_id (int): identifying index of event
-        previous_event_id (int): identifying index of causal event
-        state_name (str): state name
+        timestamp: event time-stamp
+        event_type: type of event
+        event_id: identifying index of event
+        previous_event_id: identifying index of causal event
+        state_name: state name
         state_input: state input
     """
 
@@ -412,8 +418,8 @@ class _StateEntered(_Event):  # TODO: unit-test
             event_type,
             event_id,
             previous_event_id,
-            state_name,
-            state_input):
+            state_name: str,
+            state_input: _util.JSONable):
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.state_name = state_name
         self.state_input = state_input
@@ -444,11 +450,11 @@ class _StateExited(_Event):  # TODO: unit-test
     """An execution history state-exit event.
 
     Args:
-        timestamp (datetime): event time-stamp
-        event_type (str): type of event
-        event_id (int): identifying index of event
-        previous_event_id (int): identifying index of causal event
-        state_name (str): state name
+        timestamp: event time-stamp
+        event_type: type of event
+        event_id: identifying index of event
+        previous_event_id: identifying index of causal event
+        state_name: state name
         state_output: state output
     """
 
@@ -458,8 +464,8 @@ class _StateExited(_Event):  # TODO: unit-test
             event_type,
             event_id,
             previous_event_id,
-            state_name,
-            state_output):
+            state_name: str,
+            state_output: _util.JSONable):
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.state_name = state_name
         self.state_output = state_output
@@ -526,8 +532,18 @@ _type_class_map = {
     "WaitStateExited": _StateExited}
 
 
-def parse_history(history_events):  # TODO: unit-test
-    """List the execution history."""
+def parse_history(  # TODO: unit-test
+        history_events: T.List[T.Dict[str, T.Any]]
+) -> T.List[_Event]:
+    """List the execution history.
+
+    Args:
+        history_events: history events as provided by AWS API
+
+    Returns:
+        history of execution events
+    """
+
     events = []
     for history_event in history_events:
         eclass = _type_class_map[history_event["type"]]
