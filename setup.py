@@ -34,7 +34,7 @@ setuptools.setup(
     classifiers=_classifiers,
     keywords="aws sfn service step functions",
     packages=setuptools.find_packages(exclude=["tests/*"]),
-    python_requires="~=3.3",
+    python_requires="~=3.5",
     install_requires=["boto3"],
     extras_require={
         "dev": [
