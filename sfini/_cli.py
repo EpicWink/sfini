@@ -148,12 +148,9 @@ class CLI:  # TODO: unit-test
                 description="run an activity worker")
             worker_parser.add_argument(
                 "activity_name",
-                nargs="+",
                 choices=self.activities.activities,
                 metavar="NAME",
-                help=(
-                    "name of activity to poll (can specify multiple, "
-                    "choose from: %(choices)s)"))
+                help="name of activity to poll, choose from: %(choices)s)")
 
         if self.state_machine:
             executions_parser = subparsers.add_parser(
@@ -243,9 +240,8 @@ class CLI:  # TODO: unit-test
             args: parsed command-line arguments
         """
 
-        all_activities = self.activities.activities
-        activities = [all_activities[n] for n in args.activity_name]
-        workers = _worker.WorkersManager(activities)
+        activity = self.activities.activities[args.activity_name]
+        workers = _worker.Worker(activity)
         workers.run()
 
     def _executions(self, args: argparse.Namespace):

@@ -12,7 +12,7 @@ except pkg_resources.DistributionNotFound:
 
 __all__ = [
     "StateMachine",
-    "WorkersManager",
+    "Worker",
     "AWSSession",
     "ActivityRegistration",
     "Execution",
@@ -42,7 +42,7 @@ __all__ = [
 import logging as lg
 
 from ._state_machine import StateMachine
-from ._worker import WorkersManager
+from ._worker import Worker
 from ._util import AWSSession
 from ._activity import ActivityRegistration
 from ._execution import Execution

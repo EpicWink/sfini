@@ -108,8 +108,8 @@ activities.register()
 sm.register()
 
 # Start activity workers
-workers = sfini.WorkersManager([resize_activity, get_centres_activity])
-workers.start()
+workers = [sfini.Worker(resize_activity), sfini.Worker(get_centres_activity)]
+[w.start() for w in workers]
 
 # Start execution
 execution = sm.start_execution(
@@ -128,8 +128,8 @@ print(execution.output)
 #     "res": [(128, 128, 128), (128, 255, 0), (0, 0, 0), (0, 0, 255)]}
 
 # Stop activity workers
-workers.end()
-workers.join()
+[w.end() for w in workers]
+[w.join() for w in workers]
 
 # Deregister state-machine and activities
 activities.deregister()
@@ -174,8 +174,8 @@ activities.register()
 sm.register()
 
 # Start activity workers
-workers = sfini.WorkersManager([increment_activity])
-workers.start()
+worker = sfini.Worker(increment_activity)
+worker.start()
 
 # Start execution
 execution = sm.start_execution(execution_input={"increment": 3})
@@ -188,8 +188,8 @@ print(execution.output)
 # 12
 
 # Stop activity workers
-workers.end()
-workers.join()
+worker.end()
+worker.join()
 
 # Deregister state-machine and activities
 activities.deregister()
@@ -248,8 +248,10 @@ activities.register()
 sm.register()
 
 # Start activity workers
-workers = sfini.WorkersManager([log_message_activity, print_message_activity])
-workers.start()
+workers = [
+    sfini.Worker(log_message_activity),
+    sfini.Worker(print_message_activity)]
+[w.start() for w in workers]
 
 # Start execution
 execution = sm.start_execution(execution_input={"level": 20, "message": "foo"})
@@ -264,8 +266,8 @@ print(execution.output)
 #     {"level": 20, "message": "foo", "until": "2018-07-11T19-07-42.53"}]
 
 # Stop activity workers
-workers.end()
-workers.join()
+[w.end() for w in workers]
+[w.join() for w in workers]
 
 # Deregister state-machine and activities
 activities.deregister()
@@ -332,8 +334,8 @@ activities.register()
 sm.register()
 
 # Start activity workers
-workers = sfini.WorkersManager([raise_activity])
-workers.start()
+worker = sfini.Worker(raise_activity)
+worker.start()
 
 # Start execution
 execution = sm.start_execution(execution_input={})
@@ -346,8 +348,8 @@ print(execution.output)
 # {"error-info": {"error": "WorkerError", "cause": "MyError was raised"}}
 
 # Stop activity workers
-workers.end()
-workers.join()
+worker.end()
+worker.join()
 
 # Deregister state-machine and activities
 activities.deregister()
