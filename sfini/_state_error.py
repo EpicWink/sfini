@@ -52,7 +52,7 @@ class ExceptionCondition:  # TODO: unit-test
         errs = ("*",) + self.states_errors
 
         if isinstance(exc, str):
-            if exc not in errs:
+            if exc not in errs and not exc.startswith("Lambda."):
                 _s = "Error name was '%s', must be one of: %s"
                 raise ValueError(_s % (exc, self.states_errors))
             return "ALL" if exc == "*" else exc
