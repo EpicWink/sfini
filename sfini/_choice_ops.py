@@ -36,7 +36,7 @@ class _ChoiceRule(_ChoiceOp):  # TODO: unit-test
     def __init__(
             self,
             variable_name: str,
-            comparison_value: T.Any,
+            comparison_value,
             next_state):
         super().__init__(next_state)
         self.variable_name = variable_name
@@ -56,7 +56,7 @@ class _ChoiceRule(_ChoiceOp):  # TODO: unit-test
             repr(self.comparison_value),
             repr(self.next_state))
 
-    def to_dict(self) -> T.Dict[str, T.Any]:
+    def to_dict(self):
         op_name = type(self).__name__
         if op_name.startswith("_"):
             raise RuntimeError("'%s' is not a valid choice rule" % op_name)
@@ -235,7 +235,7 @@ class _LogicalRule(_ChoiceOp):  # TODO: unit-test
             repr(self.choice_rules),
             repr(self.next_state))
 
-    def _get_choice_rule_defns(self) -> T.List[T.Dict[str, T.Any]]:
+    def _get_choice_rule_defns(self) -> T.List[T.Dict[str, _util.JSONable]]:
         """Build choice rule definitions.
 
         Returns:
@@ -249,7 +249,7 @@ class _LogicalRule(_ChoiceOp):  # TODO: unit-test
             choice_rule_defns.append(defn)
         return choice_rule_defns
 
-    def to_dict(self) -> T.Dict[str, T.Any]:
+    def to_dict(self):
         op_name = type(self).__name__
         if op_name.startswith("_"):
             raise RuntimeError("'%s' is not a valid choice rule")
@@ -286,7 +286,7 @@ class Not(_LogicalRule):  # TODO: unit-test
             repr(self.choice_rules[0]),
             repr(self.next_state))
 
-    def _get_choice_rule_defns(self) -> T.Dict[str, T.Any]:
+    def _get_choice_rule_defns(self) -> T.Dict[str, _util.JSONable]:
         defn = self.choice_rules[0].to_dict().copy()
         del defn["Next"]
         return defn

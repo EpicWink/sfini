@@ -90,7 +90,7 @@ class Execution:  # TODO: unit-test
     @classmethod
     def from_execution_list_item(
             cls,
-            item: T.Dict[str, T.Any],
+            item: T.Dict[str, _util.JSONable],
             *,
             session: _util.AWSSession = None
     ) -> "Execution":

@@ -104,9 +104,9 @@ def assert_valid_name(name: str):  # TODO: unit-test
 
 
 def collect_paginated(
-        fn: T.Callable[..., T.Dict[str, T.Any]],
+        fn: T.Callable[..., T.Dict[str, JSONable]],
         **kwargs
-) -> T.Dict[str, T.Any]:  # TODO: unit-test
+) -> T.Dict[str, JSONable]:  # TODO: unit-test
     """Call SFN API paginated endpoint.
 
     Calls ``fn`` until "nextToken" isn't in the return value, collating
@@ -124,8 +124,8 @@ def collect_paginated(
 
     result = fn(**kwargs)
     if "nextToken" in result:
-        kwargs.pop("nextToken", None)
-        r2 = collect_paginated(fn, nextToken=result.pop("nextToken"), **kwargs)
+        kwargs["nextToken"] = result.pop("nextToken")
+        r2 = collect_paginated(fn, **kwargs)
         [result[k].extend(v) for k, v in r2.items() if isinstance(v, list)]
     return result
 

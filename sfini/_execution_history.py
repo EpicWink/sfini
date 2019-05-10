@@ -86,8 +86,8 @@ class _Event:  # TODO: unit-test
 
     @staticmethod
     def _get_args(
-            history_event: T.Dict[str, T.Any]
-    ) -> T.Tuple[tuple, T.Dict[str, T.Any]]:
+            history_event: T.Dict[str, _util.JSONable]
+    ) -> T.Tuple[tuple, T.Dict[str, _util.JSONable]]:
         """Get initialisation arguments by parsing history event.
 
         Args:
@@ -106,7 +106,10 @@ class _Event:  # TODO: unit-test
         return (timestamp, event_type, event_id, previous_event_id), details
 
     @classmethod
-    def from_history_event(cls, history_event: T.Dict[str, T.Any]) -> "_Event":
+    def from_history_event(
+            cls,
+            history_event: T.Dict[str, _util.JSONable]
+    ) -> "_Event":
         """Parse an history event.
 
         Args:
@@ -533,7 +536,7 @@ _type_class_map = {
 
 
 def parse_history(  # TODO: unit-test
-        history_events: T.List[T.Dict[str, T.Any]]
+        history_events: T.List[T.Dict[str, _util.JSONable]]
 ) -> T.List[_Event]:
     """List the execution history.
 

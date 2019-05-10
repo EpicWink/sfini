@@ -100,7 +100,7 @@ class CallableActivity(Activity):  # TODO: unit-test
         ft.update_wrapper(activity, fn)
         return activity
 
-    def call_with(self, task_input: T.Dict[str, T.Any]) -> T.Any:
+    def call_with(self, task_input: _util.JSONable) -> _util.JSONable:
         """Call with task-input context.
 
         Args:
@@ -140,8 +140,8 @@ class SmartCallableActivity(CallableActivity):  # TODO: unit-test
 
     def _get_input_from(
             self,
-            task_input: T.Dict[str, T.Any]
-    ) -> T.Dict[str, T.Any]:
+            task_input: T.Dict[str, _util.JSONable]
+    ) -> T.Dict[str, _util.JSONable]:
         """Parse task input for execution input.
 
         Args:
@@ -165,7 +165,7 @@ class SmartCallableActivity(CallableActivity):  # TODO: unit-test
 
         return kwargs
 
-    def call_with(self, task_input):
+    def call_with(self, task_input: T.Dict[str, _util.JSONable]):
         kwargs = self._get_input_from(task_input)
         return self.fn(**kwargs)
 
@@ -181,51 +181,44 @@ class ActivityRegistration:  # TODO: unit-test
     using their names.
 
     Args:
-        name: name of activities group, used in prefix of activity
-            names
+        prefix: prefix for activity names
         session: session to use for AWS communication
 
     Attributes:
         activities: registered activities
 
     Example:
-        >>> activities = ActivityRegistration("foo")
-        >>> @activities.activity("myActivity")
-        >>> def fn():
+        >>> activities = ActivityRegistration(prefix="foo")
+        >>> @activities.activity(name="MyActivity")
+        >>> def fn(data):
         ...     print("hi")
         >>> print(fn.name)
-        foo!myActivity
+        fooMyActivity
     """
 
     _activity_class = CallableActivity
     _smart_activity_class = SmartCallableActivity
     _external_activity_class = Activity
+    _lambda_activity_class = _task_resource.Lambda
 
-    def __init__(self, name: str, *, session: _util.AWSSession = None):
-        self.name = name
+    def __init__(self, prefix: str = "", *, session: _util.AWSSession = None):
+        self.prefix = prefix
         self.activities: T.Dict[str, Activity] = {}
         self.session = session or _util.AWSSession()
 
     def __str__(self):
-        return "%s '%s'" % (type(self).__name__, self.name)
+        return "%s '%s'" % (type(self).__name__, self.prefix)
 
     def __repr__(self):
         return "%s(%s, session=%s)" % (
             type(self).__name__,
-            repr(self.name),
+            repr(self.prefix),
             repr(self.session))
 
     @property
     def all_activities(self) -> T.Set[Activity]:
         """All registered activities."""
         return set(self.activities.values())
-
-    @property
-    def _pref(self) -> str:
-        """Activity name prefix."""
-        if "!" in self.name:
-            raise ValueError("Activities group name cannot contain '!'")
-        return ("%s!" % self.name) if self.name else self.name
 
     def _activity(
             self,
@@ -247,12 +240,11 @@ class ActivityRegistration:  # TODO: unit-test
                 raise ValueError("Activity '%s' already registered" % suff)
             activity = activity_cls.from_callable(
                 fn,
-                self._pref + suff,
+                self.prefix + suff,
                 heartbeat=heartbeat,
                 session=self.session)
             self.activities[suff] = activity
-            ft.update_wrapper(activity, fn)
-            return ft.wraps(fn)(activity)
+            return ft.update_wrapper(activity, fn)
         return wrapper
 
     def activity(
@@ -262,13 +254,18 @@ class ActivityRegistration:  # TODO: unit-test
     ) -> T.Callable:
         """Activity function decorator.
 
+        The decorated function will be passed one argument: the input to
+        the task state that executes the activity.
+
         Args:
             name: name of activity, default: function name
             heartbeat: seconds between heartbeat during activity running
         """
 
-        _cls = self._activity_class
-        return self._activity(_cls, name=name, heartbeat=heartbeat)
+        return self._activity(
+            self._activity_class,
+            name=name,
+            heartbeat=heartbeat)
 
     def smart_activity(
             self,
@@ -277,52 +274,58 @@ class ActivityRegistration:  # TODO: unit-test
     ) -> T.Callable:
         """Smart activity function decorator.
 
+        The decorated function will be passed values to its parameters
+        from the input to the task state that executes the activity.
+
         Args:
             name: name of activity, default: function name
             heartbeat: seconds between heartbeat during activity running
         """
 
-        _cls = self._smart_activity_class
-        return self._activity(_cls, name=name, heartbeat=heartbeat)
+        return self._activity(
+            self._smart_activity_class,
+            name=name,
+            heartbeat=heartbeat)
 
-    def new_external_activity(
+    def external_activity(
             self,
             name: str,
             heartbeat: int = 20
     ) -> _external_activity_class:
-        """Declare an external activity.
+        """Declare an externally-implemented activity.
 
         Args:
-            name (str): name of activity
-            heartbeat (int): seconds between heartbeat during activity running
+            name: name of activity
+            heartbeat: seconds between heartbeat during activity running
         """
 
-        cls = self._external_activity_class
-        return cls(self._pref + name, heartbeat=heartbeat, session=self.session)
+        return self._external_activity_class(
+            self.prefix + name,
+            heartbeat=heartbeat,
+            session=self.session)
+
+    def lambda_activity(self, name: str) -> _lambda_activity_class:
+        """Declare an AWS Lambda Function task executor.
+
+        Args:
+            name: name of Lambda function
+        """
+
+        return self._lambda_activity_class(name, session=self.session)
 
     def register(self):
         """Add registered activities to AWS SFN."""
         for activity in self.activities.values():
             activity.register()
 
-    def _get_name(self, activity_item_name: str) -> T.Optional[str]:
-        """Get name of an activity."""
-        name_splits = activity_item_name.split("!", 1)
-        if len(name_splits) < 2:
-            return None
-        group_name, activity_name = name_splits
-        if group_name != self.name:
-            return None
-        return activity_name
-
     def _list_activities(self) -> T.List[T.Tuple[str, str, str]]:
         """List activities in SFN."""
         resp = _util.collect_paginated(self.session.sfn.list_activities)
         acts = []
         for act in resp["activities"]:
-            name = self._get_name(act["name"])
-            if name is None:
+            if act["name"][:len(self.prefix)] != self.prefix:
                 continue
+            name = act["name"][len(self.prefix):]
             acts.append((name, act["arn"], act["creationDate"]))
         return acts
 
@@ -337,5 +340,9 @@ class ActivityRegistration:  # TODO: unit-test
 
     def deregister(self):
         """Remove activities in AWS SFN."""
+        if not self.prefix:
+            raise RuntimeError(
+                "Deregistering activities with prefix '' would remove all "
+                "activities")
         acts = self._list_activities()
         self._deregister_activities(acts)
