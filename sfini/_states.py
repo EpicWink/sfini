@@ -604,9 +604,9 @@ class Choice(State):  # TODO: unit-test
     Attributes:
         choices (list[sfini._choice_ops._ChoiceOp]): choice rules
             determining branch conditions
-        default (State): fall-back state if all comparisons fail, or
-            ``None`` for no fall-back (Step Functions will raise a
-            'States.NoChoiceMatched' error)
+        default: fall-back state if all comparisons fail, or ``None`` for
+            no fall-back (Step Functions will raise a 'States.NoChoiceMatched'
+            error)
     """
 
     def __init__(

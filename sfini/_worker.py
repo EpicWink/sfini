@@ -1,4 +1,4 @@
-# --- 80 characters ----------------------------------------------------------
+# --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/12
 
 """SFN activity task execution and polling."""
@@ -177,7 +177,7 @@ class Worker:  # TODO: unit-test
 
         Args:
             task_input: activity task execution input
-            task_token (str): task execution identifier
+            task_token: task execution identifier
         """
 
         _logger.debug("Got task input: %s" % task_input)

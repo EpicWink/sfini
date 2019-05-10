@@ -181,8 +181,8 @@ class Execution:  # TODO: unit-test
         """Stop an existing execution.
 
         Args:
-            error_code (str): stop reason identification
-            details (str): stop reason
+            error_code: stop reason identification
+            details: stop reason
         """
 
         status = self._get_execution_status()

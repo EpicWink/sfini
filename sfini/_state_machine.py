@@ -313,7 +313,7 @@ class StateMachine:  # TODO: unit-test
         Executes an activity.
 
         Args:
-            name (str): name of state
+            name: name of state
             resource (sfini._task_resource.TaskResource): task executor, eg
                 activity or Lambda function
             comment: state description
@@ -469,7 +469,7 @@ class StateMachine:  # TODO: unit-test
         """List all executions of this state-machine.
 
         Args:
-            status (str): only list executions with this status. Choose from
+            status: only list executions with this status. Choose from
                 'RUNNING', 'SUCCEEDED', 'FAILED', 'TIMED_OUT' or 'ABORTED'
 
         Returns:
