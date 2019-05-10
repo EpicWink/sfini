@@ -15,25 +15,23 @@ Note: this is not a tool to convert Python code into a Step Functions state
 machine. For that, see [pyawssfn](https://github.com/bennorth/pyawssfn).
 
 ## Getting started
-Prepend `sudo -H` to the following commands if elevated priviliges is
-required.
-
 ### Prerequisites
-* [Python 3](https://www.python.org/) and PIP
-* [AWS](https://aws.amazon.com/) account, with
-  [IAM](https://aws.amazon.com/iam/) credentials
+* [AWS](https://aws.amazon.com/) (Amazon Web Services) account, with
+  access to Step Functions
+* AWS [IAM](https://aws.amazon.com/iam/) (Identity and Access Management)
+  credentials
 
 ### Installation
 ```bash
-pip3 install sfini
+pip install sfini
 ```
 
 ## Usage
 ### Documentation
-Check the [documentation](https://Epic_Wink.gitlab.io/aws-sfn-service) or use the
-built-in help:
+Check the [documentation](https://Epic_Wink.gitlab.io/aws-sfn-service) or use
+the built-in help:
 ```bash
-pydoc3 sfini
+pydoc sfini
 ```
 
 ```python
@@ -41,7 +39,7 @@ import sfini
 help(sfini)
 ```
 
-#### Build documentation
+To build the documentation:
 ```bash
 sphinx-build -b html docs/src/ docs/_build/
 ```
@@ -49,15 +47,36 @@ sphinx-build -b html docs/src/ docs/_build/
 ### AWS Step Functions
 [AWS Step Functions](https://aws.amazon.com/step-functions/) (SFN) is a
 workflow-management service, providing the ability to coordinate tasks in a
-straight-forward fashion.
-
-Further documentation can be found in the [AWS documentation](
+straight-forward fashion. Further documentation can be found in the
+[AWS documentation](
 https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html).
 
+Usage of Step Functions consists of two types: state-machines and activities.
+A state-machine is a graph of operations which defines a workflow of an
+application, comprised of multiple types of "states", or stages of the
+workflow. An activity processes input to an output, and is used to process a
+task "state" in the state-machine (multiple task states can have the same
+activity assigned it.
+
+Once a state-machine is defined and registered (along with the used
+activities), you run executions of that state-machine on different inputs to
+run the workflow. `sfini` allows you to start, stop and get the history of
+these executions.
+
+State-machines support conditional branching (and therefore loops), retries
+(conditional and unconditional), exception-catching, external AWS service
+support for running tasks, parallel execution and input/output processing.
+External services including AWS Lambda, so you don't have to deploy your own
+activity runners.
+
+Once state-machines and activities are defined and registered, you can view and
+update their details in [the SFN web console](
+https://console.aws.amazon.com/states/home?#/).
+
 ### Role ARN
-Every state-machine needs a role ARN. This is an AWS IAM role ARN which allows
-the state-machine to process state executions. See AWS Step Functions
-documentation for more information.
+Every state-machine needs a role ARN (Amazon Resource Name). This is an AWS IAM
+role ARN which allows the state-machine to process state executions. See AWS
+Step Functions documentation for more information.
 
 ### Examples
 #### File-processing
