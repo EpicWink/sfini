@@ -15,7 +15,8 @@ import logging as lg
 
 from botocore import exceptions as bc_exc
 
-from . import _util
+from .. import _util
+from . import _poll
 
 _logger = lg.getLogger(__name__)
 _host_name = socket.getfqdn(socket.gethostname())
@@ -134,9 +135,11 @@ class TaskExecution:
         try:
             res = self.activity.call_with(self.task_input)
         except KeyboardInterrupt:
+            # print("%s: [%s] %s" % (self, type(e), e))
             self.report_cancelled()
             return
         except Exception as e:
+            # print("%s: [%s] %s" % (self, type(e), e))
             self._report_exception(e)
             return
 
@@ -154,9 +157,14 @@ class Worker:
         name: name of worker, used for identification, default: a
             combination of UUID and host's FQDN
         session: session to use for AWS communication
+
+    Attributes:
+        pre_execute_hooks: functions to call before task execution
+        post_execute_hooks: functions to call after task execution
     """
 
     _task_execution_class = TaskExecution
+    _task_poll_class = _poll.TaskPoll
 
     def __init__(
             self,
@@ -171,7 +179,13 @@ class Worker:
         _import_threading()
         self._poller = threading.Thread(target=self._worker)
         self._request_finish = False
-        self._exc = None
+        self.pre_execute_hooks: T.List[T.Callable] = []
+        self.post_execute_hooks: T.List[T.Callable] = []
+        self._allow_poll = threading.RLock()
+        self._poll = self._task_poll_class(
+            self.activity.arn,
+            self.name,
+            session=self.session)
 
     def __str__(self):
         return "%s [%s]" % (self.name, self.activity.name)
@@ -188,6 +202,8 @@ class Worker:
 
         _logger.debug("Got task input: %s" % task_input)
 
+        [fn() for fn in self.pre_execute_hooks]
+
         execution = self._task_execution_class(
             self.activity,
             task_token,
@@ -198,17 +214,19 @@ class Worker:
         else:
             execution.run()
 
+        [fn() for fn in self.post_execute_hooks]
+
     def _poll_and_execute(self):
         """Poll for tasks to execute, then execute any found."""
-        while not self._request_finish:
-            fmt = "Polling for activity '%s' executions"
-            _logger.debug(fmt % self.activity)
-            resp = self.session.sfn.get_activity_task(
-                activityArn=self.activity.arn,
-                workerName=self.name)
-            if resp.get("taskToken", None) is not None:
+        self._poll.start()
+        while True:
+            with self._allow_poll:
+                if self._request_finish:
+                    break
+                resp = self._poll.get(timeout=5.0)
+            if resp:
                 input_ = json.loads(resp["input"])
-                self._execute_on(input_, resp["taskToken"])
+                self._execute_on(input_, resp["task_token"])
 
     def _worker(self):
         """Run polling, catching exceptins."""
@@ -219,35 +237,133 @@ class Worker:
             self._exc = e  # send exception to main thread
             self._request_finish = True
 
+    def cancel_poll(self):
+        """Cancel the current poll for tasks, and block polling."""
+        if self._poller.is_alive():
+            _logger.debug("Cancelling polling")
+            self._poll.pause()
+            self._allow_poll.acquire()  # waits for poll to be cancelled
+
+    def allow_poll(self):
+        """Unblock polling."""
+        _logger.debug("Resuming polling")
+        self._poll.unpause()
+        self._allow_poll.release()
+
     def start(self):
         """Start polling."""
-        from . import activity
+        from .. import activity
         if not isinstance(self.activity, activity.CallableActivity):
             raise TypeError("Activity '%s' cannot be executed" % self.activity)
         _util.assert_valid_name(self.name)
-        _logger.info("Worker '%s': waiting on final poll to finish" % self)
+        _logger.info("%s: starting polling" % self)
         self._poller.start()
 
     def join(self):
         """Block until polling exit."""
+        _logger.debug("%s: waiting on polling to finish" % self)
         try:
             self._poller.join()
         except KeyboardInterrupt:
             _logger.info("Quitting polling due to KeyboardInterrupt")
-            self._request_finish = True
-            return
-        except Exception:
-            self._request_finish = True
+            self.end()
+        except Exception as e:
+            _logger.error("%s failed" % self, exc_info=e)
+            self.end()
             raise
-        if self._exc is not None:
-            raise self._exc
 
     def end(self):
         """End polling."""
-        _logger.info("Worker '%s': waiting on final poll to finish" % self)
+        _logger.info("%s: waiting on final poll to finish" % self)
         self._request_finish = True
+        self._poll.stop()
 
     def run(self):
         """Run worker to poll for and execute specified tasks."""
+        self.start()
+        self.join()
+
+
+class WorkersManager:  # TODO: unit-test
+    """Simultaneously poll for multiple task executions.
+
+    Args:
+        activities (list[sfini._activity.CallableActivity]): activities to
+            poll and run executions of
+        name: name of worker, used for identification, default: a
+            combination of a short UUID and host's FQDN
+        session: session to use for AWS communication
+    """
+
+    _worker_class = Worker
+
+    def __init__(
+            self,
+            activities,
+            name: str = None,
+            *,
+            session: _util.AWSSession = None):
+        self.activities = activities
+        self.name = name or "%s-%s" % (_host_name, str(uuid.uuid4())[:8])
+        self.session = session or _util.AWSSession()
+
+    def __str__(self):
+        _as = ", ".join(a.name for a in self.activities)
+        return "%s '%s' polling: %s" % (type(self).__name__, self.name, _as)
+
+    __repr__ = _util.easy_repr
+
+    @_util.cached_property
+    def workers(self) -> T.List[_worker_class]:
+        """Activity workers."""
+        _n, _s = self.name, self.session
+        workers = []
+        for j, activity in enumerate(self.activities):
+            worker = self._worker_class(activity, name=_n, session=_s)
+            worker.pre_execute_hooks.append(lambda: self._cancel_poll(j))
+            worker.post_execute_hooks.append(lambda: self._resume_poll(j))
+            workers.append(worker)
+        return workers
+
+    def _cancel_poll(self, j: int):
+        """Cancel polling for all but one worker.
+
+        Args:
+            j: index of worker to not cancel polling for
+        """
+
+        [w.cancel_poll() for k, w in enumerate(self.workers) if k != j]
+
+    def _resume_poll(self, j: int):
+        """Resume polling for all but one worker.
+
+        Arguments:
+            j: index of worker to not resume polling for
+        """
+
+        [w.allow_poll() for k, w in enumerate(self.workers) if k != j]
+
+    def start(self):
+        """Start workers."""
+        [w.start() for w in self.workers]
+
+    def join(self):
+        """Wait for workers to finish, ending workers on exception."""
+        try:
+            [w.join() for w in self.workers]
+        except KeyboardInterrupt:
+            _logger.info("Quitting running due to KeyboardInterrupt")
+            self.end()
+        except Exception as e:
+            print("%s: [%s] %s" % (self, type(e), e))
+            self.end()
+            raise
+
+    def end(self):
+        """Notify workers to end."""
+        [w.end() for w in self.workers]
+
+    def run(self):
+        """Run workers and wait to finish."""
         self.start()
         self.join()

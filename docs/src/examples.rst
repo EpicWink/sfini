@@ -158,10 +158,8 @@ File-processing
     sm.register()
 
     # Start activity workers
-    workers = [
-        sfini.Worker(resize_activity),
-        sfini.Worker(get_centres_activity)]
-    [w.start() for w in workers]
+    workers = sfini.WorkersManager([resize_activity, get_centres_activity])
+    workers.start()
 
     # Start execution
     execution = sm.start_execution(
@@ -180,8 +178,8 @@ File-processing
     #     "res": [(128, 128, 128), (128, 255, 0), (0, 0, 0), (0, 0, 255)]}
 
     # Stop activity workers
-    [w.end() for w in workers]
-    [w.join() for w in workers]
+    workers.end()
+    workers.join()
 
     # Deregister state-machine and activities
     activities.deregister()
@@ -306,10 +304,9 @@ Parallel
     sm.register()
 
     # Start activity workers
-    workers = [
-        sfini.Worker(log_message_activity),
-        sfini.Worker(print_message_activity)]
-    [w.start() for w in workers]
+    workers = sfini.WorkersManager(
+        [log_message_activity, print_message_activity])
+    workers.start()
 
     # Start execution
     execution = sm.start_execution(
@@ -325,8 +322,8 @@ Parallel
     #     {"level": 20, "message": "foo", "until": "2018-07-11T19-07-42.53"}]
 
     # Stop activity workers
-    [w.end() for w in workers]
-    [w.join() for w in workers]
+    workers.end()
+    workers.join()
 
     # Deregister state-machine and activities
     activities.deregister()

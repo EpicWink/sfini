@@ -25,7 +25,7 @@ class CLI:
             default: ``sys.argv[0]``
     """
 
-    _worker_class = sfini_worker.Worker
+    _workers_class = sfini_worker.WorkersManager
     _parser_class = argparse.ArgumentParser
 
     def __init__(
@@ -151,9 +151,12 @@ class CLI:
                 description="run an activity worker")
             worker_parser.add_argument(
                 "activity_name",
+                nargs="+",
                 choices=self.activities.activities,
                 metavar="NAME",
-                help="name of activity to poll, choose from: %(choices)s)")
+                help=(
+                    "name of activity to poll (can specify multiple), "
+                    "choose from: %(choices)s)"))
 
         if self.state_machine:
             executions_parser = subparsers.add_parser(
@@ -246,8 +249,9 @@ class CLI:
             args: parsed command-line arguments
         """
 
-        activity = self.activities.activities[args.activity_name]
-        workers = self._worker_class(activity)
+        all_activities = self.activities.activities
+        activities = [all_activities[n] for n in args.activity_name]
+        workers = self._workers_class(activities)
         workers.run()
 
     def _executions(self, args: argparse.Namespace):

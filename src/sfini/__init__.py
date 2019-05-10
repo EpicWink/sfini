@@ -15,7 +15,8 @@ __all__ = [
     "Lambda",
     "construct_state_machine",
     "Worker",
-    "WorkerCancel"]
+    "WorkerCancel",
+    "WorkersManager"]
 
 from ._util import AWSSession
 from .activity import Activity
@@ -25,6 +26,7 @@ from .task_resource import Lambda
 from .state_machine import construct_state_machine
 from .worker import Worker
 from .worker import WorkerCancel
+from .worker import WorkersManager
 from .state import Succeed
 from .state import Fail
 from .state import Pass

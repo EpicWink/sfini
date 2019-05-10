@@ -137,7 +137,7 @@ print(execution.format_history())
 # ExecutionSucceeded [7] @ 2019-06-23 20:03:55.028000+10:00
 # Output: 45
 
-# Stop activity workers
+# Stop activity worker
 worker.end()
 worker.join()
 

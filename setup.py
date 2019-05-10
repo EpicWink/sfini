@@ -32,7 +32,7 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
     python_requires="~=3.6",
-    install_requires=["boto3"],
+    install_requires=["boto3", "urllib3"],
     extras_require={
         "dev": [
             "pytest",

@@ -1,6 +1,6 @@
 """Test ``sfini.worker``."""
 
-from sfini import worker as tscr
+from sfini.worker import _worker as tscr
 import pytest
 from unittest import mock
 import sfini
