@@ -27,6 +27,9 @@ class CLI:  # TODO: unit-test
             default: ``sys.argv[0]``
     """
 
+    _worker_class = _worker.Worker
+    _parser_class = argparse.ArgumentParser
+
     def __init__(
             self,
             state_machine=None,
@@ -56,7 +59,7 @@ class CLI:  # TODO: unit-test
             d = "Control '%s'" % self.state_machine
         elif self.activities:
             d = "Control '%s' activities" % self.activities.prefix
-        parser = argparse.ArgumentParser(description=d, prog=self.prog)
+        parser = self._parser_class(description=d, prog=self.prog)
         if self.version:
             parser.add_argument(
                 "-V",
@@ -241,7 +244,7 @@ class CLI:  # TODO: unit-test
         """
 
         activity = self.activities.activities[args.activity_name]
-        workers = _worker.Worker(activity)
+        workers = self._worker_class(activity)
         workers.run()
 
     def _executions(self, args: argparse.Namespace):
