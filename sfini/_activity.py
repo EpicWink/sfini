@@ -31,7 +31,7 @@ class Activity(_task_resource.TaskResource):  # TODO: unit-test
         session: session to use for AWS communication
     """
 
-    _service = "activity"
+    service = "activity"
 
     def __init__(self, name, heartbeat: int = 20, *, session=None):
         super().__init__(name, session=session)

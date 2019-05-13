@@ -19,16 +19,19 @@ class TaskResource:  # TODO: unit-test
     Args:
         name: name of resource
         session: session to use for AWS communication
+
+    Attributes:
+        service: name of service of which the resource belongs to
     """
 
-    _service = None
+    service: str = None
 
     def __init__(self, name: str, *, session: _util.AWSSession = None):
         self.name = name
         self.session = session
 
     def __str__(self):
-        return "%s %s '%s'" % (type(self).__name__, self._service, self.name)
+        return "%s %s '%s'" % (type(self).__name__, self.service, self.name)
 
     def __repr__(self):
         return type(self).__name__ + "(%s, session=%s)" % (
@@ -41,7 +44,7 @@ class TaskResource:  # TODO: unit-test
         region = self.session.region
         account = self.session.account_id
         _s = "arn:aws:states:%s:%s:%s:%s"
-        return _s % (region, account, self._service, self.name)
+        return _s % (region, account, self.service, self.name)
 
 
 class Lambda(TaskResource):  # TODO: unit-test
@@ -52,7 +55,7 @@ class Lambda(TaskResource):  # TODO: unit-test
         session: session to use for AWS communication
     """
 
-    _service = "function"
+    service = "function"
 
     @_util.cached_property
     def arn(self):
