@@ -1,23 +1,18 @@
 sfini package
 =============
 
-Subpackages
------------
+Subpackages and submodules
+--------------------------
 
 .. toctree::
+    :titlesonly:
 
     sfini.execution
     sfini.state
-
-Submodules
-----------
-
-.. toctree::
-
-   sfini.activity
-   sfini.state_machine
-   sfini.task_resource
-   sfini.worker
+    sfini.activity
+    sfini.state_machine
+    sfini.task_resource
+    sfini.worker
 
 Module contents
 ---------------
