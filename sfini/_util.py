@@ -1,7 +1,7 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/11
 
-"""Package utilities."""
+"""Common utilities for ``sfini``."""
 
 import typing as T
 import logging as lg

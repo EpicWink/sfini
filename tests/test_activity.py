@@ -1,9 +1,9 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/13
 
-"""Test ``sfini._activity``."""
+"""Test ``sfini.activity``."""
 
-from sfini import _activity as tscr
+from sfini import activity as tscr
 import pytest
 from unittest import mock
 

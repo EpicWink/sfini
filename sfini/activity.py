@@ -1,7 +1,11 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/12
 
-"""Activity wrapper."""
+"""Activity interfacing.
+
+Activities are separate from state-machines, and are used as
+implementations of 'Task' states. Activities are registered separately.
+"""
 
 import inspect
 import typing as T
@@ -9,12 +13,12 @@ import logging as lg
 import functools as ft
 
 from . import _util
-from . import _task_resource
+from . import task_resource as sfini_task_resource
 
 _logger = lg.getLogger(__name__)
 
 
-class Activity(_task_resource.TaskResource):  # TODO: unit-test
+class Activity(sfini_task_resource.TaskResource):  # TODO: unit-test
     """Activity execution.
 
     Note that activity names must be unique (within a region). It's

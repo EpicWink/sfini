@@ -1,7 +1,7 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/06
 
-"""SFN service helper.
+"""SFN service CLI helper.
 
 Use in your ``__main__`` module to provide a CLI to your service.
 """
@@ -12,7 +12,7 @@ import argparse
 import logging as lg
 
 from . import _util
-from . import _worker
+from . import worker as sfini_worker
 
 
 class CLI:  # TODO: unit-test
@@ -27,7 +27,7 @@ class CLI:  # TODO: unit-test
             default: ``sys.argv[0]``
     """
 
-    _worker_class = _worker.Worker
+    _worker_class = sfini_worker.Worker
     _parser_class = argparse.ArgumentParser
 
     def __init__(

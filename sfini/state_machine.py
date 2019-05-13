@@ -1,7 +1,12 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/11
 
-"""SFN state-machine."""
+"""State-machine interfacing.
+
+A state-machine defines the logic for a workflow of an application. It
+is comprised of states (ie stages), and executions of which will run
+the workflow over some given data.
+"""
 
 import json
 import uuid
@@ -10,8 +15,8 @@ import typing as T
 import logging as lg
 
 from . import _util
-from . import _execution
-from . import _states
+from . import execution as sfini_execution
+from . import state as sfini_state
 
 _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
@@ -27,14 +32,14 @@ class StateMachine:  # TODO: unit-test
         session: session to use for AWS communication
     """
 
-    _execution_class = _execution.Execution
-    _succeed_state_class = _states.Succeed
-    _fail_state_class = _states.Fail
-    _pass_state_class = _states.Pass
-    _wait_state_class = _states.Wait
-    _parallel_state_class = _states.Parallel
-    _choice_state_class = _states.Choice
-    _task_state_class = _states.Task
+    _execution_class = sfini_execution.Execution
+    _succeed_state_class = sfini_state.Succeed
+    _fail_state_class = sfini_state.Fail
+    _pass_state_class = sfini_state.Pass
+    _wait_state_class = sfini_state.Wait
+    _parallel_state_class = sfini_state.Parallel
+    _choice_state_class = sfini_state.Choice
+    _task_state_class = sfini_state.Task
 
     def __init__(
             self,
@@ -48,7 +53,7 @@ class StateMachine:  # TODO: unit-test
         self.timeout = timeout
         self.session = session or _util.AWSSession()
         self._start_state = None
-        self.states: T.Dict[str, _states.State] = {}
+        self.states: T.Dict[str, sfini_state.State] = {}
 
     def __str__(self):
         return "State-machine '%s' (%s states)" % (self.name, len(self.states))
@@ -75,7 +80,7 @@ class StateMachine:  # TODO: unit-test
         """``sfini``-generated state-machine IAM role ARN."""
         return "arn:aws:iam::%s:role/sfiniGenerated" % self.session.account_id
 
-    State = T.TypeVar("State", bound=_states.State)
+    State = T.TypeVar("State", bound=sfini_state.State)
 
     def _state(self, cls: T.Type[State], name: str, *args, **kwargs) -> State:
         """Create a state in the state-machine.
@@ -314,7 +319,7 @@ class StateMachine:  # TODO: unit-test
 
         Args:
             name: name of state
-            resource (sfini._task_resource.TaskResource): task executor, eg
+            resource (sfini.task_resource.TaskResource): task executor, eg
                 activity or Lambda function
             comment: state description
             input_path: state input filter JSONPath, ``None`` for empty input
@@ -338,7 +343,7 @@ class StateMachine:  # TODO: unit-test
             result_path=result_path,
             timeout=timeout)
 
-    def start_at(self, state: _states.State):
+    def start_at(self, state: sfini_state.State):
         """Define starting state.
 
         Args:

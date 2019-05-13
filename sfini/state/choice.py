@@ -1,22 +1,27 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/11
 
-"""SFN choice rule operations."""
+"""SFN choice rules.
+
+These rules are used in the 'Choice' state of a state-machine, and
+allow for conditional branching in the state-machine. There are two
+types of choice rule: comparisons and logical operations.
+"""
 
 import datetime
 import typing as T
 import logging as lg
 
-from . import _util
+from .. import _util
 
 _logger = lg.getLogger(__name__)
 
 
-class _ChoiceOp:  # TODO: unit-test
+class ChoiceRule:  # TODO: unit-test
     """A choice case for the 'Choice' state.
 
     Args:
-        next_state (sfini._states.State): state to execute on success
+        next_state (sfini.state.State): state to execute on success
     """
 
     def __init__(self, next_state):
@@ -32,7 +37,7 @@ class _ChoiceOp:  # TODO: unit-test
         raise NotImplementedError
 
 
-class _ChoiceRule(_ChoiceOp):  # TODO: unit-test
+class Comparison(ChoiceRule):  # TODO: unit-test
     def __init__(
             self,
             variable_name: str,
@@ -66,7 +71,7 @@ class _ChoiceRule(_ChoiceOp):  # TODO: unit-test
             "Next": self.next_state.name}
 
 
-class BooleanEquals(_ChoiceRule):  # TODO: unit-test
+class BooleanEquals(Comparison):  # TODO: unit-test
     """Compare boolean variable value.
 
     Args:
@@ -81,7 +86,7 @@ class BooleanEquals(_ChoiceRule):  # TODO: unit-test
             raise TypeError("Boolean comparison value must be `bool`")
 
 
-class _NumericRule(_ChoiceRule):  # TODO: unit-test
+class _NumericRule(Comparison):  # TODO: unit-test
     """Compare numeric variable value.
 
     Args:
@@ -121,7 +126,7 @@ class NumericLessThanEquals(_NumericRule):
     pass
 
 
-class _StringRule(_ChoiceRule):  # TODO: unit-test
+class _StringRule(Comparison):  # TODO: unit-test
     """Compare string variable value.
 
     Args:
@@ -160,7 +165,7 @@ class StringLessThanEquals(_StringRule):
     pass
 
 
-class _TimestampRule(_ChoiceRule):  # TODO: unit-test
+class _TimestampRule(Comparison):  # TODO: unit-test
     """Compare date/time variable value.
 
     Args:
@@ -212,7 +217,7 @@ class TimestampLessThanEquals(_TimestampRule):
     pass
 
 
-class _LogicalRule(_ChoiceOp):  # TODO: unit-test
+class Logical(ChoiceRule):  # TODO: unit-test
     """Logical operation on choice rules.
 
     Args:
@@ -220,7 +225,7 @@ class _LogicalRule(_ChoiceOp):  # TODO: unit-test
         next_state: state to execute on success
     """
 
-    def __init__(self, choice_rules: T.List[_ChoiceRule], next_state):
+    def __init__(self, choice_rules: T.List[Comparison], next_state):
         super().__init__(next_state)
         self.choice_rules = choice_rules
 
@@ -257,15 +262,15 @@ class _LogicalRule(_ChoiceOp):  # TODO: unit-test
         return {op_name: choice_rule_defns, "Next": self.next_state.name}
 
 
-class And(_LogicalRule):
+class And(Logical):
     pass
 
 
-class Or(_LogicalRule):
+class Or(Logical):
     pass
 
 
-class Not(_LogicalRule):  # TODO: unit-test
+class Not(Logical):  # TODO: unit-test
     """Logical 'not' operation on a choice rule.
 
     Args:
@@ -273,7 +278,7 @@ class Not(_LogicalRule):  # TODO: unit-test
         next_state: state to execute on success
     """
 
-    def __init__(self, choice_rule: _ChoiceRule, next_state):
+    def __init__(self, choice_rule: Comparison, next_state):
         super().__init__([choice_rule], next_state)
 
     def __str__(self):

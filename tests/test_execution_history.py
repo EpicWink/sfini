@@ -1,9 +1,9 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/09
 
-"""Test ``sfini._execution_history``."""
+"""Test ``sfini.execution.history``."""
 
-from sfini import _execution_history as tscr
+from sfini.execution import history as tscr
 import pytest
 from unittest import mock
 

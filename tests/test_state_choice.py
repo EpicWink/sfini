@@ -1,9 +1,9 @@
 # --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/07/11
+# Created by: Laurie 2018/07/12
 
-"""Test ``sfini._states``."""
+"""Test ``sfini.state.choice``."""
 
-from sfini import _states as tscr
+from sfini.state import choice as tscr
 import pytest
 from unittest import mock
 

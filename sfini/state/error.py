@@ -1,12 +1,12 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/02
 
-"""SFN state execution error utitilies."""
+"""Comm state execution error utitilies."""
 
 import typing as T
 import logging as lg
 
-from . import _util
+from .. import _util
 
 _logger = lg.getLogger(__name__)
 

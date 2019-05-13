@@ -1,9 +1,9 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/11
 
-"""Test ``sfini._worker``."""
+"""Test ``sfini.worker``."""
 
-from sfini import _worker as tscr
+from sfini import worker as tscr
 import pytest
 from unittest import mock
 

@@ -1,13 +1,17 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/08/09
 
-"""SFN state-machine execution history events."""
+"""State-machine execution history events.
+
+Use ``sfini.execution.Execution.format_history`` for nice history
+printing.
+"""
 
 import json
 import typing as T
 import logging as lg
 
-from . import _util
+from .. import _util
 
 _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
@@ -51,7 +55,7 @@ _type_key_map = {
     "WaitStateExited": "stateExitedEventDetails"}
 
 
-class _Event:  # TODO: unit-test
+class Event:  # TODO: unit-test
     """An execution history event.
 
     Args:
@@ -109,14 +113,14 @@ class _Event:  # TODO: unit-test
     def from_history_event(
             cls,
             history_event: T.Dict[str, _util.JSONable]
-    ) -> "_Event":
+    ) -> "Event":
         """Parse an history event.
 
         Args:
             history_event: execution history event date, provided by AWS API
 
         Returns:
-            _Event: constructed execution history event
+            Event: constructed execution history event
         """
 
         args, _ = cls._get_args(history_event)
@@ -133,7 +137,7 @@ class _Event:  # TODO: unit-test
         return ""
 
 
-class _Failed(_Event):  # TODO: unit-test
+class Failed(Event):  # TODO: unit-test
     """An execution history failure event.
 
     Args:
@@ -179,7 +183,7 @@ class _Failed(_Event):  # TODO: unit-test
         return "error: %s" % self.error
 
 
-class _LambdaFunctionScheduled(_Event):  # TODO: unit-test
+class LambdaFunctionScheduled(Event):  # TODO: unit-test
     """An execution history AWS Lambda task-schedule event.
 
     Args:
@@ -230,7 +234,7 @@ class _LambdaFunctionScheduled(_Event):  # TODO: unit-test
         return "resource: %s" % self.resource
 
 
-class _ActivityScheduled(_LambdaFunctionScheduled):  # TODO: unit-test
+class ActivityScheduled(LambdaFunctionScheduled):  # TODO: unit-test
     """An execution history activity task-schedule event.
 
     Args:
@@ -283,7 +287,7 @@ class _ActivityScheduled(_LambdaFunctionScheduled):  # TODO: unit-test
         return args + (heartbeat,), details
 
 
-class _ActivityStarted(_Event):  # TODO: unit-test
+class ActivityStarted(Event):  # TODO: unit-test
     """An execution history activity task-start event.
 
     Args:
@@ -324,7 +328,7 @@ class _ActivityStarted(_Event):  # TODO: unit-test
         return "worker: %s" % self.worker_name
 
 
-class _ObjectSucceeded(_Event):  # TODO: unit-test
+class ObjectSucceeded(Event):  # TODO: unit-test
     """An execution history succeed event.
 
     Args:
@@ -361,7 +365,7 @@ class _ObjectSucceeded(_Event):  # TODO: unit-test
         return args + (output,), details
 
 
-class _ExecutionStarted(_Event):  # TODO: unit-test
+class ExecutionStarted(Event):  # TODO: unit-test
     """An execution history execution-start event.
 
     Args:
@@ -403,7 +407,7 @@ class _ExecutionStarted(_Event):  # TODO: unit-test
         return args + (execution_input, role_arn), details
 
 
-class _StateEntered(_Event):  # TODO: unit-test
+class StateEntered(Event):  # TODO: unit-test
     """An execution history state-enter event.
 
     Args:
@@ -449,7 +453,7 @@ class _StateEntered(_Event):  # TODO: unit-test
         return "name: %s" % self.state_name
 
 
-class _StateExited(_Event):  # TODO: unit-test
+class StateExited(Event):  # TODO: unit-test
     """An execution history state-exit event.
 
     Args:
@@ -496,48 +500,48 @@ class _StateExited(_Event):  # TODO: unit-test
 
 
 _type_class_map = {
-    "ActivityFailed": _Failed,
-    "ActivityScheduleFailed": _Failed,
-    "ActivityScheduled": _ActivityScheduled,
-    "ActivityStarted": _ActivityStarted,
-    "ActivitySucceeded": _ObjectSucceeded,
-    "ActivityTimedOut": _Failed,
-    "ChoiceStateEntered": _StateEntered,
-    "ChoiceStateExited": _StateExited,
-    "ExecutionFailed": _Failed,
-    "ExecutionStarted": _ExecutionStarted,
-    "ExecutionSucceeded": _ObjectSucceeded,
-    "ExecutionAborted": _Failed,
-    "ExecutionTimedOut": _Failed,
-    "FailStateEntered": _StateEntered,
-    "LambdaFunctionFailed": _Failed,
-    "LambdaFunctionScheduleFailed": _Failed,
-    "LambdaFunctionScheduled": _LambdaFunctionScheduled,
-    "LambdaFunctionStartFailed": _Failed,
-    "LambdaFunctionStarted": _Event,
-    "LambdaFunctionSucceeded": _ObjectSucceeded,
-    "LambdaFunctionTimedOut": _Failed,
-    "SucceedStateEntered": _StateEntered,
-    "SucceedStateExited": _StateExited,
-    "TaskStateAborted": _Event,
-    "TaskStateEntered": _StateEntered,
-    "TaskStateExited": _StateExited,
-    "PassStateEntered": _StateEntered,
-    "PassStateExited": _StateExited,
-    "ParallelStateAborted": _Event,
-    "ParallelStateEntered": _StateEntered,
-    "ParallelStateExited": _StateExited,
-    "ParallelStateFailed": _Failed,
-    "ParallelStateStarted": _Event,
-    "ParallelStateSucceeded": _Event,
-    "WaitStateAborted": _Event,
-    "WaitStateEntered": _StateEntered,
-    "WaitStateExited": _StateExited}
+    "ActivityFailed": Failed,
+    "ActivityScheduleFailed": Failed,
+    "ActivityScheduled": ActivityScheduled,
+    "ActivityStarted": ActivityStarted,
+    "ActivitySucceeded": ObjectSucceeded,
+    "ActivityTimedOut": Failed,
+    "ChoiceStateEntered": StateEntered,
+    "ChoiceStateExited": StateExited,
+    "ExecutionFailed": Failed,
+    "ExecutionStarted": ExecutionStarted,
+    "ExecutionSucceeded": ObjectSucceeded,
+    "ExecutionAborted": Failed,
+    "ExecutionTimedOut": Failed,
+    "FailStateEntered": StateEntered,
+    "LambdaFunctionFailed": Failed,
+    "LambdaFunctionScheduleFailed": Failed,
+    "LambdaFunctionScheduled": LambdaFunctionScheduled,
+    "LambdaFunctionStartFailed": Failed,
+    "LambdaFunctionStarted": Event,
+    "LambdaFunctionSucceeded": ObjectSucceeded,
+    "LambdaFunctionTimedOut": Failed,
+    "SucceedStateEntered": StateEntered,
+    "SucceedStateExited": StateExited,
+    "TaskStateAborted": Event,
+    "TaskStateEntered": StateEntered,
+    "TaskStateExited": StateExited,
+    "PassStateEntered": StateEntered,
+    "PassStateExited": StateExited,
+    "ParallelStateAborted": Event,
+    "ParallelStateEntered": StateEntered,
+    "ParallelStateExited": StateExited,
+    "ParallelStateFailed": Failed,
+    "ParallelStateStarted": Event,
+    "ParallelStateSucceeded": Event,
+    "WaitStateAborted": Event,
+    "WaitStateEntered": StateEntered,
+    "WaitStateExited": StateExited}
 
 
 def parse_history(  # TODO: unit-test
         history_events: T.List[T.Dict[str, _util.JSONable]]
-) -> T.List[_Event]:
+) -> T.List[Event]:
     """List the execution history.
 
     Args:

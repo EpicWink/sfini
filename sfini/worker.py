@@ -1,7 +1,12 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/12
 
-"""SFN activity task execution and polling."""
+"""Activity task polling and execution.
+
+You can provide you're own workers: the interface to the activities is
+public. This module's worker implementation uses threading, and is
+designed to be resource-managed outside of Python.
+"""
 
 import json
 import uuid
@@ -15,17 +20,17 @@ import logging as lg
 from botocore import exceptions as bc_exc
 
 from . import _util
-from . import _state_error
+from .state import error as sfini_state_error
 
 _logger = lg.getLogger(__name__)
 _host_name = socket.getfqdn(socket.gethostname())
 
 
-class _TaskExecution:  # TODO: unit-test
+class TaskExecution:  # TODO: unit-test
     """Execute a task, providing heartbeats and catching failures.
 
     Args:
-        activity (sfini._activity.CallableActivity): activity to execute
+        activity (sfini.activity.CallableActivity): activity to execute
             task of
         task_token: task token for execution identification
         task_input: task input
@@ -81,8 +86,8 @@ class _TaskExecution:  # TODO: unit-test
         _logger.info(_s % self)
         self._send(
             self.session.sfn.send_task_failure,
-            error=_state_error.WorkerCancel.__name__,
-            cause=str(_state_error.WorkerCancel()))
+            error=sfini_state_error.WorkerCancel.__name__,
+            cause=str(sfini_state_error.WorkerCancel()))
         self._request_stop = True
 
     def _report_success(self, res: _util.JSONable):
@@ -138,14 +143,14 @@ class Worker:  # TODO: unit-test
     """Worker to poll for activity task executions.
 
     Args:
-        activity (sfini._activity.CallableActivity): activity to poll and
+        activity (sfini.activity.CallableActivity): activity to poll and
             run executions of
         name: name of worker, used for identification, default: a
             combination of UUID and host's FQDN
         session: session to use for AWS communication
     """
 
-    _task_execution_class = _TaskExecution
+    _task_execution_class = TaskExecution
 
     def __init__(
             self,

@@ -1,9 +1,9 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/11
 
-"""Test ``sfini._state_machine``."""
+"""Test ``sfini.state_machine``."""
 
-from sfini import _state_machine as tscr
+from sfini import state_machine as tscr
 import pytest
 from unittest import mock
 

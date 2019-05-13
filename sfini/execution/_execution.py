@@ -1,15 +1,15 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2018/07/11
 
-"""SFN state-machine execution."""
+"""State-machine execution."""
 
 import time
 import json
 import typing as T
 import logging as lg
 
-from . import _util
-from . import _execution_history
+from .. import _util
+from . import history as sfini_execution_history
 
 _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
@@ -196,7 +196,7 @@ class Execution:  # TODO: unit-test
         resp = self.session.sfn.stop_execution(executionArn=self._arn, **_kw)
         _logger.info("Execution stopped on %s" % resp["stopDate"])
 
-    def get_history(self) -> T.List[_execution_history._Event]:
+    def get_history(self) -> T.List[sfini_execution_history.Event]:
         """List the execution history.
 
         Returns:
@@ -208,7 +208,7 @@ class Execution:  # TODO: unit-test
         resp = _util.collect_paginated(
             self.session.sfn.get_execution_history,
             executionArn=self._arn)
-        return _execution_history.parse_history(resp["events"])
+        return sfini_execution_history.parse_history(resp["events"])
 
     def format_history(self) -> str:
         """Format the execution history for printing.

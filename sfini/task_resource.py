@@ -1,7 +1,12 @@
 # --- 80 characters -----------------------------------------------------------
 # Created by: Laurie 2019/05/09
 
-"""Task executors."""
+"""Task resource interfacing.
+
+'Task' states require some executor to implement the task, which
+different AWS services can provide, including Step Functions activities
+and Lambda functions.
+"""
 
 import logging as lg
 
