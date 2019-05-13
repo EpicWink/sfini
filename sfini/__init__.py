@@ -14,6 +14,7 @@ __all__ = [
     "StateMachine",
     "Worker",
     "AWSSession",
+    "Activity",
     "ActivityRegistration",
     "Execution",
     "WorkerCancel",
@@ -44,6 +45,7 @@ import logging as lg
 from ._state_machine import StateMachine
 from ._worker import Worker
 from ._util import AWSSession
+from ._activity import Activity
 from ._activity import ActivityRegistration
 from ._execution import Execution
 from ._state_error import WorkerCancel

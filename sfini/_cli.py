@@ -51,11 +51,11 @@ class CLI:  # TODO: unit-test
         d = None
         if self.state_machine and self.activities:
             _s = "Control %s and '%s' activities"
-            d = _s % (self.state_machine, self.activities.name)
+            d = _s % (self.state_machine, self.activities.prefix)
         elif self.state_machine:
             d = "Control '%s'" % self.state_machine
         elif self.activities:
-            d = "Control '%s' activities" % self.activities.name
+            d = "Control '%s' activities" % self.activities.prefix
         parser = argparse.ArgumentParser(description=d, prog=self.prog)
         if self.version:
             parser.add_argument(

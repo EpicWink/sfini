@@ -174,7 +174,7 @@ class ActivityRegistration:  # TODO: unit-test
     """Activities registration.
 
     Provides convenience for grouping activities, generating activity
-    names, and bulk-registering activities.
+    names, bulk-registering activities, and activity function decoration.
 
     An activity is attached to state-machine tasks, and is called when that
     task is executed. A worker registers itself able to run some activities
@@ -198,8 +198,6 @@ class ActivityRegistration:  # TODO: unit-test
 
     _activity_class = CallableActivity
     _smart_activity_class = SmartCallableActivity
-    _external_activity_class = Activity
-    _lambda_activity_class = _task_resource.Lambda
 
     def __init__(self, prefix: str = "", *, session: _util.AWSSession = None):
         self.prefix = prefix
@@ -220,6 +218,21 @@ class ActivityRegistration:  # TODO: unit-test
         """All registered activities."""
         return set(self.activities.values())
 
+    def add_activity(self, activity: Activity):
+        """Add an activity to the group.
+
+        Args:
+            activity: activity to add
+
+        Raises:
+            ValueError: if activity the same name as an existing activity
+        """
+
+        name = activity.name
+        if name in self.activities:
+            raise ValueError("Activity '%s' already registered" % name)
+        self.activities[name] = activity
+
     def _activity(
             self,
             activity_cls: T.Type[CallableActivity],
@@ -236,14 +249,12 @@ class ActivityRegistration:  # TODO: unit-test
 
         def wrapper(fn):
             suff = fn.__name__ if name is None else name
-            if suff in self.activities:
-                raise ValueError("Activity '%s' already registered" % suff)
             activity = activity_cls.from_callable(
                 fn,
                 self.prefix + suff,
                 heartbeat=heartbeat,
                 session=self.session)
-            self.activities[suff] = activity
+            self.add_activity(activity)
             return ft.update_wrapper(activity, fn)
         return wrapper
 
@@ -287,32 +298,6 @@ class ActivityRegistration:  # TODO: unit-test
             name=name,
             heartbeat=heartbeat)
 
-    def external_activity(
-            self,
-            name: str,
-            heartbeat: int = 20
-    ) -> _external_activity_class:
-        """Declare an externally-implemented activity.
-
-        Args:
-            name: name of activity
-            heartbeat: seconds between heartbeat during activity running
-        """
-
-        return self._external_activity_class(
-            self.prefix + name,
-            heartbeat=heartbeat,
-            session=self.session)
-
-    def lambda_activity(self, name: str) -> _lambda_activity_class:
-        """Declare an AWS Lambda Function task executor.
-
-        Args:
-            name: name of Lambda function
-        """
-
-        return self._lambda_activity_class(name, session=self.session)
-
     def register(self):
         """Add registered activities to AWS SFN."""
         for activity in self.activities.values():
@@ -323,7 +308,8 @@ class ActivityRegistration:  # TODO: unit-test
         resp = _util.collect_paginated(self.session.sfn.list_activities)
         acts = []
         for act in resp["activities"]:
-            if act["name"][:len(self.prefix)] != self.prefix:
+            prefix = act["name"][:len(self.prefix)]
+            if prefix != self.prefix or act["name"] not in self.activities:
                 continue
             name = act["name"][len(self.prefix):]
             acts.append((name, act["arn"], act["creationDate"]))
@@ -340,9 +326,5 @@ class ActivityRegistration:  # TODO: unit-test
 
     def deregister(self):
         """Remove activities in AWS SFN."""
-        if not self.prefix:
-            raise RuntimeError(
-                "Deregistering activities with prefix '' would remove all "
-                "activities")
         acts = self._list_activities()
         self._deregister_activities(acts)
