@@ -30,7 +30,6 @@ in activities registeration to help with unregistering later.
 
 Next, let's define a simple state-machine to utilise our adding activity::
 
-    # Define state-machine
     sm = sfini.StateMachine("testAdding")
 
     add = sm.task("add", add_activity)
@@ -45,7 +44,6 @@ all activity output goes to the state, which becomes the workflow output).
 To be able to use this activity and state-machine, we must register it with AWS
 Step Functions::
 
-    # Register state-machine and activities
     activities.register()
     sm.register()
 
@@ -54,7 +52,6 @@ state-machine executions: call ``sm.register(role_arn="...")``.
 
 Now, let's start an execution of the state-machine, with some input::
 
-    # Start execution
     execution = sm.start_execution(execution_input={"a": 3, "b": 42})
     print(execution.name)
     # testAdding_2019-05-13T19-07_0354d790
@@ -67,14 +64,12 @@ workers are implemented in threads, but you're welcome to bring your own
 Start a worker to allow the workflow execution to progress through the 'add'
 task::
 
-    # Start activity worker
     worker = sfini.Worker(add_activity)
     worker.start()
 
 We can now block the local script's execution by waiting for the execution to
 finish::
 
-    # Wait for execution and print output
     execution.wait()
     print(execution.output)
     # 45
@@ -88,14 +83,12 @@ activity executions from occuring, but won't kill any current executions (use
 CTRL+C or your favourite interrupt/kill signal sender for that). ``join``
 simply waits for the thread to finish::
 
-    # Stop activity workers
     worker.end()
     worker.join()
 
 And more clean-up: unregister the adding activity and state-machine (unless
 you're felling particularly attached)::
 
-    # Deregister state-machine and activities
     activities.deregister()
     sm.deregister()
 
