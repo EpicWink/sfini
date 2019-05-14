@@ -16,7 +16,7 @@ __all__ = [
     "ActivityRegistration",
     "CLI",
     "Lambda",
-    "StateMachine",
+    "construct_state_machine",
     "Worker",
     "WorkerCancel"]
 
@@ -25,9 +25,16 @@ from .activity import Activity
 from .activity import ActivityRegistration
 from ._cli import CLI
 from .task_resource import Lambda
-from .state_machine import StateMachine
+from .state_machine import construct_state_machine
 from .worker import Worker
 from .worker import WorkerCancel
+from .state import Succeed
+from .state import Fail
+from .state import Pass
+from .state import Wait
+from .state import Parallel
+from .state import Choice
+from .state import Task
 from .state.choice import And
 from .state.choice import Or
 from .state.choice import Not

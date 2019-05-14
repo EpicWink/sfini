@@ -27,6 +27,8 @@ class StateMachine:  # TODO: unit-test
 
     Args:
         name: name of state-machine
+        states: state-machine states
+        start_state: name of start state
         comment: description of state-maching
         timeout: execution time-out (seconds)
         session: session to use for AWS communication
@@ -44,16 +46,18 @@ class StateMachine:  # TODO: unit-test
     def __init__(
             self,
             name: str,
+            states: T.Dict[str, sfini_state.State],
+            start_state: str,
             comment: str = _default,
             timeout: int = _default,
             *,
             session: _util.AWSSession = None):
         self.name = name
+        self.states = states
+        self.start_state = start_state
         self.comment = comment
         self.timeout = timeout
         self.session = session or _util.AWSSession()
-        self._start_state = None
-        self.states: T.Dict[str, sfini_state.State] = {}
 
     def __str__(self):
         return "'%s' (%s states)" % (self.name, len(self.states))
@@ -73,284 +77,6 @@ class StateMachine:  # TODO: unit-test
         """``sfini``-generated state-machine IAM role ARN."""
         return "arn:aws:iam::%s:role/sfiniGenerated" % self.session.account_id
 
-    State = T.TypeVar("State", bound=sfini_state.State)
-
-    def _state(self, cls: T.Type[State], name: str, *args, **kwargs) -> State:
-        """Create a state in the state-machine.
-
-        Args:
-            cls: state to create
-            name: name of state
-            *args: positional arguments to ``cls``
-            **kwargs: keyword arguments to ``cls``
-
-        Returns:
-            created state
-        """
-
-        if name in self.states:
-            raise ValueError("State name '%s' already registered" % name)
-        state = cls(name, *args, **kwargs, state_machine=self)
-        self.states[name] = state
-        return state
-
-    def succeed(
-            self,
-            name: str,
-            comment: str = _default,
-            input_path: T.Union[str, None] = _default,
-            output_path: T.Union[str, None] = _default
-    ) -> _succeed_state_class:
-        """Create a succeed state.
-
-        Ends execution successfully.
-
-        Args:
-            name: name of state
-            comment: state description
-            input_path: state input filter JSONPath, ``None`` for empty input
-            output_path: state output filter JSONPath, ``None`` for discarded
-                output
-
-        Returns:
-            succeed state
-        """
-
-        return self._state(
-            self._succeed_state_class,
-            name,
-            comment=comment,
-            input_path=input_path,
-            output_path=output_path)
-
-    def fail(
-            self,
-            name: str,
-            comment: str = _default,
-            cause=_default,
-            error=_default,
-            input_path: T.Union[str, None] = _default,
-            output_path: T.Union[str, None] = _default
-    ) -> _fail_state_class:
-        """Create a fail state.
-
-        Ends execution unsuccessfully.
-
-        Args:
-            name: name of state
-            comment: state description
-            input_path: state input filter JSONPath, ``None`` for empty input
-            output_path: state output filter JSONPath, ``None`` for discarded
-                output
-            cause: failure description
-            error: name of failure error
-
-        Returns:
-            fail state
-        """
-
-        return self._state(
-            self._fail_state_class,
-            name,
-            comment=comment,
-            input_path=input_path,
-            output_path=output_path,
-            cause=cause,
-            error=error)
-
-    def pass_(
-            self,
-            name: str,
-            comment: str = _default,
-            input_path: T.Union[str, None] = _default,
-            output_path: T.Union[str, None] = _default,
-            result_path: T.Union[str, None] = _default,
-            result: _util.JSONable = _default
-    ) -> _pass_state_class:
-        """Create a pass state.
-
-        No-op state, but can introduce data. The name specifies the location of
-            the introduced data.
-
-        Args:
-            name: name of state
-            comment: state description
-            input_path: state input filter JSONPath, ``None`` for empty input
-            output_path: state output filter JSONPath, ``None`` for discarded
-                output
-            result_path: task output location JSONPath, ``None`` for discarded
-                output
-            result: return value of state
-
-        Returns:
-            pass state
-        """
-
-        return self._state(
-            self._pass_state_class,
-            name,
-            comment=comment,
-            input_path=input_path,
-            output_path=output_path,
-            result_path=result_path,
-            result=result)
-
-    def wait(
-            self,
-            name: str,
-            until: T.Union[int, datetime.datetime, str],
-            comment: str = _default,
-            input_path: T.Union[str, None] = _default,
-            output_path: T.Union[str, None] = _default
-    ) -> _wait_state_class:
-        """Create a wait state.
-
-        Waits until a time before continuing.
-
-        Args:
-            name: name of state
-            until: time to wait. If ``int``, then seconds to wait; if
-                ``datetime.datetime``, then time to wait until; if ``str``,
-                then name of state-variable containing time to wait until
-            comment: state description
-            input_path: state input filter JSONPath, ``None`` for empty input
-            output_path: state output filter JSONPath, ``None`` for discarded
-                output
-
-        Returns:
-            wait state
-        """
-
-        return self._state(
-            self._wait_state_class,
-            name,
-            until,
-            comment=comment,
-            input_path=input_path,
-            output_path=output_path)
-
-    def parallel(
-            self,
-            name: str,
-            comment: str = _default,
-            input_path: T.Union[str, None] = _default,
-            output_path: T.Union[str, None] = _default,
-            result_path: T.Union[str, None] = _default
-    ) -> _parallel_state_class:
-        """Create a parallel state.
-
-        Runs states-machines in parallel. These state-machines do not need to
-        be registered with AWS Step Functions.
-
-        The input to each state-machine execution is the input into this
-        parallel state. The output of the parallel state is a list of each
-        state-machine's output (in order of adding).
-
-        Args:
-            name: name of state
-            comment: state description
-            input_path: state input filter JSONPath, ``None`` for empty input
-            output_path: state output filter JSONPath, ``None`` for discarded
-                output
-            result_path: task output location JSONPath, ``None`` for discarded
-                output
-
-        Returns:
-            parallel state
-        """
-
-        return self._state(
-            self._parallel_state_class,
-            name,
-            comment=comment,
-            input_path=input_path,
-            output_path=output_path,
-            result_path=result_path)
-
-    def choice(
-            self,
-            name: str,
-            comment: str = _default,
-            input_path: T.Union[str, None] = _default,
-            output_path: T.Union[str, None] = _default
-    ) -> _choice_state_class:
-        """Create a choice state.
-
-        Creates branches of possible execution based on conditions.
-
-        Args:
-            name: name of state
-            comment: state description
-            input_path: state input filter JSONPath, ``None`` for empty input
-            output_path: state output filter JSONPath, ``None`` for discarded
-                output
-
-        Returns:
-            choice state
-        """
-
-        return self._state(
-            self._choice_state_class,
-            name,
-            comment=comment,
-            input_path=input_path,
-            output_path=output_path)
-
-    def task(
-            self,
-            name: str,
-            resource,
-            comment: str = _default,
-            input_path: T.Union[str, None] = _default,
-            output_path: T.Union[str, None] = _default,
-            result_path: T.Union[str, None] = _default,
-            timeout: int = _default
-    ) -> _task_state_class:
-        """Create a task state.
-
-        Executes an activity.
-
-        Args:
-            name: name of state
-            resource (sfini.task_resource.TaskResource): task executor, eg
-                activity or Lambda function
-            comment: state description
-            input_path: state input filter JSONPath, ``None`` for empty input
-            output_path: state output filter JSONPath, ``None`` for discarded
-                output
-            result_path: task output location JSONPath, ``None`` for discarded
-                output
-            timeout: seconds before task time-out
-
-        Returns:
-            task state
-        """
-
-        return self._state(
-            self._task_state_class,
-            name,
-            resource,
-            comment=comment,
-            input_path=input_path,
-            output_path=output_path,
-            result_path=result_path,
-            timeout=timeout)
-
-    def start_at(self, state: sfini_state.State):
-        """Define starting state.
-
-        Args:
-            state: initial state
-        """
-
-        if state.state_machine is not self:
-            _s = "State '%s' is not part of this state-machine"
-            raise ValueError(_s % state)
-        if self._start_state is not None:
-            _s = "Overriding start state %s with %s"
-            _logger.warning(_s % (self._start_state, state))
-        self._start_state = state
-
     def to_dict(self) -> T.Dict[str, _util.JSONable]:
         """Convert this state-machine to a definition dictionary.
 
@@ -360,7 +86,7 @@ class StateMachine:  # TODO: unit-test
 
         _logger.debug("Converting '%s' to dictionary" % self)
         state_defns = {n: s.to_dict() for n, s in self.states.items()}
-        defn = {"StartAt": self._start_state.name, "States": state_defns}
+        defn = {"StartAt": self.start_state, "States": state_defns}
         if self.comment != _default:
             defn["Comment"] = self.comment
         if self.timeout != _default:
@@ -497,3 +223,43 @@ class StateMachine:  # TODO: unit-test
             _logger.debug(_s % (execution, status, stop_date))
 
         return executions
+
+
+def construct_state_machine(
+        name: str,
+        start_state: sfini_state.State,
+        comment: str = _default,
+        timeout: int = _default,
+        *,
+        session: _util.AWSSession = None
+) -> StateMachine:
+    """Construct a state-machine from the starting state.
+
+    Make sure to construct the state-machine after all states have been
+    defined: subsequent states will need to be added to the state-machine
+    manually.
+
+    Only states referenced by the provided first state (and their children)
+    will be in the state-machine definition. Add states via an impossible
+    choice rule to include them in the definition.
+
+    Args:
+        name: name of state-machine
+        start_state: starting state of state-machine
+        comment: description of state-maching
+        timeout: execution time-out (seconds)
+        session: session to use for AWS communication
+
+    Returns:
+        constructed state-machine
+    """
+
+    states = {}
+    start_state.add_to(states)
+    return StateMachine(
+        name,
+        states,
+        start_state.name,
+        comment=comment,
+        timeout=timeout,
+        session=session)

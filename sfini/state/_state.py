@@ -23,7 +23,6 @@ class Succeed(_base.State):  # TODO: unit-test
         input_path: state input filter JSONPath, ``None`` for empty input
         output_path: state output filter JSONPath, ``None`` for discarded
             output
-        state_machine: state-machine this state is a part of
     """
 
     pass
@@ -40,7 +39,6 @@ class Fail(_base.State):  # TODO: unit-test
             output
         cause: failure description
         error: name of failure error
-        state_machine: state-machine this state is a part of
     """
 
     def __init__(
@@ -50,15 +48,12 @@ class Fail(_base.State):  # TODO: unit-test
             input_path=_default,
             output_path=_default,
             cause: str = _default,
-            error: str = _default,
-            *,
-            state_machine):
+            error: str = _default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
-            output_path=output_path,
-            state_machine=state_machine)
+            output_path=output_path)
         self.cause = cause
         self.error = error
 
@@ -86,7 +81,6 @@ class Pass(_base.HasResultPath, _base.HasNext, _base.State):
         result_path: task output location JSONPath, ``None`` for discarded
             output
         result: return value of state, stored in the variable ``name``
-        state_machine: state-machine this state is a part of
 
     Attributes:
         next: next state to execute
@@ -99,16 +93,13 @@ class Pass(_base.HasResultPath, _base.HasNext, _base.State):
             input_path=_default,
             output_path=_default,
             result_path=_default,
-            result: _util.JSONable = _default,
-            *,
-            state_machine):
+            result: _util.JSONable = _default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
             output_path=output_path,
-            result_path=result_path,
-            state_machine=state_machine)
+            result_path=result_path)
         self.result = result
 
     def to_dict(self):
@@ -130,7 +121,6 @@ class Wait(_base.HasNext, _base.State):  # TODO: unit-test
         input_path: state input filter JSONPath, ``None`` for empty input
         output_path: state output filter JSONPath, ``None`` for discarded
             output
-        state_machine: state-machine this state is a part of
 
     Attributes:
         next: next state to execute
@@ -142,15 +132,12 @@ class Wait(_base.HasNext, _base.State):  # TODO: unit-test
             until: T.Union[int, datetime.datetime, str],
             comment=_default,
             input_path=_default,
-            output_path=_default,
-            *,
-            state_machine):
+            output_path=_default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
-            output_path=output_path,
-            state_machine=state_machine)
+            output_path=output_path)
         self.until = until
 
     def to_dict(self):
@@ -187,7 +174,6 @@ class Parallel(
             output
         result_path: task output location JSONPath, ``None`` for discarded
             output
-        state_machine: state-machine this state is a part of
 
     Attributes:
         state_machines (list[sfini.StateMachine]): state-machines to run in
@@ -204,16 +190,13 @@ class Parallel(
             comment=_default,
             input_path=_default,
             output_path=_default,
-            result_path=_default,
-            *,
-            state_machine):
+            result_path=_default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
             output_path=output_path,
-            result_path=result_path,
-            state_machine=state_machine)
+            result_path=result_path)
         self.state_machines = []
 
     def to_dict(self):
@@ -246,7 +229,6 @@ class Choice(_base.State):  # TODO: unit-test
         input_path: state input filter JSONPath, ``None`` for empty input
         output_path: state output filter JSONPath, ``None`` for discarded
             output
-        state_machine: state-machine this state is a part of
 
     Attributes:
         choices (list[sfini.choice.ChoiceRule]): choice rules
@@ -261,17 +243,21 @@ class Choice(_base.State):  # TODO: unit-test
             name,
             comment=_default,
             input_path=_default,
-            output_path=_default,
-            *,
-            state_machine):
+            output_path=_default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
-            output_path=output_path,
-            state_machine=state_machine)
+            output_path=output_path)
         self.choices = []
         self.default: T.Union[_base.State, None] = None
+
+    def add_to(self, state_machine):
+        super().add_to(state_machine)
+        for rule in self.choices:
+            rule.next_state.add_to(state_machine)
+        if self.default is not None:
+            self.default.add_to(state_machine)
 
     def to_dict(self):
         if not self.choices and self.default is None:
@@ -297,7 +283,6 @@ class Choice(_base.State):  # TODO: unit-test
         if rule.next_state is None:
             msg = "Top-level choice rules must specify next state"
             raise RuntimeError(msg)
-        self._validate_state(rule.next_state)
         self.choices.append(rule)
 
     def remove(self, rule):
@@ -322,7 +307,6 @@ class Choice(_base.State):  # TODO: unit-test
             state: default state to execute
         """
 
-        self._validate_state(state)
         if self.default is not None:
             _s = "Overwriting current default state '%s'"
             _logger.warning(_s % self.default)
@@ -349,7 +333,6 @@ class Task(
         result_path: task output location JSONPath, ``None`` for discarded
             output
         timeout: seconds before task time-out
-        state_machine: state-machine this state is a part of
 
     Attributes:
         next: next state to execute
@@ -367,16 +350,13 @@ class Task(
             input_path=_default,
             output_path=_default,
             result_path=_default,
-            timeout: int = _default,
-            *,
-            state_machine):
+            timeout: int = _default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
             output_path=output_path,
-            result_path=result_path,
-            state_machine=state_machine)
+            result_path=result_path)
         self.resource = resource
         self.timeout = timeout
 

@@ -95,10 +95,8 @@ def add_activity(data):
 
 
 # Define state-machine
-sm = sfini.StateMachine("testAdding")
-
-add = sm.task("add", add_activity)
-sm.start_at(add)
+add = sfini.Task("add", add_activity)
+sm = sfini.construct_state_machine("testAdding", add)
 
 # Register state-machine and activities
 activities.register()

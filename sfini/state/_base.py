@@ -21,8 +21,6 @@ class State:  # TODO: unit-test
         input_path: state input filter JSONPath, ``None`` for empty input
         output_path: state output filter JSONPath, ``None`` for discarded
             output
-        state_machine (sfini.StateMachine): state-machine this state is a
-            part of
     """
 
     def __init__(
@@ -30,34 +28,30 @@ class State:  # TODO: unit-test
             name: str,
             comment: str = _default,
             input_path: T.Union[str, None] = _default,
-            output_path: T.Union[str, None] = _default,
-            *,
-            state_machine):
+            output_path: T.Union[str, None] = _default):
         self.name = name
         self.comment = comment
         self.input_path = input_path
         self.output_path = output_path
-        self.state_machine = state_machine
 
     def __str__(self):
         name = type(self).__name__
-        return "%s [%s] of %s" % (self.name, name, self.state_machine.name)
+        return "%s [%s]" % (self.name, name)
 
     __repr__ = _util.easy_repr
 
-    def _validate_state(self, state: "State"):
-        """Ensure state is of the same state-machine.
+    def add_to(self, states):
+        """Add this state to a state-machine definition.
 
-        Args:
-            state: state to validate
+        Any child states will also be added to the definition.
 
-        Raises:
-            ValueError: if state is not of the same state-machine
+        Arguments:
+            states (dict[str, State]): state-machine states
         """
 
-        if state.state_machine is not self.state_machine:
-            _s = "State '%s' is not part of this state-machine"
-            raise ValueError(_s % state)
+        if states.get(self.name, self) != self:
+            raise ValueError("State name '%s' already registered" % self.name)
+        states[self.name] = self
 
     def to_dict(self) -> T.Dict[str, _util.JSONable]:
         """Convert this state to a definition dictionary.
@@ -85,7 +79,6 @@ class HasNext(State):  # TODO: unit-test
         input_path: state input filter JSONPath, ``None`` for empty input
         output_path: state output filter JSONPath, ``None`` for discarded
             output
-        state_machine: state-machine this state is a part of
 
     Attributes:
         next: next state to execute, or ``None`` if state is terminal
@@ -96,16 +89,18 @@ class HasNext(State):  # TODO: unit-test
             name,
             comment=_default,
             input_path=_default,
-            output_path=_default,
-            *,
-            state_machine):
+            output_path=_default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
-            output_path=output_path,
-            state_machine=state_machine)
+            output_path=output_path)
         self.next: T.Union[State, None] = None
+
+    def add_to(self, states):
+        super().add_to(states)
+        if self.next is not None:
+            self.next.add_to(states)
 
     def goes_to(self, state: State):
         """Set next state after this state finishes.
@@ -114,7 +109,6 @@ class HasNext(State):  # TODO: unit-test
             state: state to execute next
         """
 
-        self._validate_state(state)
         if self.next is not None:
             _logger.warning("Overriding current next state: %s" % self.next)
         self.next = state
@@ -143,7 +137,6 @@ class HasResultPath(State):  # TODO: unit-test
             output
         result_path: task output location JSONPath, ``None`` for discarded
             output
-        state_machine: state-machine this state is a part of
     """
 
     def __init__(
@@ -152,15 +145,12 @@ class HasResultPath(State):  # TODO: unit-test
             comment=_default,
             input_path=_default,
             output_path=_default,
-            result_path: T.Union[str, None] = _default,
-            *,
-            state_machine):
+            result_path: T.Union[str, None] = _default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
-            output_path=output_path,
-            state_machine=state_machine)
+            output_path=output_path)
         self.result_path = result_path
 
     def to_dict(self):
@@ -249,7 +239,6 @@ class CanRetry(ErrorHandling, State):
         input_path: state input filter JSONPath, ``None`` for empty input
         output_path: state output filter JSONPath, ``None`` for discarded
             output
-        state_machine: state-machine this state is a part of
 
     Attributes:
         retriers: error handler policies
@@ -260,15 +249,12 @@ class CanRetry(ErrorHandling, State):
             name,
             comment=_default,
             input_path=_default,
-            output_path=_default,
-            *,
-            state_machine):
+            output_path=_default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
-            output_path=output_path,
-            state_machine=state_machine)
+            output_path=output_path)
         self.retriers: T.List[T.Tuple[T.Sequence[str], T.Dict]] = []
 
     def retry_for(
@@ -322,7 +308,6 @@ class CanCatch(ErrorHandling, State):
         input_path: state input filter JSONPath, ``None`` for empty input
         output_path: state output filter JSONPath, ``None`` for discarded
             output
-        state_machine: state-machine this state is a part of
 
     Attributes:
         catchers: error handler policies
@@ -333,16 +318,18 @@ class CanCatch(ErrorHandling, State):
             name,
             comment=_default,
             input_path=_default,
-            output_path=_default,
-            *,
-            state_machine):
+            output_path=_default):
         super().__init__(
             name,
             comment=comment,
             input_path=input_path,
-            output_path=output_path,
-            state_machine=state_machine)
+            output_path=output_path)
         self.catchers: T.List[T.Tuple[T.Sequence[str], T.Any]] = []
+
+    def add_to(self, states):
+        super().add_to(states)
+        for _, policy in self.catchers:
+            policy["next_state"].add_to(states)
 
     def catch(
             self,
@@ -366,7 +353,6 @@ class CanCatch(ErrorHandling, State):
         self.catchers.append((excs, policy))
 
     def _policy_defn(self, policy):
-        self._validate_state(policy["next_state"])
         defn = {"Next": policy["next_state"].name}
         if policy["result_path"] != _default:
             defn["ResultPath"] = policy["result_path"]

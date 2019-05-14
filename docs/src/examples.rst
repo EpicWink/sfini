@@ -30,10 +30,8 @@ in activities registeration to help with unregistering later.
 
 Next, let's define a simple state-machine to utilise our adding activity::
 
-    sm = sfini.StateMachine("testAdding")
-
-    add = sm.task("add", add_activity)
-    sm.start_at(add)
+    add = sfini.Task("add", add_activity)
+    sm = sfini.construct_state_machine("testAdding", add)
 
 We've added a 'task' as the initial (and in this example, only) state (ie
 stage) of the workflow. This task will be implemented by our adding activity.
@@ -130,18 +128,20 @@ File-processing
 
 
     # Define state-machine
-    sm = sfini.StateMachine("myStateMachine")
+    resize_images = sfini.Task(
+        "resizeImages",
+        resize_activity,
+        result_path=None)
 
-    resize_images = sm.task("resizeImages", resize_activity, result_path=None)
-    sm.start_at(resize_images)
-
-    get_centres = sm.task(
+    get_centres = sfini.Task(
         "getCentre",
         get_centres_activity,
         comment="get pixel values of centres of images",
         input_path="$.resized_image_dir",
         result_path="$.res")
     resize_images.goes_to(get_centres)
+
+    sm = sfini.construct_state_machine("myStateMachine", resize_images)
 
     # Register state-machine and activities
     activities.register()
@@ -195,24 +195,26 @@ Looping
 
 
     # Define state-machine
-    sm = sfini.StateMachine("myStateMachine")
+    initialise = sfini.Pass(
+        "initialise",
+        result=0,
+        result_path="$.counter")
 
-    initialise = sm.pass_("initialise", result=0, result_path="$.counter")
-    sm.start_at(initialise)
-
-    increment = sm.task(
+    increment = sfini.Task(
         "increment",
         increment_activity,
         result_path="$.counter")
     initialise.goes_to(increment)
 
-    check_counter = sm.choice("checkCounter")
+    check_counter = sfini.Choice("checkCounter")
     increment.goes_to(check_counter)
 
     check_counter.add(sfini.NumericLessThan("$.counter", 10, increment))
 
-    end = sm.succeed("end", output_path="$.counter")
+    end = sfini.Succeed("end", output_path="$.counter")
     check_counter.set_default(end)
+
+    sm = sfini.construct_state_machine("myStateMachine", initialise)
 
     # Register state-machine and activities
     activities.register()
@@ -268,28 +270,26 @@ Parallel
 
 
     # Define state-machine
-    sm = sfini.StateMachine("myStateMachine")
-
-    print_and_log = sm.parallel(
+    print_and_log = sfini.Parallel(
         "printAndLog",
         result_path="$.parallel",
         output_path="$.parallel")
-    sm.start_at(print_and_log)
 
-    log_sm = sfini.StateMachine("logSM")
+    log = sfini.Task("log", log_message_activity, result_path=None)
+    log_sm = sfini.construct_state_machine("logSM", log)
+
+    print_ = sfini.Task(
+        "log",
+        print_message_activity,
+        result_path="$.until")
+    wait = sfini.Wait("wait", "$.until")
+    print_.goes_to(wait)
+    print_sm = sfini.construct_state_machine("printSM", print_)
+
     print_and_log.add(log_sm)
-
-    log = log_sm.task("log", log_message_activity, result_path=None)
-    log_sm.start_at(log)
-
-    print_sm = sfini.StateMachine("printSM")
     print_and_log.add(print_sm)
 
-    print_ = print_sm.task("log", print_message_activity, result_path="$.until")
-    print_sm.start_at(print_)
-
-    wait = print_sm.wait("wait", "$.until")
-    print_.goes_to(wait)
+    sm = sfini.construct_state_machine("myStateMachine", print_and_log)
 
     # Register state-machine and activities
     activities.register()
@@ -339,8 +339,8 @@ CLI
 
 
     # Define state-machine
-    sm = sfini.StateMachine("myStateMachine")
-    sm.start_at(sm.task("print", print_activity))
+    print_ = sfini.Task("print", print_activity)
+    sm = sfini.construct_state_machine("myStateMachine", print_)
 
     # Parse arguments
     sfini.CLI(sm, activities, role_arn="...", version="1.0").parse_args()
@@ -373,15 +373,16 @@ Error-handling
 
 
     # Define state-machine
-    sm = sfini.StateMachine("myStateMachine")
-
-    raise_ = sm.task("raise", raise_activity, timeout=10)
-    sm.start_at(raise_)
-
+    raise_ = sfini.Task("raise", raise_activity, timeout=10)
     raise_.retry_for("Timeout", interval=3)
 
-    fail = sm.fail("fail", error="WorkerError", cause="MyError was raised")
+    fail = sfini.Fail(
+        "fail",
+        error="WorkerError",
+        cause="MyError was raised")
     raise_.catch(MyError, fail, result_path="$.error-info")
+
+    sm = sfini.construct_state_machine("myStateMachine", raise_)
 
     # Register state-machine and activities
     activities.register()
