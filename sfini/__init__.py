@@ -15,7 +15,6 @@ __all__ = [
     "Activity",
     "ActivityRegistration",
     "CLI",
-    "Execution",
     "Lambda",
     "StateMachine",
     "Worker",
@@ -25,7 +24,6 @@ from ._util import AWSSession
 from .activity import Activity
 from .activity import ActivityRegistration
 from ._cli import CLI
-from .execution import Execution
 from .task_resource import Lambda
 from .state_machine import StateMachine
 from .worker import Worker
