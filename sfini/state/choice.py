@@ -76,18 +76,16 @@ class Comparison(ChoiceRule):  # TODO: unit-test
         self.comparison_value = comparison_value
 
     def __str__(self):
-        return "'%s' %s %s [%s]" % (
+        return "'%s' %s %s%s" % (
             self.variable_path,
             type(self).__name__,
             self.comparison_value,
-            self.next_state)
+            "" if self.next_state is None else (" -> %s" % self.next_state))
 
     def __repr__(self):
-        return "%s(%s, %s, %s)" % (
-            type(self).__name__,
-            repr(self.variable_path),
-            repr(self.comparison_value),
-            repr(self.next_state))
+        args = (self.variable_path, self.comparison_value)
+        kwargs = {"next_state": self.next_state}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def _get_comparison(self):
         if not isinstance(self.comparison_value, self._expected_value_type):
@@ -202,13 +200,13 @@ class Logical(ChoiceRule):  # TODO: unit-test
     def __str__(self):
         _t = " %s " % type(self).__name__
         _s = _t.join("(%s)" % r for r in self.choice_rules)
-        return _s + " [%s]" % self.next_state
+        _n = "" if self.next_state is None else (" -> %s" % self.next_state)
+        return _s + _n
 
     def __repr__(self):
-        return "%s(%s, %s)" % (
-            type(self).__name__,
-            repr(self.choice_rules),
-            repr(self.next_state))
+        args = (self.choice_rules,)
+        kwargs = {"next_state": self.next_state}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     @staticmethod
     def _get_rule_defn(choice_rule: ChoiceRule) -> T.Dict[str, _util.JSONable]:
@@ -258,14 +256,14 @@ class Not(Logical):  # TODO: unit-test
         super().__init__([choice_rule], next_state=next_state)
 
     def __str__(self):
-        _f = (type(self).__name__, self.choice_rules[0], self.next_state)
-        return "%s %s [%s]" % _f
+        _n = "" if self.next_state is None else (" -> %s" % self.next_state)
+        _f = (type(self).__name__, self.choice_rules[0], _n)
+        return "%s %s%s" % _f
 
     def __repr__(self):
-        return "%s(%s, %s)" % (
-            type(self).__name__,
-            repr(self.choice_rules[0]),
-            repr(self.next_state))
+        args = (self.choice_rules[0],)
+        kwargs = {"next_state": self.next_state}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def _get_comparison(self) -> T.Dict[str, _util.JSONable]:
         return super()._get_comparison()[0]

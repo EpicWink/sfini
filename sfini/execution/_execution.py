@@ -51,21 +51,14 @@ class Execution:  # TODO: unit-test
 
     def __str__(self):
         status_str = (" [%s]" % self._status) if self._status else ""
-        _s = "%s '%s'%s"
-        return _s % (type(self).__name__, self.name, status_str)
+        return "%s%s" % (self.name, status_str)
 
     def __repr__(self):
-        _eii = isinstance(self.execution_input, (dict, list, tuple))
-        _ei = len(self.execution_input) if _eii else repr(self.execution_input)
-        _eips = "len(execution_input)=" if _eii else ""
-        return "%s(%s, %s, %s%s, arn=%s, session=%s)" % (
-            type(self).__name__,
-            repr(self.name),
-            repr(self.state_machine_arn),
-            _eips,
-            _ei,
-            repr(self.arn),
-            repr(self.session))
+        args = (self.name, self.state_machine_arn, self.execution_input)
+        kwargs = {"session": self.session}
+        if self.arn is not None:
+            kwargs["arn"] = self.arn
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     @classmethod
     def from_arn(

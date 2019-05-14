@@ -3,9 +3,11 @@
 
 """Common utilities for ``sfini``."""
 
+import inspect
 import typing as T
 import logging as lg
 import functools as ft
+from collections import abc
 
 import boto3
 from botocore import credentials
@@ -27,10 +29,10 @@ class DefaultParameter:  # TODO: unit-test
         return isinstance(self, type(other))
 
     def __str__(self):
-        return "<Unspecified>"
+        return "<unspecified>"
 
     def __repr__(self):
-        return "%s()" % type(self).__name__
+        return call_repr(type(self))
 
 
 def setup_logging(level: int = None):  # TODO: unit-test
@@ -130,6 +132,66 @@ def collect_paginated(
     return result
 
 
+def call_repr(
+        fn: T.Callable,
+        args: tuple = (),
+        kwargs: T.Dict[str, T.Any] = None,
+        shorten: bool = True
+) -> str:
+    """Produce a representation of a function call.
+
+    Args:
+        fn: function (or other callable) being called
+        args: call positional arguments
+        kwargs: call keyword arguments
+        shorten: attempt to shorten long argument representations
+
+    Returns:
+        call representation
+    """
+
+    kwargs = kwargs or {}
+    sig = inspect.signature(fn)
+
+    # Raise on incompatible function call
+    if not any(p.kind == p.VAR_POSITIONAL for p in sig.parameters.values()):
+        pos_kinds = (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        pos = [p for p in sig.parameters.values() if p.kind in pos_kinds]
+        if len(pos) < len(args):
+            sig.bind(*args, **kwargs)
+    if not any(p.kind == p.VAR_KEYWORD for p in sig.parameters.values()):
+        if any(n not in sig.parameters for n in kwargs):
+            sig.bind(*args, **kwargs)
+
+    # Build positional arguments substrings
+    arg_strs = []
+    for j, arg_val in enumerate(args):
+        arg_str = repr(arg_val)
+        if shorten and len(arg_str) > 80 and isinstance(arg_val, abc.Sized):
+            arg_str = "len %d" % len(arg_val)
+        arg_strs.append(arg_str)
+
+    # Build keyword arguments substrings
+    for name, arg_val in kwargs.items():
+        if name in sig.parameters:
+            param = sig.parameters[name]
+            if param.default != param.empty and arg_val == param.default:
+                continue
+        val_str = repr(arg_val)
+        if shorten and len(val_str) > 80 and isinstance(arg_val, abc.Sized):
+            arg_str = "len(%s)=%d" % (name, len(arg_val))
+        else:
+            arg_str = "%s=%s" % (name, val_str)
+        arg_strs.append(arg_str)
+
+    # Combine substrings
+    args_str = ", ".join(arg_strs)
+    fn_name = fn.__name__
+    return "%s(%s)" % (fn_name, args_str)
+
+
 class AWSSession:  # TODO: unit-test
     """AWS session, for preconfigure communication with AWS.
 
@@ -141,11 +203,11 @@ class AWSSession:  # TODO: unit-test
         self.session = session or boto3.Session()
 
     def __str__(self):
-        _k = self.credentials.access_key
-        return "Session[access key: %s, region: %s]" % (_k, self.region)
+        fmt = "<access key: %s, region: %s>"
+        return fmt % (self.credentials.access_key, self.region)
 
     def __repr__(self):
-        return "%s(%s)" % (type(self).__name__, repr(self.session))
+        return call_repr(type(self), args=(self.session,))
 
     @cached_property
     def credentials(self) -> credentials.Credentials:

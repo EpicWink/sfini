@@ -62,6 +62,17 @@ class Fail(_base.State):  # TODO: unit-test
         self.cause = cause
         self.error = error
 
+    def __repr__(self):
+        args = (self.name,)
+        kwargs = {
+            "comment": self.comment,
+            "input_path": self.input_path,
+            "output_path": self.output_path,
+            "cause": self.cause,
+            "error": self.error,
+            "state_machine": self.state_machine}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
+
     def to_dict(self):
         defn = super().to_dict()
         if self.cause != _default:
@@ -69,15 +80,6 @@ class Fail(_base.State):  # TODO: unit-test
         if self.error != _default:
             defn["Error"] = self.error
         return defn
-
-    def __repr__(self):
-        return "%s(%s%s%s%s%s)" % (
-            type(self).__name__,
-            repr(self.name),
-            "" if self.comment == _default else ", %r" % self.comment,
-            "" if self.cause == _default else ", %r" % self.cause,
-            "" if self.error == _default else ", %r" % self.error,
-            ", %r" % self.state_machine)
 
 
 # TODO: unit-test
@@ -121,12 +123,15 @@ class Pass(_base.HasResultPath, _base.HasNext, _base.State):
         self.result = result
 
     def __repr__(self):
-        return "%s(%s%s%s%s)" % (
-            type(self).__name__,
-            repr(self.name),
-            "" if self.comment == _default else ", %r" % self.comment,
-            "" if self.result == _default else ", %r" % self.result,
-            ", %r" % self.state_machine)
+        args = (self.name,)
+        kwargs = {
+            "comment": self.comment,
+            "input_path": self.input_path,
+            "output_path": self.output_path,
+            "result_path": self.result_path,
+            "result": self.result,
+            "state_machine": self.state_machine}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def to_dict(self):
         defn = super().to_dict()
@@ -171,12 +176,13 @@ class Wait(_base.HasNext, _base.State):  # TODO: unit-test
         self.until = until
 
     def __repr__(self):
-        return "%s(%s%s%s%s)" % (
-            type(self).__name__,
-            repr(self.name),
-            repr(self.until),
-            "" if self.comment == _default else ", %r" % self.comment,
-            ", %r" % self.state_machine)
+        args = (self.name, self.until)
+        kwargs = {
+            "comment": self.comment,
+            "input_path": self.input_path,
+            "output_path": self.output_path,
+            "state_machine": self.state_machine}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def to_dict(self):
         defn = super().to_dict()
@@ -240,6 +246,16 @@ class Parallel(
             result_path=result_path,
             state_machine=state_machine)
         self.state_machines = []
+
+    def __repr__(self):
+        args = (self.name,)
+        kwargs = {
+            "comment": self.comment,
+            "input_path": self.input_path,
+            "output_path": self.output_path,
+            "result_path": self.result_path,
+            "state_machine": self.state_machine}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def to_dict(self):
         defn = super().to_dict()
@@ -406,15 +422,15 @@ class Task(
         self.timeout = timeout
 
     def __repr__(self):
-        to_cm_str = ", timeout=%r" if self.comment is None else ", %r"
-        _to = "" if self.timeout == _default else to_cm_str % self.timeout
-        return "%s(%s%s%s%s%s)" % (
-            type(self).__name__,
-            repr(self.name),
-            repr(self.resource),
-            "" if self.comment is None else ", %r" % self.comment,
-            _to,
-            ", state_machine=%r" % self.state_machine)
+        args = (self.name, self.resource)
+        kwargs = {
+            "comment": self.comment,
+            "input_path": self.input_path,
+            "output_path": self.output_path,
+            "result_path": self.result_path,
+            "timeout": self.timeout,
+            "state_machine": self.state_machine}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def to_dict(self):
         defn = super().to_dict()

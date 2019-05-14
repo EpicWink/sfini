@@ -56,16 +56,15 @@ class StateMachine:  # TODO: unit-test
         self.states: T.Dict[str, sfini_state.State] = {}
 
     def __str__(self):
-        return "State-machine '%s' (%s states)" % (self.name, len(self.states))
+        return "'%s' (%s states)" % (self.name, len(self.states))
 
     def __repr__(self):
-        tottl = ", %s" % ("timeout=" if self.comment == _default else "")
-        return "%s(%s, %s%s%s)" % (
-            type(self).__name__,
-            repr(self.name),
-            "" if self.comment == _default else ", %r" % self.comment,
-            "" if self.timeout == _default else tottl + repr(self.timeout),
-            ", session=%r" % self.session)
+        args = (self.name,)
+        kwargs = {
+            "comment": self.comment,
+            "timeout": self.timeout,
+            "session": self.session}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     @_util.cached_property
     def arn(self) -> str:

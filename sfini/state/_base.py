@@ -44,17 +44,17 @@ class State:  # TODO: unit-test
         self.state_machine = state_machine
 
     def __str__(self):
-        _sm_n = self.state_machine.name
-        return "%s '%s' [%s]" % (type(self).__name__, self.name, _sm_n)
+        name = type(self).__name__
+        return "%s [%s] of %s" % (self.name, name, self.state_machine.name)
 
     def __repr__(self):
-        return "%s(%s%s%s%s%s)" % (
-            type(self).__name__,
-            repr(self.name),
-            "" if self.comment == _default else ", %r" % self.comment,
-            "" if self.input_path == _default else ", %r" % self.input_path,
-            "" if self.output_path == _default else ", %r" % self.output_path,
-            ", state_machine=%r" % self.state_machine)
+        args = (self.name,)
+        kwargs = {
+            "comment": self.comment,
+            "input_path": self.input_path,
+            "output_path": self.output_path,
+            "state_machine": self.state_machine}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def _validate_state(self, state: "State"):
         """Ensure state is of the same state-machine.

@@ -53,15 +53,12 @@ class TaskExecution:  # TODO: unit-test
         self._request_stop = False
 
     def __str__(self):
-        return "Execution '%s' of '%s'" % (self.task_token, self.activity)
+        return "%s - %s" % (self.activity, self.task_token)
 
     def __repr__(self):
-        return "%s(%s, %s, len(task_input)=%s, session=%s)" % (
-            type(self).__name__,
-            repr(self.activity),
-            repr(self.task_token),
-            len(self.task_input),
-            repr(self.session))
+        args = (self.activity, self.task_token, self.task_input)
+        kwargs = {"session": self.session}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def _send(self, send_fn: T.Callable, **kw):
         """Send execution update to SFN."""
@@ -167,15 +164,12 @@ class Worker:  # TODO: unit-test
         self._exc = None
 
     def __str__(self):
-        _s = "%s '%s' on '%s'"
-        return _s % (type(self).__name__, self.name, self.activity)
+        return "%s [%s]" % (self.name, self.activity)
 
     def __repr__(self):
-        return "%s(%s, %s, session=%s)" % (
-            type(self).__name__,
-            repr(self.activity),
-            repr(self.name),
-            repr(self.session))
+        args = (self.activity,)
+        kwargs = {"name": self.name, "session": self.session}
+        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def _execute_on(self, task_input: _util.JSONable, task_token: str):
         """Execute the provided task.
