@@ -319,6 +319,9 @@ class Choice(_base.State):  # TODO: unit-test
                 state-machine
         """
 
+        if rule.next_state is None:
+            msg = "Top-level choice rules must specify next state"
+            raise RuntimeError(msg)
         self._validate_state(rule.next_state)
         self.choices.append(rule)
 
