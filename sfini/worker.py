@@ -210,7 +210,6 @@ class Worker:  # TODO: unit-test
 
     def _worker(self):
         """Run polling, catching exceptins."""
-        _util.assert_valid_name(self.name)
         try:
             self._poll_and_execute()
         except (Exception, KeyboardInterrupt) as e:
@@ -219,6 +218,10 @@ class Worker:  # TODO: unit-test
 
     def start(self):
         """Start polling."""
+        from . import activity
+        if not isinstance(self.activity, activity.CallableActivity):
+            raise TypeError("Activity '%s' cannot be executed" % self.activity)
+        _util.assert_valid_name(self.name)
         _logger.info("Worker '%s': waiting on final poll to finish" % self)
         self._poller.start()
 
