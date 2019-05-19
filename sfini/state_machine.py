@@ -464,7 +464,7 @@ class StateMachine:  # TODO: unit-test
         name = self.name + "_" + _now + "_" + str(uuid.uuid4())[:8]
         execution = self._execution_class(
             name,
-            self,
+            self.arn,
             execution_input,
             session=self.session)
         execution.start()
