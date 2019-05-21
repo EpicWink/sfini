@@ -29,12 +29,13 @@ class Execution:  # TODO: unit-test
     """
 
     _wait_sleep_time = 3.0
+    _not_provided = object()
 
     def __init__(
             self,
             name: str,
             state_machine_arn: str,
-            execution_input: _util.JSONable,
+            execution_input: _util.JSONable = _default,
             arn: str = None,
             *,
             session: _util.AWSSession = None):
@@ -54,10 +55,11 @@ class Execution:  # TODO: unit-test
         return "%s%s" % (self.name, status_str)
 
     def __repr__(self):
-        args = (self.name, self.state_machine_arn, self.execution_input)
-        kwargs = {"session": self.session}
-        if self.arn is not None:
-            kwargs["arn"] = self.arn
+        args = (self.name, self.state_machine_arn)
+        kwargs = {
+            "execution_input": self.execution_input,
+            "session": self.session,
+            "arn": self.arn}
         return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     @classmethod
@@ -81,10 +83,13 @@ class Execution:  # TODO: unit-test
 
         session = session or _util.AWSSession()
         resp = session.sfn.describe_execution(executionArn=arn)
+        execution_input = _default
+        if "input" in resp:
+            execution_input = json.loads(resp["input"])
         self = cls(
             resp["name"],
             resp["stateMachineArn"],
-            resp["input"],
+            execution_input=execution_input,
             arn=arn,
             session=session)
         self._status = resp["status"]
@@ -116,7 +121,7 @@ class Execution:  # TODO: unit-test
         self = cls(
             item["name"],
             item["stateMachineArn"],
-            _default,
+            cls._not_provided,
             arn=item["executionArn"],
             session=session)
         self._status = item["status"]
@@ -172,7 +177,7 @@ class Execution:  # TODO: unit-test
         """
 
         status_known = self._status not in (None, "RUNNING")
-        input_known = self.execution_input != _default
+        input_known = self.execution_input != self._not_provided
         if status_known and input_known:
             _logger.debug("Execution finished: update is unnecessary")
             return
@@ -183,7 +188,14 @@ class Execution:  # TODO: unit-test
         self._status = resp["status"]
         self._start_time = resp["startDate"]
         self._stop_time = resp.get("stopDate")
-        self._output = resp.get("output", _default)
+        if "input" in resp:
+            input_ = json.loads(resp["input"])
+            if self.execution_input == self._not_provided:
+                self.execution_input = input_
+            else:
+                assert self.execution_input == input_
+        if "output" in resp:
+            self._output = json.loads(resp["output"])
 
     def _raise_on_error(self):
         """Raise ``RuntimeError`` on execution failure."""
