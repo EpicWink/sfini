@@ -80,13 +80,7 @@ class Event:  # TODO: unit-test
         _s = "%s [%s] @ %s"
         return _s % (self.event_type, self.event_id, self.timestamp)
 
-    def __repr__(self):
-        args = (
-            self.timestamp,
-            self.event_type,
-            self.event_id,
-            self.previous_event_id)
-        return _util.call_repr(type(self), args=args)
+    __repr__ = _util.easy_repr
 
     @staticmethod
     def _get_args(
@@ -161,16 +155,6 @@ class Failed(Event):  # TODO: unit-test
         self.error = error
         self.cause = cause
 
-    def __repr__(self):
-        args = (
-            self.timestamp,
-            self.event_type,
-            self.event_id,
-            self.previous_event_id,
-            self.error,
-            self.cause)
-        return _util.call_repr(type(self), args=args)
-
     @classmethod
     def _get_args(cls, history_event):
         args, details = super()._get_args(history_event)
@@ -209,17 +193,6 @@ class LambdaFunctionScheduled(Event):  # TODO: unit-test
         self.resource = resource
         self.task_input = task_input
         self.timeout = timeout
-
-    def __repr__(self):
-        args = (
-            self.timestamp,
-            self.event_type,
-            self.event_id,
-            self.previous_event_id,
-            self.resource,
-            self.task_input,
-            self.timeout)
-        return _util.call_repr(type(self), args=args)
 
     @classmethod
     def _get_args(cls, history_event):
@@ -268,18 +241,6 @@ class ActivityScheduled(LambdaFunctionScheduled):  # TODO: unit-test
             timeout)
         self.heartbeat = heartbeat
 
-    def __repr__(self):
-        args = (
-            self.timestamp,
-            self.event_type,
-            self.event_id,
-            self.previous_event_id,
-            self.resource,
-            self.task_input,
-            self.timeout,
-            self.heartbeat)
-        return _util.call_repr(type(self), args=args)
-
     @classmethod
     def _get_args(cls, history_event):
         args, details = super()._get_args(history_event)
@@ -307,15 +268,6 @@ class ActivityStarted(Event):  # TODO: unit-test
             worker_name: str):
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.worker_name = worker_name
-
-    def __repr__(self):
-        args = (
-            self.timestamp,
-            self.event_type,
-            self.event_id,
-            self.previous_event_id,
-            self.worker_name)
-        return _util.call_repr(type(self), args=args)
 
     @classmethod
     def _get_args(cls, history_event):
@@ -349,15 +301,6 @@ class ObjectSucceeded(Event):  # TODO: unit-test
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.output = output
 
-    def __repr__(self):
-        args = (
-            self.timestamp,
-            self.event_type,
-            self.event_id,
-            self.previous_event_id,
-            self.output)
-        return _util.call_repr(type(self), args=args)
-
     @classmethod
     def _get_args(cls, history_event):
         args, details = super()._get_args(history_event)
@@ -388,16 +331,6 @@ class ExecutionStarted(Event):  # TODO: unit-test
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.execution_input = execution_input
         self.role_arn = role_arn
-
-    def __repr__(self):
-        args = (
-            self.timestamp,
-            self.event_type,
-            self.event_id,
-            self.previous_event_id,
-            self.execution_input,
-            self.role_arn)
-        return _util.call_repr(type(self), args=args)
 
     @classmethod
     def _get_args(cls, history_event):
@@ -430,16 +363,6 @@ class StateEntered(Event):  # TODO: unit-test
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.state_name = state_name
         self.state_input = state_input
-
-    def __repr__(self):
-        args = (
-            self.timestamp,
-            self.event_type,
-            self.event_id,
-            self.previous_event_id,
-            self.state_name,
-            self.state_input)
-        return _util.call_repr(type(self), args=args)
 
     @classmethod
     def _get_args(cls, history_event):
@@ -476,16 +399,6 @@ class StateExited(Event):  # TODO: unit-test
         super().__init__(timestamp, event_type, event_id, previous_event_id)
         self.state_name = state_name
         self.state_output = state_output
-
-    def __repr__(self):
-        args = (
-            self.timestamp,
-            self.event_type,
-            self.event_id,
-            self.previous_event_id,
-            self.state_name,
-            self.state_output)
-        return _util.call_repr(type(self), args=args)
 
     @classmethod
     def _get_args(cls, history_event):

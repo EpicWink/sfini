@@ -29,6 +29,8 @@ class ChoiceRule:  # TODO: unit-test
     def __init__(self, next_state=None):
         self.next_state = next_state
 
+    __repr__ = _util.easy_repr
+
     def _get_comparison(self) -> _util.JSONable:
         """Get this rule's comparison.
 
@@ -81,11 +83,6 @@ class Comparison(ChoiceRule):  # TODO: unit-test
             type(self).__name__,
             self.comparison_value,
             "" if self.next_state is None else (" -> %s" % self.next_state))
-
-    def __repr__(self):
-        args = (self.variable_path, self.comparison_value)
-        kwargs = {"next_state": self.next_state}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     def _get_comparison(self):
         if not isinstance(self.comparison_value, self._expected_value_type):
@@ -203,11 +200,6 @@ class Logical(ChoiceRule):  # TODO: unit-test
         _n = "" if self.next_state is None else (" -> %s" % self.next_state)
         return _s + _n
 
-    def __repr__(self):
-        args = (self.choice_rules,)
-        kwargs = {"next_state": self.next_state}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
-
     @staticmethod
     def _get_rule_defn(choice_rule: ChoiceRule) -> T.Dict[str, _util.JSONable]:
         """Get choice rule definition.
@@ -261,9 +253,9 @@ class Not(Logical):  # TODO: unit-test
         return "%s %s%s" % _f
 
     def __repr__(self):
-        args = (self.choice_rules[0],)
-        kwargs = {"next_state": self.next_state}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
+        has_next = self.next_state is not None
+        ns = ", next_state=%r" % self.next_state if has_next else ""
+        return "%s(%r%s)" % (type(self).__name__, self.choice_rules[0], ns)
 
     def _get_comparison(self) -> T.Dict[str, _util.JSONable]:
         return super()._get_comparison()[0]

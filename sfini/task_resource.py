@@ -38,10 +38,7 @@ class TaskResource:  # TODO: unit-test
     def __str__(self):
         return "%s [%s]" % (self.name, self.service)
 
-    def __repr__(self):
-        args = (self.name,)
-        kwargs = {"session": self.session}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
+    __repr__ = _util.easy_repr
 
     @_util.cached_property
     def arn(self) -> str:

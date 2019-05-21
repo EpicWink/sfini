@@ -54,13 +54,7 @@ class Execution:  # TODO: unit-test
         status_str = (" [%s]" % self._status) if self._status else ""
         return "%s%s" % (self.name, status_str)
 
-    def __repr__(self):
-        args = (self.name, self.state_machine_arn)
-        kwargs = {
-            "execution_input": self.execution_input,
-            "session": self.session,
-            "arn": self.arn}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
+    __repr__ = _util.easy_repr
 
     @classmethod
     def from_arn(

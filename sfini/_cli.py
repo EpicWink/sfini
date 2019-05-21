@@ -44,6 +44,8 @@ class CLI:  # TODO: unit-test
         self.prog = prog
         assert state_machine or activities
 
+    __repr__ = _util.easy_repr
+
     def _build_parser(self) -> argparse.ArgumentParser:
         """Build argument parser.
 

@@ -32,7 +32,7 @@ class DefaultParameter:  # TODO: unit-test
         return "<unspecified>"
 
     def __repr__(self):
-        return call_repr(type(self))
+        return type(self).__name__ + "()"
 
 
 def setup_logging(level: int = None):  # TODO: unit-test
@@ -132,64 +132,58 @@ def collect_paginated(
     return result
 
 
-def call_repr(
-        fn: T.Callable,
-        args: tuple = (),
-        kwargs: T.Dict[str, T.Any] = None,
-        shorten: bool = True
-) -> str:
-    """Produce a representation of a function call.
+def easy_repr(instance) -> str:
+    """Use attributes to generate a string representation.
+
+    Set class ``__repr__ = easy_repr``.
 
     Args:
-        fn: function (or other callable) being called
-        args: call positional arguments
-        kwargs: call keyword arguments
-        shorten: attempt to shorten long argument representations
+        instance: object to get representation of
 
     Returns:
-        call representation
+        object representation
     """
 
-    kwargs = kwargs or {}
-    sig = inspect.signature(fn)
+    sig = inspect.signature(type(instance))
+    params = sig.parameters.values()
 
-    # Raise on incompatible function call
-    if not any(p.kind == p.VAR_POSITIONAL for p in sig.parameters.values()):
-        pos_kinds = (
-            inspect.Parameter.POSITIONAL_ONLY,
-            inspect.Parameter.POSITIONAL_OR_KEYWORD)
-        pos = [p for p in sig.parameters.values() if p.kind in pos_kinds]
-        if len(pos) < len(args):
-            sig.bind(*args, **kwargs)
-    if not any(p.kind == p.VAR_KEYWORD for p in sig.parameters.values()):
-        if any(n not in sig.parameters for n in kwargs):
-            sig.bind(*args, **kwargs)
+    # Can't yet process var-args
+    has_var_pos = any(p.kind == p.VAR_POSITIONAL for p in params)
+    has_var_kw = any(p.kind == p.VAR_KEYWORD for p in params)
+    if has_var_pos or has_var_kw:
+        raise RuntimeError("Can't use `easy_repr` with var-args yet")
 
-    # Build positional arguments substrings
+    # Separate difference kinds of parameters
+    params_pos = [p for p in params if p.kind == p.POSITIONAL_ONLY]
+    params_any = [p for p in params if p.kind == p.POSITIONAL_OR_KEYWORD]
+    params_kw = [p for p in params if p.kind == p.KEYWORD_ONLY]
+
+    params_any_required = [p for p in params_any if p.default == p.empty]
+    params_any_optional = [p for p in params_any if p.default != p.empty]
+    params_unnamed = params_pos + params_any_required
+    params_named = params_any_optional + params_kw
+
     arg_strs = []
-    for j, arg_val in enumerate(args):
-        arg_str = repr(arg_val)
-        if shorten and len(arg_str) > 80 and isinstance(arg_val, abc.Sized):
-            arg_str = "len %d" % len(arg_val)
+    for param in params_unnamed:
+        attr_val = getattr(instance, param.name)
+        arg_str = repr(attr_val)
+        if len(arg_str) > 80 and isinstance(attr_val, abc.Sized):
+            arg_str = "len %d" % len(attr_val)
         arg_strs.append(arg_str)
-
-    # Build keyword arguments substrings
-    for name, arg_val in kwargs.items():
-        if name in sig.parameters:
-            param = sig.parameters[name]
-            if param.default != param.empty and arg_val == param.default:
-                continue
-        val_str = repr(arg_val)
-        if shorten and len(val_str) > 80 and isinstance(arg_val, abc.Sized):
-            arg_str = "len(%s)=%d" % (name, len(arg_val))
+    for param in params_named:
+        attr_val = getattr(instance, param.name)
+        if param.default != param.empty and attr_val == param.default:
+            continue
+        arg_str = repr(attr_val)
+        if len(arg_str) > 80 and isinstance(attr_val, abc.Sized):
+            arg_str = "len(%s)=%d" % (param.name, len(attr_val))
         else:
-            arg_str = "%s=%s" % (name, val_str)
+            arg_str = "%s=%s" % (param.name, arg_str)
         arg_strs.append(arg_str)
 
-    # Combine substrings
     args_str = ", ".join(arg_strs)
-    fn_name = fn.__name__
-    return "%s(%s)" % (fn_name, args_str)
+    type_name = type(instance).__name__
+    return "%s(%s)" % (type_name, args_str)
 
 
 class AWSSession:  # TODO: unit-test
@@ -206,8 +200,7 @@ class AWSSession:  # TODO: unit-test
         fmt = "<access key: %s, region: %s>"
         return fmt % (self.credentials.access_key, self.region)
 
-    def __repr__(self):
-        return call_repr(type(self), args=(self.session,))
+    __repr__ = easy_repr
 
     @cached_property
     def credentials(self) -> credentials.Credentials:

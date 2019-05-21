@@ -42,11 +42,6 @@ class Activity(sfini_task_resource.TaskResource):  # TODO: unit-test
         self.name = name
         self.heartbeat = heartbeat
 
-    def __repr__(self):
-        args = (self.name,)
-        kwargs = {"heartbeat": self.heartbeat, "session": self.session}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
-
     def register(self):
         """Register activity with AWS."""
         _util.assert_valid_name(self.name)
@@ -80,11 +75,6 @@ class CallableActivity(Activity):  # TODO: unit-test
 
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
-
-    def __repr__(self):
-        args = (self.name, self.fn)
-        kwargs = {"heartbeat": self.heartbeat, "session": self.session}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
 
     @classmethod
     def from_callable(
@@ -215,10 +205,7 @@ class ActivityRegistration:  # TODO: unit-test
     def __str__(self):
         return "%s '%s'" % (type(self).__name__, self.prefix)
 
-    def __repr__(self):
-        args = (self.prefix,)
-        kwargs = {"session": self.session}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
+    __repr__ = _util.easy_repr
 
     @property
     def all_activities(self) -> T.Set[Activity]:

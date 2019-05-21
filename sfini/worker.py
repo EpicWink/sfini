@@ -55,10 +55,7 @@ class TaskExecution:  # TODO: unit-test
     def __str__(self):
         return "%s - %s" % (self.activity, self.task_token)
 
-    def __repr__(self):
-        args = (self.activity, self.task_token, self.task_input)
-        kwargs = {"session": self.session}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
+    __repr__ = _util.easy_repr
 
     def _send(self, send_fn: T.Callable, **kw):
         """Send execution update to SFN."""
@@ -166,10 +163,7 @@ class Worker:  # TODO: unit-test
     def __str__(self):
         return "%s [%s]" % (self.name, self.activity)
 
-    def __repr__(self):
-        args = (self.activity,)
-        kwargs = {"name": self.name, "session": self.session}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
+    __repr__ = _util.easy_repr
 
     def _execute_on(self, task_input: _util.JSONable, task_token: str):
         """Execute the provided task.

@@ -47,14 +47,7 @@ class State:  # TODO: unit-test
         name = type(self).__name__
         return "%s [%s] of %s" % (self.name, name, self.state_machine.name)
 
-    def __repr__(self):
-        args = (self.name,)
-        kwargs = {
-            "comment": self.comment,
-            "input_path": self.input_path,
-            "output_path": self.output_path,
-            "state_machine": self.state_machine}
-        return _util.call_repr(type(self), args=args, kwargs=kwargs)
+    __repr__ = _util.easy_repr
 
     def _validate_state(self, state: "State"):
         """Ensure state is of the same state-machine.

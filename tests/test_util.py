@@ -8,149 +8,183 @@ import pytest
 from unittest import mock
 
 
-class TestCallRepr:
-    """Test ``sfini._util.call_repr``"""
+class TestEasyRepr:
+    """Test ``sfini._util.easy_repr``"""
     def test_no_params(self):
         """Function has no paramaters."""
-        def fn():
+        class Class:
             pass
 
-        exp = "fn()"
-        res = tscr.call_repr(fn)
+        instance = Class()
+        exp = "Class()"
+        res = tscr.easy_repr(instance)
         assert res == exp
 
     def test_positional(self):
         """Called with only positional arguments."""
-        def fn(a, b):
-            pass
+        class Class:
+            def __init__(self, a, b):
+                self.a = a
+                self.b = b
 
-        args = (42, "spam")
-
-        exp = "fn(42, 'spam')"
-        res = tscr.call_repr(fn, args=args)
+        instance = Class(42, "spam")
+        exp = "Class(42, 'spam')"
+        res = tscr.easy_repr(instance)
         assert res == exp
 
     def test_positional_with_optional(self):
         """Called with only some positional arguments."""
-        def fn(a, b, c=None):
-            pass
+        class Class:
+            def __init__(self, a, b, c=None):
+                self.a = a
+                self.b = b
+                self.c = c
 
-        args = (42, "spam")
-
-        exp = "fn(42, 'spam')"
-        res = tscr.call_repr(fn, args=args)
+        instance = Class(42, "spam")
+        exp = "Class(42, 'spam')"
+        res = tscr.easy_repr(instance)
         assert res == exp
 
-    def test_positional_and_keyword(self):
+    def test_positional_with_optional_provided(self):
         """Called with some arguments keyword."""
-        def fn(a, b, c):
-            pass
+        class Class:
+            def __init__(self, a, b, c=None):
+                self.a = a
+                self.b = b
+                self.c = c
 
-        args = (42, "spam")
-        kwargs = {"c": [1, 2]}
-
-        exp = "fn(42, 'spam', c=[1, 2])"
-        res = tscr.call_repr(fn, args=args, kwargs=kwargs)
-        assert res == exp
-
-    def test_positional_and_keyword_with_optional(self):
-        """Called with some arguments keyword."""
-        def fn(a, b, c=None):
-            pass
-
-        args = (42, "spam")
-        kwargs = {"c": [1, 2]}
-
-        exp = "fn(42, 'spam', c=[1, 2])"
-        res = tscr.call_repr(fn, args=args, kwargs=kwargs)
+        instance = Class(42, "spam", c=[1, 2])
+        exp = "Class(42, 'spam', c=[1, 2])"
+        res = tscr.easy_repr(instance)
         assert res == exp
 
     def test_keyword_only_required(self):
         """Function has required keyword-only."""
-        def fn(a, b, c=None, *, d):
-            pass
+        class Class:
+            def __init__(self, a, b, c=None, *, d):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
 
-        args = (42, "spam")
-        kwargs = {"d": "bla"}
-
-        exp = "fn(42, 'spam', d='bla')"
-        res = tscr.call_repr(fn, args=args, kwargs=kwargs)
+        instance = Class(42, "spam", d="bla")
+        exp = "Class(42, 'spam', d='bla')"
+        res = tscr.easy_repr(instance)
         assert res == exp
 
     def test_keyword_only_optional(self):
         """Function has optional keyword-only."""
-        def fn(a, b, c=None, *, d=None):
-            pass
+        class Class:
+            def __init__(self, a, b, c=None, *, d=None):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
 
-        args = (42, "spam")
-
-        exp = "fn(42, 'spam')"
-        res = tscr.call_repr(fn, args=args)
+        instance = Class(42, "spam")
+        exp = "Class(42, 'spam')"
+        res = tscr.easy_repr(instance)
         assert res == exp
 
     def test_long_positional(self):
         """Passed long positional."""
-        def fn(a, b, c=None):
-            pass
+        class Class:
+            def __init__(self, a, b, c=None):
+                self.a = a
+                self.b = b
+                self.c = c
 
-        args = (42, "spam" * 42)
-
-        exp = "fn(42, len 168)"
-        res = tscr.call_repr(fn, args=args)
+        instance = Class(42, "spam" * 42)
+        exp = "Class(42, len 168)"
+        res = tscr.easy_repr(instance)
         assert res == exp
 
     def test_long_keyword(self):
         """Passed long keyword."""
-        def fn(a, b, c=None):
-            pass
+        class Class:
+            def __init__(self, a, b, c=None):
+                self.a = a
+                self.b = b
+                self.c = c
 
-        args = (42, "spam")
-        kwargs = {"c": [1, 2] * 42}
-
-        exp = "fn(42, 'spam', len(c)=84)"
-        res = tscr.call_repr(fn, args=args, kwargs=kwargs)
+        instance = Class(42, "spam", c=[1, 2] * 42)
+        exp = "Class(42, 'spam', len(c)=84)"
+        res = tscr.easy_repr(instance)
         assert res == exp
 
-    def test_long_positional_no_shorten(self):
-        """Passed long positional disallowing shortening."""
-        def fn(a, b, c=None):
-            pass
+    def test_combined(self):
+        """A combined test."""
+        class Class:
+            def __init__(self, a, b, c=None, d="foo", *, e, f=None, g=""):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
+                self.e = e
+                self.f = f
+                self.g = g
 
-        args = (42, "spam" * 42)
-
-        exp = "fn(42, '" + "spam" * 42 + "')"
-        res = tscr.call_repr(fn, args=args, shorten=False)
+        instance = Class(42, "spam", d="bar", e=3, g="1")
+        exp = "Class(42, 'spam', d='bar', e=3, g='1')"
+        res = tscr.easy_repr(instance)
         assert res == exp
 
-    def test_long_keyword_no_shorten(self):
-        """Passed long keyword disallowing shortening."""
-        def fn(a, b, c=None):
-            pass
+    def test_var_positional(self):
+        """Error when initialiser has a positional var-arg."""
+        class Class:
+            def __init__(self, a, b, c=None, *args):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.args = args
 
-        args = (42, "spam")
-        kwargs = {"c": [1, 2] * 42}
+        instance = Class(42, "spam")
+        with pytest.raises(RuntimeError):
+            _ = tscr.easy_repr(instance)
 
-        exp = "fn(42, 'spam', c=" + repr([1, 2] * 42) + ")"
-        res = tscr.call_repr(fn, args=args, kwargs=kwargs, shorten=False)
+    def test_var_keyword(self):
+        """Error when initialiser has a keyword var-arg."""
+        class Class:
+            def __init__(self, a, b, c=None, **kwargs):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.kwargs = kwargs
+
+        instance = Class(42, "spam")
+        with pytest.raises(RuntimeError):
+            _ = tscr.easy_repr(instance)
+
+    def test_repr(self):
+        """Usage as ``__repr__``."""
+        class Class:
+            def __init__(self, a, b, c=None):
+                self.a = a
+                self.b = b
+                self.c = c
+
+            __repr__ = tscr.easy_repr
+
+        instance = Class(42, "spam")
+        exp = "Class(42, 'spam')"
+        res = repr(instance)
         assert res == exp
 
-    def test_bad_positional(self):
-        """Error on too many positionals."""
-        def fn(a, b, c=None):
-            pass
+    def test_repr_combined(self):
+        """A combined test."""
+        class Class:
+            def __init__(self, a, b, c=None, d="foo", *, e, f=None, g=""):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
+                self.e = e
+                self.f = f
+                self.g = g
 
-        args = (42, "spam", None, [1, 2])
+            __repr__ = tscr.easy_repr
 
-        with pytest.raises(TypeError):
-            print(tscr.call_repr(fn, args=args))
-
-    def test_bad_keyword(self):
-        """Error on invalid keywords."""
-        def fn(a, b, c=None):
-            pass
-
-        args = (42, "spam")
-        kwargs = {"d": [1, 2]}
-
-        with pytest.raises(TypeError):
-            tscr.call_repr(fn, args=args, kwargs=kwargs)
+        instance = Class(42, "spam", d="bar", e=3, g="1")
+        exp = "Class(42, 'spam', d='bar', e=3, g='1')"
+        res = repr(instance)
+        assert res == exp
