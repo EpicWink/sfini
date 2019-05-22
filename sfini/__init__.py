@@ -27,7 +27,7 @@ from ._cli import CLI
 from .task_resource import Lambda
 from .state_machine import StateMachine
 from .worker import Worker
-from .state.error import WorkerCancel
+from .worker import WorkerCancel
 from .state.choice import And
 from .state.choice import Or
 from .state.choice import Not

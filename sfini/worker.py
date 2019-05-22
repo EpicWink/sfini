@@ -20,10 +20,19 @@ import logging as lg
 from botocore import exceptions as bc_exc
 
 from . import _util
-from .state import error as sfini_state_error
 
 _logger = lg.getLogger(__name__)
 _host_name = socket.getfqdn(socket.gethostname())
+
+
+class WorkerCancel(KeyboardInterrupt):  # TODO: unit-test
+    """Workflow execution interrupted by user."""
+    def __init__(self, *args, **kwargs):
+        _msg = (
+            "Activity execution cancelled by user. "
+            "This could be due to a `KeyboardInterrupt` during execution, "
+            "or the worker was killed during task polling.")
+        super().__init__(_msg, *args, **kwargs)
 
 
 class TaskExecution:  # TODO: unit-test
@@ -80,8 +89,8 @@ class TaskExecution:  # TODO: unit-test
         _logger.info(_s % self)
         self._send(
             self.session.sfn.send_task_failure,
-            error=sfini_state_error.WorkerCancel.__name__,
-            cause=str(sfini_state_error.WorkerCancel()))
+            error=WorkerCancel.__name__,
+            cause=str(WorkerCancel()))
         self._request_stop = True
 
     def _report_success(self, res: _util.JSONable):

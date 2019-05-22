@@ -3,17 +3,13 @@
 
 """State definition bases and mix-ins."""
 
-import math
 import typing as T
 import logging as lg
 
 from .. import _util
-from . import error as sfini_state_error
 
 _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
-Exc = sfini_state_error.ExceptionCondition.Exc
-Rule = sfini_state_error.ExceptionCondition.Rule
 
 
 class State:  # TODO: unit-test
@@ -174,8 +170,77 @@ class HasResultPath(State):  # TODO: unit-test
         return defn
 
 
+class ErrorHandling:  # TODO: unit-test
+    """Error handling mix-in."""
+    states_errors = (
+        "ALL",
+        "Timeout",
+        "TaskFailed",
+        "Permissions",
+        "ResultPathMatchFailure",
+        "ParameterPathFailure",
+        "BranchFailed",
+        "NoChoiceMatched")
+
+    def _validate_errors(self, errors: T.Sequence[str]):
+        """Validate error conditions.
+
+        Args:
+            errors: condition error codes
+
+        Raises:
+            ValueError: invalid condition
+        """
+
+        if not errors:
+            raise ValueError("Cannot have no-error condition")
+        if "States.ALL" in errors and len(errors) > 1:
+            msg = "Cannot combine 'States.ALL' condition with other errors"
+            raise ValueError(msg)
+
+        for err in errors:
+            if err.startswith("States."):
+                if err[7:] not in self.states_errors:
+                    _s = "States error name was '%s', must be one of: %s"
+                    raise ValueError(_s % (err[7:], self.states_errors))
+
+    @staticmethod
+    def _policy_defn(policy: T.Any) -> T.Dict[str, _util.JSONable]:
+        """Get handler definition details from policy.
+
+        Args:
+            policy: exception policy
+
+        Returns:
+            dict: definition details
+        """
+
+        raise NotImplementedError
+
+    def _handler_defns(
+            self,
+            handlers: T.List[T.Tuple[T.Sequence[str], T.Any]]
+    ) -> T.List[T.Dict[str, _util.JSONable]]:
+        """Build error handler policy definitions.
+
+        Args:
+            handlers: error handlers
+
+        Returns:
+            definitions
+        """
+
+        defns = []
+        for errors, policy in handlers:
+            self._validate_errors(errors)
+            defn = self._policy_defn(policy)
+            defn["ErrorEquals"] = errors
+            defns.append(defn)
+        return defns
+
+
 # TODO: unit-test
-class CanRetry(sfini_state_error.ExceptionCondition, State):
+class CanRetry(ErrorHandling, State):
     """Retryable state mix-in.
 
     Args:
@@ -187,7 +252,7 @@ class CanRetry(sfini_state_error.ExceptionCondition, State):
         state_machine: state-machine this state is a part of
 
     Attributes:
-        retries: retry conditions
+        retriers: error handler policies
     """
 
     def __init__(
@@ -204,71 +269,51 @@ class CanRetry(sfini_state_error.ExceptionCondition, State):
             input_path=input_path,
             output_path=output_path,
             state_machine=state_machine)
-        self.retries: T.Dict[Exc, Rule] = {}
+        self.retriers: T.List[T.Tuple[T.Sequence[str], T.Dict]] = []
 
     def retry_for(
             self,
-            exc: Exc,
+            errors: T.Sequence[str],
             interval: int = _default,
             max_attempts: int = _default,
             backoff_rate: float = _default):
         """Add a retry condition.
 
         Args:
-            exc: error for retry to be executed. If a string, must be one of
-                the pre-defined errors (see AWS Step Functions documentation)
+            errors: codes of errors for retry to be executed. See AWS Step
+                Functions documentation
             interval: (initial) retry interval (seconds)
             max_attempts: maximum number of attempts before re-raising error
             backoff_rate: retry interval increase factor between attempts
         """
 
-        exc = self._process_exc(exc)
-
-        if exc in self.retries:
-            raise ValueError("Error '%s' already registered" % exc)
-
-        retry = {}
-        if interval != _default:
-            retry["interval"] = interval
-        if max_attempts != _default:
-            retry["max_attempts"] = max_attempts
-        if backoff_rate != _default:
-            retry["backoff_rate"] = backoff_rate
-        self.retries[exc] = retry
+        policy = {
+            "interval": interval,
+            "max_attempts": max_attempts,
+            "backoff_rate": backoff_rate}
+        self.retriers.append((errors, policy))
 
     @staticmethod
-    def _rules_similar(rule_a, rule_b):
-        if rule_a.keys() != rule_b.keys():
-            return False
-        for k in ("interval", "max_attempts"):
-            if k in rule_a and rule_a[k] != rule_b[k]:
-                return False
-        k = "backoff_rate"
-        if k in rule_a and not math.isclose(rule_a[k], rule_b[k]):
-            return False
-        return True
-
-    @staticmethod
-    def _rule_defn(rule):
+    def _policy_defn(policy):
         defn = {}
-        if "interval" in rule:
-            defn["IntervalSeconds"] = rule["interval"]
-        if "max_attempts" in rule:
-            defn["MaxAttempts"] = rule["max_attempts"]
-        if "backoff_rate" in rule:
-            defn["BackoffRate"] = rule["backoff_rate"]
+        if policy["interval"] != _default:
+            defn["IntervalSeconds"] = policy["interval"]
+        if policy["max_attempts"] != _default:
+            defn["MaxAttempts"] = policy["max_attempts"]
+        if policy["backoff_rate"] != _default:
+            defn["BackoffRate"] = policy["backoff_rate"]
         return defn
 
     def to_dict(self):
         defn = super().to_dict()
-        retry = self._rule_defns(self.retries)
+        retry = self._handler_defns(self.retriers)
         if retry:
             defn["Retry"] = retry
         return defn
 
 
 # TODO: unit-test
-class CanCatch(sfini_state_error.ExceptionCondition, State):
+class CanCatch(ErrorHandling, State):
     """Exception catching state mix-in.
 
     Args:
@@ -280,7 +325,7 @@ class CanCatch(sfini_state_error.ExceptionCondition, State):
         state_machine: state-machine this state is a part of
 
     Attributes:
-        catches: handled state errors
+        catchers: error handler policies
     """
 
     def __init__(
@@ -297,46 +342,39 @@ class CanCatch(sfini_state_error.ExceptionCondition, State):
             input_path=input_path,
             output_path=output_path,
             state_machine=state_machine)
-        self.catches: T.Dict[Exc, Rule] = {}
+        self.catchers: T.List[T.Tuple[T.Sequence[str], T.Any]] = []
 
     def catch(
             self,
-            exc: Exc,
+            excs: T.Sequence[str],
             next_state: State,
             result_path: T.Union[str, None] = _default):
         """Add a catch clause.
 
         Args:
-            exc: error for catch clause to be executed. If a string, must be
+            excs: errors for catch clause to be executed. If a string, must be
                 one of the pre-defined errors (see AWS Step Functions
                 documentation)
             next_state: state to execute for catch clause
             result_path: error details location JSONPath
         """
 
-        self._validate_state(next_state)
+        if any(any(e in excs_ for e in excs) for excs_, _ in self.catchers):
+            fmt = "Handler has already accounted-for exceptions: %s"
+            _logger.warning(fmt % excs)
+        policy = {"next_state": next_state, "result_path": result_path}
+        self.catchers.append((excs, policy))
 
-        exc = self._process_exc(exc)
-        if exc in self.catches:
-            raise ValueError("Error '%s' already registered" % exc)
-        self.catches[exc] = (next_state, result_path)
-
-    @staticmethod
-    def _rules_similar(rule_a, rule_b):
-        same_state = rule_a[0].name == rule_b[0].name
-        same_result_path = rule_a[1] == rule_b[1]
-        return same_state and same_result_path
-
-    @staticmethod
-    def _rule_defn(rule):
-        defn = {"Next": rule[0].name}
-        if rule[1] != _default:
-            defn["ResultPath"] = rule[1]
+    def _policy_defn(self, policy):
+        self._validate_state(policy["next_state"])
+        defn = {"Next": policy["next_state"].name}
+        if policy["result_path"] != _default:
+            defn["ResultPath"] = policy["result_path"]
         return defn
 
     def to_dict(self):
         defn = super().to_dict()
-        catch = self._rule_defns(self.catches)
+        catch = self._handler_defns(self.catchers)
         if catch:
             defn["Catch"] = catch
         return defn
