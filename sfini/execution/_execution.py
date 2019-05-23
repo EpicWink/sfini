@@ -158,7 +158,7 @@ class Execution:  # TODO: unit-test
         if self._output == _default:
             self._update()
             self._raise_unfinished()
-            self._raise_on_error()
+            self._raise_on_failure()
         return self._output
 
     def _update(self):
@@ -173,8 +173,7 @@ class Execution:  # TODO: unit-test
         if status_known and input_known:
             _logger.debug("Execution finished: update is unnecessary")
             return
-        if self.arn is None:
-            raise RuntimeError("Execution ARN is unknown")
+        self._raise_no_arn()
         resp = self.session.sfn.describe_execution(executionArn=self.arn)
         assert resp["executionArn"] == self.arn
         self._status = resp["status"]
@@ -189,7 +188,7 @@ class Execution:  # TODO: unit-test
         if "output" in resp:
             self._output = json.loads(resp["output"])
 
-    def _raise_on_error(self):
+    def _raise_on_failure(self):
         """Raise ``RuntimeError`` on execution failure."""
         failed = self._status not in ("RUNNING", "SUCCEEDED")
         if failed:
@@ -199,6 +198,11 @@ class Execution:  # TODO: unit-test
         """Raise ``RuntimeError`` when requiring execution to be finished."""
         if self._status == "RUNNING":
             raise RuntimeError("Execution '%s' not yet finished" % self)
+
+    def _raise_no_arn(self):
+        """Raise ``RuntimeError`` when ARN is not provided."""
+        if self.arn is None:
+            raise RuntimeError("Execution '%s' ARN is unknown" % self)
 
     def start(self):
         """Start this state-machine execution.
@@ -218,11 +222,11 @@ class Execution:  # TODO: unit-test
         self._status = "RUNNING"
         self._start_date = resp["startDate"]
 
-    def wait(self, raise_on_error: bool = True, timeout: float = None):
+    def wait(self, raise_on_failure: bool = True, timeout: float = None):
         """Wait for execution to finish.
 
         Args:
-            raise_on_error: raise error when execution fails
+            raise_on_failure: raise error when execution fails
             timeout: time to wait for execution to finish (seconds),
                 default: no time-out
 
@@ -239,8 +243,8 @@ class Execution:  # TODO: unit-test
             if timeout is not None and time.time() - t > timeout:
                 raise RuntimeError("Time-out waiting on execution '%s'" % self)
             time.sleep(self._wait_sleep_time)
-        if raise_on_error:
-            self._raise_on_error()
+        if raise_on_failure:
+            self._raise_on_failure()
 
     def stop(self, error_code: str = _default, details: str = _default):
         """Stop an existing execution.
@@ -261,6 +265,7 @@ class Execution:  # TODO: unit-test
             kw["error"] = error_code
         if details != _default:
             kw["cause"] = details
+        self._raise_no_arn()
         resp = self.session.sfn.stop_execution(executionArn=self.arn, **kw)
         self._stop_date = resp["stopDate"]
         _logger.info("Execution stopped on %s" % resp["stopDate"])
@@ -272,6 +277,7 @@ class Execution:  # TODO: unit-test
             history of execution events
         """
 
+        self._raise_no_arn()
         resp = _util.collect_paginated(
             self.session.sfn.get_execution_history,
             executionArn=self.arn)
