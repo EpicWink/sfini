@@ -89,8 +89,8 @@ class CallableActivity(Activity):  # TODO: unit-test
         super().__init__(name, heartbeat=heartbeat, session=session)
         self.fn = fn
 
-    def __call__(self, *args, **kwargs):
-        return self.fn(*args, **kwargs)
+    def __call__(self, task_input: _util.JSONable, *args, **kwargs):
+        return self.fn(task_input, *args, **kwargs)
 
     @classmethod
     def from_callable(
@@ -151,6 +151,9 @@ class SmartCallableActivity(CallableActivity):  # TODO: unit-test
     def __init__(self, name, fn: T.Callable, heartbeat=20, *, session=None):
         super().__init__(name, fn, heartbeat=heartbeat, session=session)
         self.sig: inspect.Signature = inspect.Signature.from_callable(fn)
+
+    def __call__(self, *args, **kwargs):
+        return self.fn(*args, **kwargs)
 
     def _get_input_from(
             self,
