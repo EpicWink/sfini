@@ -15,7 +15,7 @@ from botocore import credentials
 _logger = lg.getLogger(__name__)
 
 MAX_NAME_LENGTH = 79
-INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*$%\\^|~`$,;:/"
+INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*\"#%\\^|~`$&,;:/"
 DEBUG = False
 JSONable = T.Union[None, bool, str, int, float, list, T.Dict[str, T.Any]]
 
