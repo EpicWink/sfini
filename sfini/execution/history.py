@@ -15,7 +15,7 @@ from .. import _util
 
 _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
-_type_key_map = {
+_type_keys = {
     "ActivityFailed": "activityFailedEventDetails",
     "ActivityScheduleFailed": "activityScheduleFailedEventDetails",
     "ActivityScheduled": "activityScheduledEventDetails",
@@ -70,38 +70,41 @@ class Event:  # TODO: unit-test
             timestamp,
             event_type: str,
             event_id: int,
-            previous_event_id: int):
+            previous_event_id: int = None):
         self.timestamp = timestamp
         self.event_type = event_type
         self.event_id = event_id
         self.previous_event_id = previous_event_id
 
     def __str__(self):
-        _s = "%s [%s] @ %s"
-        return _s % (self.event_type, self.event_id, self.timestamp)
+        fmt = "%s [%s] @ %s"
+        return fmt % (self.event_type, self.event_id, self.timestamp)
 
     __repr__ = _util.easy_repr
 
     @staticmethod
     def _get_args(
             history_event: T.Dict[str, _util.JSONable]
-    ) -> T.Tuple[tuple, T.Dict[str, _util.JSONable]]:
+    ) -> T.Tuple[tuple, T.Dict[str, T.Any], T.Dict[str, _util.JSONable]]:
         """Get initialisation arguments by parsing history event.
 
         Args:
-            history_event: execution history event date, provided by AWS API
+            history_event: execution history event, provided by AWS API
 
         Returns:
-            initialisation arguments, and event details
+            initialisation positional and keyword arguments, and event details
         """
 
         # _logger.debug("history_event: %s" % history_event)
         timestamp = history_event["timestamp"]
         event_type = history_event["type"]
         event_id = history_event["id"]
-        previous_event_id = history_event.get("previousEventId", _default)
-        details = history_event[_type_key_map[event_type]]
-        return (timestamp, event_type, event_id, previous_event_id), details
+        args = (timestamp, event_type, event_id)
+        kwargs = {}
+        if "previousEventId" in history_event:
+            kwargs["previous_event_id"] = history_event["previousEventId"]
+        details = history_event.get(_type_keys.get(event_type), {})
+        return args, kwargs, details
 
     @classmethod
     def from_history_event(
@@ -117,8 +120,8 @@ class Event:  # TODO: unit-test
             Event: constructed execution history event
         """
 
-        args, _ = cls._get_args(history_event)
-        return cls(*args)
+        args, kwargs, _ = cls._get_args(history_event)
+        return cls(*args, **kwargs)
 
     @_util.cached_property
     def details_str(self) -> str:
@@ -139,8 +142,8 @@ class Failed(Event):  # TODO: unit-test
         event_type: type of event
         event_id: identifying index of event
         previous_event_id: identifying index of causal event
-        error error name
-        cause failure details
+        error: error type
+        cause: failure details
     """
 
     def __init__(
@@ -148,19 +151,25 @@ class Failed(Event):  # TODO: unit-test
             timestamp,
             event_type,
             event_id,
-            previous_event_id,
-            error: str,
-            cause: str):
-        super().__init__(timestamp, event_type, event_id, previous_event_id)
+            previous_event_id=None,
+            error: str = None,
+            cause: str = None):
+        super().__init__(
+            timestamp,
+            event_type,
+            event_id,
+            previous_event_id=previous_event_id)
         self.error = error
         self.cause = cause
 
     @classmethod
     def _get_args(cls, history_event):
-        args, details = super()._get_args(history_event)
-        error = details["error"]
-        cause = details["cause"]
-        return args + (error, cause), details
+        args, kwargs, details = super()._get_args(history_event)
+        if "error" in details:
+            kwargs["error"] = details["error"]
+        if "cause" in details:
+            kwargs["cause"] = details["cause"]
+        return args, kwargs, details
 
     @_util.cached_property
     def details_str(self):
@@ -174,8 +183,8 @@ class LambdaFunctionScheduled(Event):  # TODO: unit-test
         timestamp: event time-stamp
         event_type: type of event
         event_id: identifying index of event
-        previous_event_id: identifying index of causal event
         resource: AWS Lambda function ARN
+        previous_event_id: identifying index of causal event
         task_input: task input
         timeout: time-out (seconds) of task execution
     """
@@ -185,22 +194,28 @@ class LambdaFunctionScheduled(Event):  # TODO: unit-test
             timestamp,
             event_type,
             event_id,
-            previous_event_id,
             resource: str,
-            task_input: _util.JSONable,
-            timeout: int):
-        super().__init__(timestamp, event_type, event_id, previous_event_id)
+            previous_event_id=None,
+            task_input: _util.JSONable = _default,
+            timeout: int = None):
+        super().__init__(
+            timestamp,
+            event_type,
+            event_id,
+            previous_event_id=previous_event_id)
         self.resource = resource
         self.task_input = task_input
         self.timeout = timeout
 
     @classmethod
     def _get_args(cls, history_event):
-        args, details = super()._get_args(history_event)
-        resource = details["resource"]
-        task_input = json.loads(details["input"])
-        timeout = details.get("timeoutInSeconds", _default)
-        return args + (resource, task_input, timeout), details
+        args, kwargs, details = super()._get_args(history_event)
+        args += (details["resource"],)
+        if "input" in details:
+            kwargs["task_input"] = json.loads(details["input"])
+        if "timeoutInSeconds" in details:
+            kwargs["timeout"] = details["timeoutInSeconds"]
+        return args, kwargs, details
 
     @_util.cached_property
     def details_str(self):
@@ -214,8 +229,8 @@ class ActivityScheduled(LambdaFunctionScheduled):  # TODO: unit-test
         timestamp: event time-stamp
         event_type: type of event
         event_id: identifying index of event
-        previous_event_id: identifying index of causal event
         resource: AWS Lambda function ARN
+        previous_event_id: identifying index of causal event
         task_input: task input
         timeout: time-out (seconds) of task execution
         heartbeat: heartbeat time-out (seconds)
@@ -226,26 +241,27 @@ class ActivityScheduled(LambdaFunctionScheduled):  # TODO: unit-test
             timestamp,
             event_type,
             event_id,
-            previous_event_id,
             resource,
-            task_input,
-            timeout,
-            heartbeat: int):
+            previous_event_id=None,
+            task_input=_default,
+            timeout=None,
+            heartbeat: int = None):
         super().__init__(
             timestamp,
             event_type,
             event_id,
-            previous_event_id,
             resource,
-            task_input,
-            timeout)
+            previous_event_id=previous_event_id,
+            task_input=task_input,
+            timeout=timeout)
         self.heartbeat = heartbeat
 
     @classmethod
     def _get_args(cls, history_event):
-        args, details = super()._get_args(history_event)
-        heartbeat = details["heartbeatInSeconds"]
-        return args + (heartbeat,), details
+        args, kwargs, details = super()._get_args(history_event)
+        if "heartbeatInSeconds" in details:
+            kwargs["heartbeat"] = details["heartbeatInSeconds"]
+        return args, kwargs, details
 
 
 class ActivityStarted(Event):  # TODO: unit-test
@@ -255,8 +271,8 @@ class ActivityStarted(Event):  # TODO: unit-test
         timestamp: event time-stamp
         event_type: type of event
         event_id: identifying index of event
-        previous_event_id: identifying index of causal event
         worker_name: name of activity worker executing activity task
+        previous_event_id: identifying index of causal event
     """
 
     def __init__(
@@ -264,16 +280,20 @@ class ActivityStarted(Event):  # TODO: unit-test
             timestamp,
             event_type,
             event_id,
-            previous_event_id,
-            worker_name: str):
-        super().__init__(timestamp, event_type, event_id, previous_event_id)
+            worker_name: str,
+            previous_event_id=None):
+        super().__init__(
+            timestamp,
+            event_type,
+            event_id,
+            previous_event_id=previous_event_id)
         self.worker_name = worker_name
 
     @classmethod
     def _get_args(cls, history_event):
-        args, details = super()._get_args(history_event)
-        worker_name = details["workerName"]
-        return args + (worker_name,), details
+        args, kwargs, details = super()._get_args(history_event)
+        args += (details["workerName"],)
+        return args, kwargs, details
 
     @_util.cached_property
     def details_str(self):
@@ -296,16 +316,21 @@ class ObjectSucceeded(Event):  # TODO: unit-test
             timestamp,
             event_type,
             event_id,
-            previous_event_id,
-            output: _util.JSONable):
-        super().__init__(timestamp, event_type, event_id, previous_event_id)
+            previous_event_id=None,
+            output: _util.JSONable = _default):
+        super().__init__(
+            timestamp,
+            event_type,
+            event_id,
+            previous_event_id=previous_event_id)
         self.output = output
 
     @classmethod
     def _get_args(cls, history_event):
-        args, details = super()._get_args(history_event)
-        output = json.loads(details["output"])
-        return args + (output,), details
+        args, kwargs, details = super()._get_args(history_event)
+        if "output" in details:
+            kwargs["output"] = json.loads(details["output"])
+        return args, kwargs, details
 
 
 class ExecutionStarted(Event):  # TODO: unit-test
@@ -325,19 +350,25 @@ class ExecutionStarted(Event):  # TODO: unit-test
             timestamp,
             event_type,
             event_id,
-            previous_event_id,
-            execution_input: _util.JSONable,
-            role_arn: str):
-        super().__init__(timestamp, event_type, event_id, previous_event_id)
+            previous_event_id=None,
+            execution_input: _util.JSONable = _default,
+            role_arn: str = None):
+        super().__init__(
+            timestamp,
+            event_type,
+            event_id,
+            previous_event_id=previous_event_id)
         self.execution_input = execution_input
         self.role_arn = role_arn
 
     @classmethod
     def _get_args(cls, history_event):
-        args, details = super()._get_args(history_event)
-        execution_input = json.loads(details["input"])
-        role_arn = details["roleArn"]
-        return args + (execution_input, role_arn), details
+        args, kwargs, details = super()._get_args(history_event)
+        if "input" in details:
+            kwargs["execution_input"] = json.loads(details["input"])
+        if "roleArn" in details:
+            kwargs["role_arn"] = details["roleArn"]
+        return args, kwargs, details
 
 
 class StateEntered(Event):  # TODO: unit-test
@@ -347,8 +378,8 @@ class StateEntered(Event):  # TODO: unit-test
         timestamp: event time-stamp
         event_type: type of event
         event_id: identifying index of event
-        previous_event_id: identifying index of causal event
         state_name: state name
+        previous_event_id: identifying index of causal event
         state_input: state input
     """
 
@@ -357,19 +388,24 @@ class StateEntered(Event):  # TODO: unit-test
             timestamp,
             event_type,
             event_id,
-            previous_event_id,
             state_name: str,
-            state_input: _util.JSONable):
-        super().__init__(timestamp, event_type, event_id, previous_event_id)
+            previous_event_id=None,
+            state_input: _util.JSONable = _default):
+        super().__init__(
+            timestamp,
+            event_type,
+            event_id,
+            previous_event_id=previous_event_id)
         self.state_name = state_name
         self.state_input = state_input
 
     @classmethod
     def _get_args(cls, history_event):
-        args, details = super()._get_args(history_event)
-        state_name = details["name"]
-        state_input = json.loads(details["input"])
-        return args + (state_name, state_input), details
+        args, kwargs, details = super()._get_args(history_event)
+        args += (details["name"],)
+        if "input" in details:
+            kwargs["state_input"] = json.loads(details["input"])
+        return args, kwargs, details
 
     @_util.cached_property
     def details_str(self):
@@ -383,9 +419,9 @@ class StateExited(Event):  # TODO: unit-test
         timestamp: event time-stamp
         event_type: type of event
         event_id: identifying index of event
-        previous_event_id: identifying index of causal event
         state_name: state name
-        state_output: state output
+        previous_event_id: identifying index of causal event
+        output: state output
     """
 
     def __init__(
@@ -393,26 +429,31 @@ class StateExited(Event):  # TODO: unit-test
             timestamp,
             event_type,
             event_id,
-            previous_event_id,
             state_name: str,
-            state_output: _util.JSONable):
-        super().__init__(timestamp, event_type, event_id, previous_event_id)
+            previous_event_id=None,
+            output: _util.JSONable = _default):
+        super().__init__(
+            timestamp,
+            event_type,
+            event_id,
+            previous_event_id=previous_event_id)
         self.state_name = state_name
-        self.state_output = state_output
+        self.output = output
 
     @classmethod
     def _get_args(cls, history_event):
-        args, details = super()._get_args(history_event)
-        state_name = details["name"]
-        state_output = json.loads(details["output"])
-        return args + (state_name, state_output), details
+        args, kwargs, details = super()._get_args(history_event)
+        args += (details["name"],)
+        if "output" in details:
+            kwargs["output"] = json.loads(details["output"])
+        return args, kwargs, details
 
     @_util.cached_property
     def details_str(self):
         return "name: %s" % self.state_name
 
 
-_type_class_map = {
+_type_classes = {
     "ActivityFailed": Failed,
     "ActivityScheduleFailed": Failed,
     "ActivityScheduled": ActivityScheduled,
@@ -466,7 +507,7 @@ def parse_history(  # TODO: unit-test
 
     events = []
     for history_event in history_events:
-        eclass = _type_class_map[history_event["type"]]
+        eclass = _type_classes[history_event["type"]]
         event = eclass.from_history_event(history_event)
         events.append(event)
     return events
