@@ -163,6 +163,9 @@ class SmartCallableActivity(CallableActivity):  # TODO: unit-test
     ) -> T.Dict[str, _util.JSONable]:
         """Parse task input for execution input.
 
+        Does not perform input validation: ``fn(**kwargs)`` in
+        ``call_with`` will do that anyway.
+
         Args:
             task_input: task input
 
@@ -170,18 +173,15 @@ class SmartCallableActivity(CallableActivity):  # TODO: unit-test
             activity input
         """
 
-        _kws = inspect.Parameter.VAR_KEYWORD
-        if any(p.kind is _kws for p in self.sig.parameters.values()):
+        kinds = {n: p.kind for n, p in self.sig.parameters.items()}
+        if any(k == inspect.Parameter.VAR_KEYWORD for k in kinds.values()):
             return task_input
 
+        var_pos = inspect.Parameter.VAR_POSITIONAL
         kwargs = {}
-        for param_name, param in self.sig.parameters.items():
-            val = task_input.get(param_name, param.default)
-            if val is param.empty:
-                _s = "Required parameter '%s' not in task input"
-                raise KeyError(_s % param_name)
-            kwargs[param_name] = val
-
+        for name, arg_val in task_input.items():
+            if kinds.get(name, var_pos) != var_pos:
+                kwargs[name] = arg_val
         return kwargs
 
     def call_with(self, task_input: T.Dict[str, _util.JSONable]):
