@@ -86,9 +86,9 @@ class Comparison(ChoiceRule):  # TODO: unit-test
 
     def _get_comparison(self):
         if not isinstance(self.comparison_value, self._expected_value_type):
-            _s = "Comparison value must be type `%s`: %s"
+            fmt = "Comparison value must be type `%s`: %s"
             exp_type_name = self._expected_value_type.__name__
-            raise TypeError(_s % (self.comparison_value, exp_type_name))
+            raise TypeError(fmt % (self.comparison_value, exp_type_name))
         return self.comparison_value
 
     def to_dict(self):
@@ -183,6 +183,24 @@ class TimestampLessThanEquals(_TimestampRule):  # TODO: unit-test
 
 
 class Logical(ChoiceRule):  # TODO: unit-test
+    @staticmethod
+    def _get_rule_defn(choice_rule: ChoiceRule) -> T.Dict[str, _util.JSONable]:
+        """Get choice rule definition.
+
+        Arguments:
+            choice_rule: choice rule to process
+
+        Returns:
+            choice rule definition
+        """
+
+        if choice_rule.next_state is not None:
+            msg = "Only top-level choice rules can have next state"
+            raise RuntimeError(msg)
+        return choice_rule.to_dict()
+
+
+class _NonUnary(Logical):  # TODO: unit-test
     """Logical operation on choice rules.
 
     Args:
@@ -200,37 +218,18 @@ class Logical(ChoiceRule):  # TODO: unit-test
         _n = "" if self.next_state is None else (" -> %s" % self.next_state)
         return _s + _n
 
-    @staticmethod
-    def _get_rule_defn(choice_rule: ChoiceRule) -> T.Dict[str, _util.JSONable]:
-        """Get choice rule definition.
-
-        Arguments:
-            choice_rule: choice rule to process
-
-        Returns:
-            choice rule definition
-        """
-
-        if choice_rule.next_state is not None:
-            msg = "Only top-level choice rules can have next state"
-            raise RuntimeError(msg)
-        return choice_rule.to_dict()
-
     def _get_comparison(self) -> T.List[T.Dict[str, _util.JSONable]]:
-        """Build choice rule definitions.
-
-        Returns:
-            choice rule definitions
-        """
-
+        if not self.choice_rules:
+            msg = "Must provide at least one choice-rule to logical choice"
+            raise ValueError(msg)
         return [self._get_rule_defn(r) for r in self.choice_rules]
 
 
-class And(Logical):
+class And(_NonUnary):  # TODO: unit-test
     _final = True
 
 
-class Or(Logical):
+class Or(_NonUnary):  # TODO: unit-test
     _final = True
 
 
@@ -245,17 +244,13 @@ class Not(Logical):  # TODO: unit-test
     _final = True
 
     def __init__(self, choice_rule: ChoiceRule, next_state=None):
-        super().__init__([choice_rule], next_state=next_state)
+        super().__init__(next_state=next_state)
+        self.choice_rule = choice_rule
 
     def __str__(self):
         _n = "" if self.next_state is None else (" -> %s" % self.next_state)
-        _f = (type(self).__name__, self.choice_rules[0], _n)
+        _f = (type(self).__name__, self.choice_rule, _n)
         return "%s %s%s" % _f
 
-    def __repr__(self):
-        has_next = self.next_state is not None
-        ns = ", next_state=%r" % self.next_state if has_next else ""
-        return "%s(%r%s)" % (type(self).__name__, self.choice_rules[0], ns)
-
     def _get_comparison(self) -> T.Dict[str, _util.JSONable]:
-        return super()._get_comparison()[0]
+        return self._get_rule_defn(self.choice_rule)
