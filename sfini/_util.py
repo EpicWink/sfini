@@ -15,7 +15,7 @@ from botocore import credentials
 from botocore import client as botocore_client
 
 _logger = lg.getLogger(__name__)
-
+lg.getLogger("botocore").setLevel(lg.WARNING)
 MAX_NAME_LENGTH = 79
 INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*\"#%\\^|~`$&,;:/"
 DEBUG = "pytest" in sys.modules
@@ -213,7 +213,6 @@ class AWSSession:  # TODO: unit-test
     @cached_property
     def sfn(self) -> botocore_client.BaseClient:
         """Step Functions client."""
-        setup_logging()
         return self.session.client("stepfunctions")
 
     @cached_property
