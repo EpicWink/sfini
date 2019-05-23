@@ -234,13 +234,13 @@ class Execution:  # TODO: unit-test
         t = time.time()
         while True:
             self._update()
-            if self._status == "SUCCEEDED":
+            if self._status != "RUNNING":
                 break
-            if raise_on_error:
-                self._raise_on_error()
             if timeout is not None and time.time() - t > timeout:
                 raise RuntimeError("Time-out waiting on execution '%s'" % self)
             time.sleep(self._wait_sleep_time)
+        if raise_on_error:
+            self._raise_on_error()
 
     def stop(self, error_code: str = _default, details: str = _default):
         """Stop an existing execution.
