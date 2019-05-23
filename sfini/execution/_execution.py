@@ -46,8 +46,8 @@ class Execution:  # TODO: unit-test
         self.session = session or _util.AWSSession()
 
         self._status = None
-        self._start_time = None
-        self._stop_time = None
+        self._start_date = None
+        self._stop_date = None
         self._output = _default
 
     def __str__(self):
@@ -70,9 +70,7 @@ class Execution:  # TODO: unit-test
             session: session to use for AWS communication
 
         Returns:
-            described execution. Note that the ``state_machine`` attribute
-                will be the ARN of the state-machine, not a ``StateMachine``
-                instance
+            described execution
         """
 
         session = session or _util.AWSSession()
@@ -87,8 +85,8 @@ class Execution:  # TODO: unit-test
             arn=arn,
             session=session)
         self._status = resp["status"]
-        self._start_time = resp["startDate"]
-        self._stop_time = resp.get("stopDate")
+        self._start_date = resp["startDate"]
+        self._stop_date = resp.get("stopDate")
         self._output = resp.get("output", _default)
         return self
 
@@ -103,13 +101,10 @@ class Execution:  # TODO: unit-test
 
         Args:
             item: execution list item
-            session: AWS session to use for AWS
-                communication
+            session: session to use for AWS communication
 
         Returns:
-            described execution. Note that the ``state_machine`` attribute
-                will be the ARN of the state-machine, not a ``StateMachine``
-                instance
+            described execution
         """
 
         self = cls(
@@ -119,8 +114,8 @@ class Execution:  # TODO: unit-test
             arn=item["executionArn"],
             session=session)
         self._status = item["status"]
-        self._start_time = item["startDate"]
-        self._stop_time = item.get("stopDate")
+        self._start_date = item["startDate"]
+        self._stop_date = item.get("stopDate")
         return self
 
     @property
@@ -130,14 +125,14 @@ class Execution:  # TODO: unit-test
         return self._status
 
     @property
-    def start_time(self) -> datetime.datetime:
+    def start_date(self) -> datetime.datetime:
         """Execution start time."""
-        if self._start_time is None:
+        if self._start_date is None:
             self._update()
-        return self._start_time
+        return self._start_date
 
     @property
-    def stop_time(self) -> datetime.datetime:
+    def stop_date(self) -> datetime.datetime:
         """Execution stop time.
 
         Raises:
@@ -146,7 +141,7 @@ class Execution:  # TODO: unit-test
 
         self._update()
         self._raise_unfinished()
-        return self._stop_time
+        return self._stop_date
 
     @property
     def output(self) -> _util.JSONable:
@@ -180,8 +175,8 @@ class Execution:  # TODO: unit-test
         resp = self.session.sfn.describe_execution(executionArn=self.arn)
         assert resp["executionArn"] == self.arn
         self._status = resp["status"]
-        self._start_time = resp["startDate"]
-        self._stop_time = resp.get("stopDate")
+        self._start_date = resp["startDate"]
+        self._stop_date = resp.get("stopDate")
         if "input" in resp:
             input_ = json.loads(resp["input"])
             if self.execution_input == self._not_provided:
@@ -215,7 +210,7 @@ class Execution:  # TODO: unit-test
             input=json.dumps(self.execution_input))
         self.arn = resp["executionArn"]
         self._status = "RUNNING"
-        self._start_time = resp["startDate"]
+        self._start_date = resp["startDate"]
 
     def wait(self, raise_on_error: bool = True, timeout: float = None):
         """Wait for execution to finish.
@@ -261,7 +256,7 @@ class Execution:  # TODO: unit-test
         if details != _default:
             kw["cause"] = details
         resp = self.session.sfn.stop_execution(executionArn=self.arn, **kw)
-        self._stop_time = resp["stopDate"]
+        self._stop_date = resp["stopDate"]
         _logger.info("Execution stopped on %s" % resp["stopDate"])
 
     def get_history(self) -> T.List[sfini_execution_history.Event]:
