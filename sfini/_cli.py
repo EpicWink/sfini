@@ -264,8 +264,8 @@ class CLI:  # TODO: unit-test
         for execution in execs:
             print(execution.format_history())
 
-    def _parse_and_run(self, args: argparse.Namespace):
-        """Parse and execute command-line arguments.
+    def _delegate(self, args: argparse.Namespace):
+        """Execute command.
 
         Args:
             args: parsed command-line arguments
@@ -287,4 +287,4 @@ class CLI:  # TODO: unit-test
         _util.setup_logging()
         parser = self._build_parser()
         args = parser.parse_args()
-        self._parse_and_run(args)
+        self._delegate(args)
