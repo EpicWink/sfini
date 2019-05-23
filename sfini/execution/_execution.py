@@ -122,7 +122,8 @@ class Execution:  # TODO: unit-test
     @property
     def status(self) -> str:
         """Execution status."""
-        self._update()
+        if self._status in (None, "RUNNING"):
+            self._update()
         return self._status
 
     @property
@@ -140,8 +141,9 @@ class Execution:  # TODO: unit-test
             RuntimeError: if execution is not yet finished
         """
 
-        self._update()
-        self._raise_unfinished()
+        if self._stop_date is None:
+            self._update()
+            self._raise_unfinished()
         return self._stop_date
 
     @property
@@ -189,7 +191,7 @@ class Execution:  # TODO: unit-test
 
     def _raise_on_error(self):
         """Raise ``RuntimeError`` on execution failure."""
-        failed = self._status not in ("RUNNING", "SUCCEEDED", None)
+        failed = self._status not in ("RUNNING", "SUCCEEDED")
         if failed:
             raise RuntimeError("Execution '%s' %s" % (self, self._status))
 
