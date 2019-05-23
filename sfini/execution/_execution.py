@@ -259,9 +259,6 @@ class Execution:  # TODO: unit-test
             RuntimeError: if execution is already finished
         """
 
-        self._update()
-        if self._status != "RUNNING":
-            raise RuntimeError("Cannot stop %s execution" % self._status)
         kw = {}
         if error_code != _default:
             kw["error"] = error_code

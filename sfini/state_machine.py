@@ -146,11 +146,8 @@ class StateMachine:  # TODO: unit-test
 
     def deregister(self):
         """Remove state-machine from AWS SFN."""
-        if not self.is_registered():
-            raise RuntimeError("Cannot de-register unregistered state-machine")
-
-        _logger.info("Deleting '%s' from SFN" % self)
-        _ = self.session.sfn.delete_state_machine(stateMachineArn=self.arn)
+        _logger.info("Deleting state-machine '%s' from SFN" % self)
+        self.session.sfn.delete_state_machine(stateMachineArn=self.arn)
 
     def start_execution(
             self,
