@@ -39,16 +39,32 @@ class Activity(sfini_task_resource.TaskResource):  # TODO: unit-test
 
     def __init__(self, name, heartbeat: int = 20, *, session=None):
         super().__init__(name, session=session)
-        self.name = name
         self.heartbeat = heartbeat
 
     def register(self):
-        """Register activity with AWS."""
+        """Register activity with AWS SFN."""
         _util.assert_valid_name(self.name)
         resp = self.session.sfn.create_activity(name=self.name)
         assert resp["activityArn"] == self.arn
-        _s = "Activity '%s' registered at %s"
-        _logger.info(_s % (self, resp["creationDate"]))
+        _s = "Activity '%s' registered with ARN '%s' at %s"
+        _logger.info(_s % (self, self.arn, resp["creationDate"]))
+
+    def is_registered(self) -> bool:
+        """See if this activity is registered with AWS SFN.
+
+        Returns:
+            if this activity is registered
+        """
+
+        _logger.debug("Testing for registration of '%s' on SFN" % self)
+        resp = _util.collect_paginated(self.session.sfn.list_activities)
+        arns = {sm["activityArn"] for sm in resp["activities"]}
+        return self.arn in arns
+
+    def deregister(self):
+        """Remove activity from AWS SFN."""
+        _logger.info("Deleting activity '%s' from SFN" % self)
+        self.session.sfn.delete_activity(activityArn=self.arn)
 
 
 class CallableActivity(Activity):  # TODO: unit-test
