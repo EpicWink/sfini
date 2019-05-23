@@ -205,10 +205,13 @@ class Execution:  # TODO: unit-test
         """
 
         _util.assert_valid_name(self.name)
+        input_ = self.execution_input
+        if input_ == _default:
+            input_ = {}
         resp = self.session.sfn.start_execution(
             stateMachineArn=self.state_machine_arn,
             name=self.name,
-            input=json.dumps(self.execution_input))
+            input=json.dumps(input_))
         self.arn = resp["executionArn"]
         self._status = "RUNNING"
         self._start_date = resp["startDate"]
