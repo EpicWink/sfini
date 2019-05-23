@@ -87,7 +87,8 @@ class Execution:  # TODO: unit-test
         self._status = resp["status"]
         self._start_date = resp["startDate"]
         self._stop_date = resp.get("stopDate")
-        self._output = resp.get("output", _default)
+        if "output" in resp:
+            self._output = json.loads(resp["output"])
         return self
 
     @classmethod
