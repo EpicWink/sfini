@@ -320,10 +320,9 @@ class ActivityRegistration:  # TODO: unit-test
         acts = []
         for act in resp["activities"]:
             prefix = act["name"][:len(self.prefix)]
-            if prefix != self.prefix or act["name"] not in self.activities:
+            if prefix != self.prefix and act["name"] not in self.activities:
                 continue
-            name = act["name"][len(self.prefix):]
-            acts.append((name, act["arn"], act["creationDate"]))
+            acts.append((act["name"], act["activityArn"], act["creationDate"]))
         return acts
 
     def _deregister_activities(
