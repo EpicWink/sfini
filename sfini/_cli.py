@@ -6,6 +6,7 @@
 Use in your ``__main__`` module to provide a CLI to your service.
 """
 
+import sys
 import json
 import pathlib
 import argparse
@@ -230,9 +231,12 @@ class CLI:  # TODO: unit-test
             args: parsed command-line arguments
         """
 
-        _ijp = args.input_json
-        _eis = input() if _ijp == "-" else pathlib.Path(_ijp).read_text()
-        execution_input = json.loads(_eis)
+        if args.input_json == "-":
+            execution_input_str = sys.stdin.read()
+        else:
+            input_json = pathlib.Path(args.input_json)
+            execution_input_str = input_json.read_text()
+        execution_input = json.loads(execution_input_str)
         execution = self.state_machine.start_execution(execution_input)
         if args.wait:
             execution.wait()
