@@ -220,18 +220,13 @@ class ActivityRegistration:  # TODO: unit-test
 
     def __init__(self, prefix: str = "", *, session: _util.AWSSession = None):
         self.prefix = prefix
-        self.activities: T.Dict[str, Activity] = {}
         self.session = session or _util.AWSSession()
+        self.activities: T.Dict[str, Activity] = {}
 
     def __str__(self):
         return "'%s' activities" % self.prefix
 
     __repr__ = _util.easy_repr
-
-    @property
-    def all_activities(self) -> T.Set[Activity]:
-        """All registered activities."""
-        return set(self.activities.values())
 
     def add_activity(self, activity: Activity):
         """Add an activity to the group.
