@@ -114,18 +114,19 @@ class StateMachine:  # TODO: unit-test
         fmt = "State-machine '%s' registered with ARN '%s' at %s"
         _logger.info(fmt % (self, self.arn, resp["creationDate"]))
 
-    def _sfn_update(self, role_arn: str):
-        """Update this state-machine in SFN.
+    def _sfn_update(self, role_arn: str = None):
+        """Update this state-machine in AWS SFN.
 
         Args:
-            role_arn: state-machine IAM role ARN
+            role_arn: state-machine IAM role ARN to update to
         """
 
         _logger.info("Updating '%s' on SFN" % self)
+        kwargs = {} if role_arn is None else {"roleArn": role_arn}
         resp = self.session.sfn.update_state_machine(
             definition=json.dumps(self.to_dict(), indent=4),
-            roleArn=role_arn,
-            stateMachineArn=self.arn)
+            stateMachineArn=self.arn,
+            **kwargs)
         _logger.info("'%s' updated at %s" % (self, resp["updateDate"]))
 
     def register(self, role_arn: str = None, allow_update: bool = False):
@@ -137,12 +138,11 @@ class StateMachine:  # TODO: unit-test
                 the same name
         """
 
-        role_arn = role_arn or self.default_role_arn
         _util.assert_valid_name(self.name)
         if allow_update and self.is_registered():
             self._sfn_update(role_arn)
         else:
-            self._sfn_create(role_arn)
+            self._sfn_create(role_arn or self.default_role_arn)
 
     def deregister(self):
         """Remove state-machine from AWS SFN."""
