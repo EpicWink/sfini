@@ -4,6 +4,7 @@
 """Common utilities for ``sfini``."""
 
 import inspect
+import sys
 import typing as T
 import logging as lg
 import functools as ft
@@ -16,7 +17,7 @@ _logger = lg.getLogger(__name__)
 
 MAX_NAME_LENGTH = 79
 INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*\"#%\\^|~`$&,;:/"
-DEBUG = False
+DEBUG = "pytest" in sys.modules
 JSONable = T.Union[None, bool, str, int, float, list, T.Dict[str, T.Any]]
 
 
@@ -65,23 +66,24 @@ def cached_property(fn: T.Callable) -> property:  # TODO: unit-test
 
     name = fn.__name__
 
-    @ft.wraps(fn)
-    def wrapped(self):
+    def _ensure_cache(self):
         if not hasattr(self, "__cache__"):
             self.__cache__ = {}
+
+    @ft.wraps(fn)
+    def wrapped(self):
+        _ensure_cache(self)
         if name not in self.__cache__:
             self.__cache__[name] = fn(self)
         return self.__cache__[name]
 
     if DEBUG:  # for testing
         def fset(self, value):
-            if not hasattr(self, "__cache__"):
-                self.__cache__ = {}
+            _ensure_cache(self)
             self.__cache__[name] = value
 
         def fdel(self):
-            if not hasattr(self, "__cache__"):
-                self.__cache__ = {}
+            _ensure_cache(self)
             del self.__cache__[name]
 
         return property(wrapped, fset=fset, fdel=fdel)
