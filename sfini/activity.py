@@ -93,26 +93,25 @@ class CallableActivity(Activity):  # TODO: unit-test
         return self.fn(task_input, *args, **kwargs)
 
     @classmethod
-    def from_callable(
+    def decorate(
             cls,
-            fn: T.Callable,
             name: str,
             heartbeat: int = 20,
             *,
             session: _util.AWSSession = None
-    ) -> "CallableActivity":
-        """Create an activity from the callable.
+    ) -> T.Callable[[T.Callable], "CallableActivity"]:
+        """Decorate a callable as an activity implementation.
 
         Args:
-            fn: function to run activity
             name: name of activity
             heartbeat: seconds between heartbeat during activity running
             session: session to use for AWS communication
         """
 
-        activity = cls(name, fn, heartbeat=heartbeat, session=session)
-        ft.update_wrapper(activity, fn)
-        return activity
+        def wrap(fn: T.Callable):
+            activity = cls(name, fn, heartbeat=heartbeat, session=session)
+            return ft.update_wrapper(activity, fn)
+        return wrap
 
     def call_with(self, task_input: _util.JSONable) -> _util.JSONable:
         """Call with task-input context.
@@ -251,7 +250,7 @@ class ActivityRegistration:  # TODO: unit-test
             activity_cls: T.Type[CallableActivity],
             name: str = None,
             heartbeat: int = 20
-    ) -> T.Callable:
+    ) -> T.Callable[[T.Callable], CallableActivity]:
         """Activity function decorator.
 
         Args:
@@ -260,22 +259,21 @@ class ActivityRegistration:  # TODO: unit-test
             heartbeat: seconds between heartbeat during activity running
         """
 
-        def wrapper(fn):
+        def wrap(fn):
             suff = fn.__name__ if name is None else name
-            activity = activity_cls.from_callable(
-                fn,
+            activity = activity_cls.decorate(
                 self.prefix + suff,
                 heartbeat=heartbeat,
-                session=self.session)
+                session=self.session)(fn)
             self.add_activity(activity)
-            return ft.update_wrapper(activity, fn)
-        return wrapper
+            return activity
+        return wrap
 
     def activity(
             self,
             name: str = None,
             heartbeat: int = 20
-    ) -> T.Callable:
+    ) -> T.Callable[[T.Callable], CallableActivity]:
         """Activity function decorator.
 
         The decorated function will be passed one argument: the input to
@@ -295,7 +293,7 @@ class ActivityRegistration:  # TODO: unit-test
             self,
             name: str = None,
             heartbeat: int = 20
-    ) -> T.Callable:
+    ) -> T.Callable[[T.Callable], SmartCallableActivity]:
         """Smart activity function decorator.
 
         The decorated function will be passed values to its parameters
