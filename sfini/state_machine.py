@@ -35,13 +35,6 @@ class StateMachine:  # TODO: unit-test
     """
 
     _execution_class = sfini_execution.Execution
-    _succeed_state_class = sfini_state.Succeed
-    _fail_state_class = sfini_state.Fail
-    _pass_state_class = sfini_state.Pass
-    _wait_state_class = sfini_state.Wait
-    _parallel_state_class = sfini_state.Parallel
-    _choice_state_class = sfini_state.Choice
-    _task_state_class = sfini_state.Task
 
     def __init__(
             self,
@@ -60,7 +53,7 @@ class StateMachine:  # TODO: unit-test
         self.session = session or _util.AWSSession()
 
     def __str__(self):
-        return "'%s' (%s states)" % (self.name, len(self.states))
+        return "'%s' (%d states)" % (self.name, len(self.states))
 
     __repr__ = _util.easy_repr
 
@@ -69,8 +62,8 @@ class StateMachine:  # TODO: unit-test
         """State-machine generated ARN."""
         region = self.session.region
         account = self.session.account_id
-        _s = "arn:aws:states:%s:%s:stateMachine:%s"
-        return _s % (region, account, self.name)
+        fmt = "arn:aws:states:%s:%s:stateMachine:%s"
+        return fmt % (region, account, self.name)
 
     @_util.cached_property
     def default_role_arn(self) -> str:
@@ -94,7 +87,7 @@ class StateMachine:  # TODO: unit-test
         return defn
 
     def is_registered(self) -> bool:
-        """See if this state-machine is registered.
+        """See if this state-machine is registered with AWS SFN.
 
         Returns:
             if this state-machine is registered
@@ -106,10 +99,10 @@ class StateMachine:  # TODO: unit-test
         return self.arn in arns
 
     def _sfn_create(self, role_arn: str):
-        """Create this state-machine in SFN.
+        """Create this state-machine in AWS SFN.
 
         Args:
-            role_arn: AWS ARN for state-machine IAM role
+            role_arn: state-machine IAM role ARN
         """
 
         _logger.info("Creating '%s' on SFN" % self)
@@ -118,16 +111,14 @@ class StateMachine:  # TODO: unit-test
             definition=json.dumps(self.to_dict(), indent=4),
             roleArn=role_arn)
         assert resp["stateMachineArn"] == self.arn
-        _arn = resp["stateMachineArn"]
-        _date = resp["creationDate"]
-        _s = "'%s' created with ARN '%s' at %s"
-        _logger.info(_s % (self, _arn, _date))
+        fmt = "State-machine '%s' registered with ARN '%s' at %s"
+        _logger.info(fmt % (self, self.arn, resp["creationDate"]))
 
     def _sfn_update(self, role_arn: str):
         """Update this state-machine in SFN.
 
         Args:
-            role_arn: AWS ARN for state-machine IAM role
+            role_arn: state-machine IAM role ARN
         """
 
         _logger.info("Updating '%s' on SFN" % self)
@@ -135,21 +126,19 @@ class StateMachine:  # TODO: unit-test
             definition=json.dumps(self.to_dict(), indent=4),
             roleArn=role_arn,
             stateMachineArn=self.arn)
-        _s = "'%s' updated at %s"
-        _logger.info(_s % (self, resp["updateDate"]))
+        _logger.info("'%s' updated at %s" % (self, resp["updateDate"]))
 
     def register(self, role_arn: str = None, allow_update: bool = False):
-        """Register state-machine with AWS Step Functions.
+        """Register state-machine with AWS SFN.
 
         Args:
-            role_arn: AWS ARN for state-machine IAM role
+            role_arn: state-machine IAM role ARN
             allow_update: allow overwriting of an existing state-machine with
                 the same name
         """
 
         role_arn = role_arn or self.default_role_arn
         _util.assert_valid_name(self.name)
-
         if allow_update and self.is_registered():
             self._sfn_update(role_arn)
         else:
@@ -173,11 +162,11 @@ class StateMachine:  # TODO: unit-test
             execution_input: input to first state in state-machine
 
         Returns:
-            Execution: started execution
+            started execution
         """
 
-        _s = "Starting execution of '%s' with: %s"
-        _logger.info(_s % (self, execution_input))
+        fmt = "Starting execution of '%s' with: %s"
+        _logger.info(fmt % (self, execution_input))
 
         _now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
         name = self.name + "_" + _now + "_" + str(uuid.uuid4())[:8]
