@@ -10,7 +10,7 @@ import typing as T
 import logging as lg
 
 from .. import _util
-from . import history as sfini_execution_history
+from . import history
 
 _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
@@ -65,6 +65,8 @@ class Execution:  # TODO: unit-test
     ) -> "Execution":
         """Construct an ``Execution`` from an existing execution.
 
+        Queries AWS Step Functions for the execution with the given ARN
+
         Args:
             arn: existing execution ARN
             session: session to use for AWS communication
@@ -98,7 +100,7 @@ class Execution:  # TODO: unit-test
             *,
             session: _util.AWSSession = None
     ) -> "Execution":
-        """Construct an ``Execution`` from a list response item.
+        """Construct an ``Execution`` from a response list-item.
 
         Args:
             item: execution list item
@@ -270,7 +272,7 @@ class Execution:  # TODO: unit-test
         self._stop_date = resp["stopDate"]
         _logger.info("Execution stopped on %s" % resp["stopDate"])
 
-    def get_history(self) -> T.List[sfini_execution_history.Event]:
+    def get_history(self) -> T.List[history.Event]:
         """List the execution history.
 
         Returns:
@@ -281,7 +283,7 @@ class Execution:  # TODO: unit-test
         resp = _util.collect_paginated(
             self.session.sfn.get_execution_history,
             executionArn=self.arn)
-        return sfini_execution_history.parse_history(resp["events"])
+        return history.parse_history(resp["events"])
 
     def format_history(self) -> str:
         """Format the execution history for printing.

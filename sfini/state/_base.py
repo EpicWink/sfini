@@ -191,8 +191,8 @@ class ErrorHandling:  # TODO: unit-test
         for err in errors:
             if err.startswith("States."):
                 if err[7:] not in self.states_errors:
-                    _s = "States error name was '%s', must be one of: %s"
-                    raise ValueError(_s % (err[7:], self.states_errors))
+                    fmt = "States error name was '%s', must be one of: %s"
+                    raise ValueError(fmt % (err[7:], self.states_errors))
 
     @staticmethod
     def _policy_defn(policy: T.Any) -> T.Dict[str, _util.JSONable]:

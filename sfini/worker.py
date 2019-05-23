@@ -62,7 +62,7 @@ class TaskExecution:  # TODO: unit-test
         self._request_stop = False
 
     def __str__(self):
-        return "%s - %s" % (self.activity, self.task_token)
+        return "%s - %s" % (self.activity.name, self.task_token)
 
     __repr__ = _util.easy_repr
 
@@ -85,8 +85,8 @@ class TaskExecution:  # TODO: unit-test
 
     def report_cancelled(self):
         """Cancel a task execution: stop interaction with SFN."""
-        _s = "Reporting task failure for '%s' due to cancellation"
-        _logger.info(_s % self)
+        fmt = "Reporting task failure for '%s' due to cancellation"
+        _logger.info(fmt % self)
         self._send(
             self.session.sfn.send_task_failure,
             error=WorkerCancel.__name__,
@@ -95,8 +95,8 @@ class TaskExecution:  # TODO: unit-test
 
     def _report_success(self, res: _util.JSONable):
         """Report success."""
-        _s = "Reporting task success for '%s' with output: %s"
-        _logger.debug(_s % (self, res))
+        fmt = "Reporting task success for '%s' with output: %s"
+        _logger.debug(fmt % (self, res))
         self._send(self.session.sfn.send_task_success, output=json.dumps(res))
         self._request_stop = True
 
@@ -137,8 +137,8 @@ class TaskExecution:  # TODO: unit-test
             self._report_exception(e)
             return
 
-        _s = "Task '%s' completed in %.6f seconds"
-        _logger.debug(_s % (self, time.time() - t))
+        fmt = "Task '%s' completed in %.6f seconds"
+        _logger.debug(fmt % (self, time.time() - t))
         self._report_success(res)
 
 
@@ -170,7 +170,7 @@ class Worker:  # TODO: unit-test
         self._exc = None
 
     def __str__(self):
-        return "%s [%s]" % (self.name, self.activity)
+        return "%s [%s]" % (self.name, self.activity.name)
 
     __repr__ = _util.easy_repr
 
@@ -197,13 +197,14 @@ class Worker:  # TODO: unit-test
     def _poll_and_execute(self):
         """Poll for tasks to execute, then execute any found."""
         while not self._request_finish:
-            _s = "Polling for activity '%s' executions"
-            _logger.debug(_s % self.activity)
+            fmt = "Polling for activity '%s' executions"
+            _logger.debug(fmt % self.activity)
             resp = self.session.sfn.get_activity_task(
                 activityArn=self.activity.arn,
                 workerName=self.name)
             if resp.get("taskToken", None) is not None:
-                self._execute_on(json.loads(resp["input"]), resp["taskToken"])
+                input_ = json.loads(resp["input"])
+                self._execute_on(input_, resp["taskToken"])
 
     def _worker(self):
         """Run polling, catching exceptins."""

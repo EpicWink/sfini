@@ -37,8 +37,8 @@ class Fail(_base.State):  # TODO: unit-test
         input_path: state input filter JSONPath, ``None`` for empty input
         output_path: state output filter JSONPath, ``None`` for discarded
             output
+        error: error type
         cause: failure description
-        error: name of failure error
     """
 
     def __init__(
@@ -54,8 +54,8 @@ class Fail(_base.State):  # TODO: unit-test
             comment=comment,
             input_path=input_path,
             output_path=output_path)
-        self.cause = cause
         self.error = error
+        self.cause = cause
 
     def to_dict(self):
         defn = super().to_dict()
@@ -152,8 +152,8 @@ class Wait(_base.HasNext, _base.State):  # TODO: unit-test
         elif isinstance(t, str):
             defn["TimestampPath"] = t
         else:
-            _s = "Invalid type for wait time: %s"
-            raise TypeError(_s % type(t).__name__)
+            fmt = "Invalid type for wait time: %s"
+            raise TypeError(fmt % type(t).__name__)
         return defn
 
 
@@ -308,8 +308,8 @@ class Choice(_base.State):  # TODO: unit-test
         """
 
         if self.default is not None:
-            _s = "Overwriting current default state '%s'"
-            _logger.warning(_s % self.default)
+            fmt = "Overwriting current default state '%s'"
+            _logger.warning(fmt % self.default)
         self.default = state
 
 

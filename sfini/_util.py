@@ -12,6 +12,7 @@ from collections import abc
 
 import boto3
 from botocore import credentials
+from botocore import client as botocore_client
 
 _logger = lg.getLogger(__name__)
 
@@ -120,7 +121,7 @@ def collect_paginated(
 
     Args:
         fn: SFN API function
-        kwargs: arguments to ``fn``
+        **kwargs: arguments to ``fn``
 
     Returns:
         combined results of paginated API calls
@@ -210,7 +211,7 @@ class AWSSession:  # TODO: unit-test
         return self.session.get_credentials()
 
     @cached_property
-    def sfn(self) -> boto3.session.botocore.session.botocore.client.BaseClient:
+    def sfn(self) -> botocore_client.BaseClient:
         """Step Functions client."""
         setup_logging()
         return self.session.client("stepfunctions")

@@ -46,8 +46,8 @@ class Activity(sfini_task_resource.TaskResource):  # TODO: unit-test
         _util.assert_valid_name(self.name)
         resp = self.session.sfn.create_activity(name=self.name)
         assert resp["activityArn"] == self.arn
-        _s = "Activity '%s' registered with ARN '%s' at %s"
-        _logger.info(_s % (self, self.arn, resp["creationDate"]))
+        fmt = "Activity '%s' registered with ARN '%s' at %s"
+        _logger.info(fmt % (self, self.arn, resp["creationDate"]))
 
     def is_registered(self) -> bool:
         """See if this activity is registered with AWS SFN.
@@ -71,12 +71,12 @@ class CallableActivity(Activity):  # TODO: unit-test
     """Activity execution defined by a callable.
 
     Note that activity names must be unique (within a region). It's
-    recommended to put your code's title and version in the activity name.
-    ``Activities`` makes this straight-forward.
+    recommended to put your application's name and version in the activity
+    name. ``ActivityRegistration`` makes this straight-forward.
 
     An activity is attached to state-machine tasks, and is called when that
-    task is executed. A worker registers itself able to run some
-    activities using their names.
+    task is executed. A worker registers itself able to run an activity
+    using the registered activity name.
 
     Args:
         name: name of activity
@@ -129,13 +129,16 @@ class CallableActivity(Activity):  # TODO: unit-test
 class SmartCallableActivity(CallableActivity):  # TODO: unit-test
     """Activity execution defined by a callable, processing input.
 
+    The arguments to ``fn`` are extracted from the input provided by AWS
+    Step Functions.
+
     Note that activity names must be unique (within a region). It's
-    recommended to put your code's title and version in the activity name.
-    ``Activities`` makes this straight-forward.
+    recommended to put your application's name and version in the activity
+    name. ``ActivityRegistration`` makes this straight-forward.
 
     An activity is attached to state-machine tasks, and is called when that
-    task is executed. A worker registers itself able to run some
-    activities using their names.
+    task is executed. A worker registers itself able to run an activity
+    using the registered activity name.
 
     Args:
         name: name of activity
@@ -193,8 +196,8 @@ class ActivityRegistration:  # TODO: unit-test
     names, bulk-registering activities, and activity function decoration.
 
     An activity is attached to state-machine tasks, and is called when that
-    task is executed. A worker registers itself able to run some activities
-    using their names.
+    task is executed. A worker registers itself able to run an activity
+    using the registered activity name.
 
     Args:
         prefix: prefix for activity names
@@ -221,7 +224,7 @@ class ActivityRegistration:  # TODO: unit-test
         self.session = session or _util.AWSSession()
 
     def __str__(self):
-        return "%s '%s'" % (type(self).__name__, self.prefix)
+        return "'%s' activities" % self.prefix
 
     __repr__ = _util.easy_repr
 
@@ -237,13 +240,12 @@ class ActivityRegistration:  # TODO: unit-test
             activity: activity to add
 
         Raises:
-            ValueError: if activity the same name as an existing activity
+            ValueError: if activity name already in-use in group
         """
 
-        name = activity.name
-        if name in self.activities:
-            raise ValueError("Activity '%s' already registered" % name)
-        self.activities[name] = activity
+        if activity.name in self.activities:
+            raise ValueError("Activity '%s' already in group" % activity.name)
+        self.activities[activity.name] = activity
 
     def _activity(
             self,

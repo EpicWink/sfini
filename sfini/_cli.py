@@ -56,12 +56,12 @@ class CLI:  # TODO: unit-test
 
         d = None
         if self.state_machine and self.activities:
-            _s = "Control %s and '%s' activities"
-            d = _s % (self.state_machine, self.activities.prefix)
+            fmt = "Control %s and %s"
+            d = fmt % (self.state_machine, self.activities)
         elif self.state_machine:
-            d = "Control '%s'" % self.state_machine
+            d = "Control %s" % self.state_machine
         elif self.activities:
-            d = "Control '%s' activities" % self.activities.prefix
+            d = "Control %s" % self.activities
         parser = self._parser_class(description=d, prog=self.prog)
         if self.version:
             parser.add_argument(

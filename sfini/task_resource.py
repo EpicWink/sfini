@@ -45,8 +45,8 @@ class TaskResource:  # TODO: unit-test
         """Task resource generated ARN."""
         region = self.session.region
         account = self.session.account_id
-        _s = "arn:aws:states:%s:%s:%s:%s"
-        return _s % (region, account, self.service, self.name)
+        fmt = "arn:aws:states:%s:%s:%s:%s"
+        return fmt % (region, account, self.service, self.name)
 
 
 class Lambda(TaskResource):  # TODO: unit-test
