@@ -175,8 +175,40 @@ class StateMachine:  # TODO: unit-test
         execution.start()
         return execution
 
+    def _build_executions(
+            self,
+            items: T.List[T.Dict[str, _util.JSONable]]
+    ) -> T.List[_execution_class]:
+        """Build executions from response list-items.
+
+        This state-machine is manually attached to the ``state_machine``
+        attribute of the resultant executions here.
+
+        Arguments:
+            items: execution list-items
+
+        Returns:
+            constructed executions
+        """
+
+        executions = []
+        for item in items:
+            assert item["stateMachineArn"] == self.arn
+            execution = self._execution_class.from_execution_list_item(
+                item,
+                session=self.session)
+            execution.state_machine = self
+            executions.append(execution)
+
+            fmt = "Found execution '%s' with stop-date: %s"
+            _logger.debug(fmt % (execution, item.get("stopDate")))
+        return executions
+
     def list_executions(self, status: str = None) -> T.List[_execution_class]:
         """List all executions of this state-machine.
+
+        This state-machine is manually attached to the ``state_machine``
+        attribute of the resultant executions here.
 
         Args:
             status: only list executions with this status. Choose from
@@ -194,21 +226,7 @@ class StateMachine:  # TODO: unit-test
             kwargs["statusFilter"] = status
         fn = self.session.sfn.list_executions
         resp = _util.collect_paginated(fn, **kwargs)
-
-        executions = []
-        for exec_info in resp["executions"]:
-            assert exec_info["stateMachineArn"] == self.arn
-            execution = self._execution_class.from_execution_list_item(
-                exec_info,
-                session=self.session)
-            execution.state_machine = self
-            executions.append(execution)
-
-            status, stop_date = exec_info["status"], exec_info.get("stopDate")
-            _s = "Found execution '%s' with status '%s' and stop-date: %s"
-            _logger.debug(_s % (execution, status, stop_date))
-
-        return executions
+        return self._build_executions(resp["executions"])
 
 
 def construct_state_machine(
