@@ -252,12 +252,12 @@ class Choice(_base.State):  # TODO: unit-test
         self.choices = []
         self.default: T.Union[_base.State, None] = None
 
-    def add_to(self, state_machine):
-        super().add_to(state_machine)
+    def add_to(self, states):
+        super().add_to(states)
         for rule in self.choices:
-            rule.next_state.add_to(state_machine)
+            rule.next_state.add_to(states)
         if self.default is not None:
-            self.default.add_to(state_machine)
+            self.default.add_to(states)
 
     def to_dict(self):
         if not self.choices and self.default is None:
@@ -269,20 +269,19 @@ class Choice(_base.State):  # TODO: unit-test
         return defn
 
     def add(self, rule):
-        """Add a branch.
+        """Add a choice-rule.
 
         Args:
             rule (sfini.choice.ChoiceRule): branch execution condition
                 and specification to add
 
         Raises:
-            RuntimeError: rule will go to a state not part of this
-                state-machine
+            RuntimeError: rule doesn't specify next-state
         """
 
         if rule.next_state is None:
-            msg = "Top-level choice rules must specify next state"
-            raise RuntimeError(msg)
+            msg = "Top-level choice rule '%s' must specify next state"
+            raise RuntimeError(msg % rule)
         self.choices.append(rule)
 
     def remove(self, rule):
@@ -297,7 +296,8 @@ class Choice(_base.State):  # TODO: unit-test
         """
 
         if rule not in self.choices:
-            raise ValueError("Rule '%s' is not registered with this state")
+            fmt = "Rule '%s' is not registered with this state"
+            raise ValueError(fmt % rule)
         self.choices.remove(rule)
 
     def set_default(self, state: _base.State):
@@ -308,8 +308,8 @@ class Choice(_base.State):  # TODO: unit-test
         """
 
         if self.default is not None:
-            fmt = "Overwriting current default state '%s'"
-            _logger.warning(fmt % self.default)
+            fmt = "Overwriting current default state '%s' with '%s'"
+            _logger.warning(fmt % (self.default, state))
         self.default = state
 
 
