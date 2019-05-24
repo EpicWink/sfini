@@ -18,7 +18,7 @@ from . import task_resource as sfini_task_resource
 _logger = lg.getLogger(__name__)
 
 
-class Activity(sfini_task_resource.TaskResource):  # TODO: unit-test
+class Activity(sfini_task_resource.TaskResource):
     """Activity execution.
 
     Note that activity names must be unique (within a region). It's
@@ -67,7 +67,7 @@ class Activity(sfini_task_resource.TaskResource):  # TODO: unit-test
         self.session.sfn.delete_activity(activityArn=self.arn)
 
 
-class CallableActivity(Activity):  # TODO: unit-test
+class CallableActivity(Activity):
     """Activity execution defined by a callable.
 
     Note that activity names must be unique (within a region). It's
@@ -126,7 +126,7 @@ class CallableActivity(Activity):  # TODO: unit-test
         return self.fn(task_input)
 
 
-class SmartCallableActivity(CallableActivity):  # TODO: unit-test
+class SmartCallableActivity(CallableActivity):
     """Activity execution defined by a callable, processing input.
 
     The arguments to ``fn`` are extracted from the input provided by AWS
@@ -189,7 +189,7 @@ class SmartCallableActivity(CallableActivity):  # TODO: unit-test
         return self.fn(**kwargs)
 
 
-class ActivityRegistration:  # TODO: unit-test
+class ActivityRegistration:
     """Activities registration.
 
     Provides convenience for grouping activities, generating activity

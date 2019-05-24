@@ -16,7 +16,7 @@ from . import _util
 from . import worker as sfini_worker
 
 
-class CLI:  # TODO: unit-test
+class CLI:
     """``sfini`` command-line interface.
 
     Args:

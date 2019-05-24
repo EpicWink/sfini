@@ -22,7 +22,7 @@ _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
 
 
-class StateMachine:  # TODO: unit-test
+class StateMachine:
     """State machine structure for AWS Step Functions.
 
     Args:

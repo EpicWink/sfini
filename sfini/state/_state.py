@@ -14,7 +14,7 @@ _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
 
 
-class Succeed(_base.State):  # TODO: unit-test
+class Succeed(_base.State):
     """End execution successfully.
 
     Args:
@@ -28,7 +28,7 @@ class Succeed(_base.State):  # TODO: unit-test
     pass
 
 
-class Fail(_base.State):  # TODO: unit-test
+class Fail(_base.State):
     """End execution unsuccessfully.
 
     Args:
@@ -66,7 +66,6 @@ class Fail(_base.State):  # TODO: unit-test
         return defn
 
 
-# TODO: unit-test
 class Pass(_base.HasResultPath, _base.HasNext, _base.State):
     """No-op state, possibly introducing data.
 
@@ -109,7 +108,7 @@ class Pass(_base.HasResultPath, _base.HasNext, _base.State):
         return defn
 
 
-class Wait(_base.HasNext, _base.State):  # TODO: unit-test
+class Wait(_base.HasNext, _base.State):
     """Wait for a time before continuing.
 
     Args:
@@ -142,22 +141,21 @@ class Wait(_base.HasNext, _base.State):  # TODO: unit-test
 
     def to_dict(self):
         defn = super().to_dict()
-        t = self.until
-        if isinstance(t, int):
-            defn["Seconds"] = t
-        elif isinstance(t, datetime.datetime):
-            if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
+        if isinstance(self.until, int):
+            defn["Seconds"] = self.until
+        elif isinstance(self.until, datetime.datetime):
+            tzinfo = self.until.tzinfo
+            if tzinfo is None or tzinfo.utcoffset(self.until) is None:
                 raise ValueError("Wait time must be aware")
-            defn["Timestamp"] = t.isoformat("T")
-        elif isinstance(t, str):
-            defn["TimestampPath"] = t
+            defn["Timestamp"] = self.until.isoformat("T")
+        elif isinstance(self.until, str):
+            defn["TimestampPath"] = self.until
         else:
             fmt = "Invalid type for wait time: %s"
-            raise TypeError(fmt % type(t).__name__)
+            raise TypeError(fmt % type(self.until))
         return defn
 
 
-# TODO: unit-test
 class Parallel(
         _base.HasResultPath,
         _base.HasNext,
@@ -199,11 +197,6 @@ class Parallel(
             result_path=result_path)
         self.branches = []
 
-    def to_dict(self):
-        defn = super().to_dict()
-        defn["Branches"] = [sm.to_dict() for sm in self.branches]
-        return defn
-
     def add(self, state_machine):
         """Add a state-machine to be executed.
 
@@ -219,8 +212,13 @@ class Parallel(
 
         self.branches.append(state_machine)
 
+    def to_dict(self):
+        defn = super().to_dict()
+        defn["Branches"] = [sm.to_dict() for sm in self.branches]
+        return defn
 
-class Choice(_base.State):  # TODO: unit-test
+
+class Choice(_base.State):
     """Branch execution based on comparisons.
 
     Args:
@@ -258,15 +256,6 @@ class Choice(_base.State):  # TODO: unit-test
             rule.next_state.add_to(states)
         if self.default is not None:
             self.default.add_to(states)
-
-    def to_dict(self):
-        if not self.choices and self.default is None:
-            raise RuntimeError("Choice '%s' has no next path")
-        defn = super().to_dict()
-        defn["Choices"] = [cr.to_dict() for cr in self.choices]
-        if self.default is not None:
-            defn["Default"] = self.default.name
-        return defn
 
     def add(self, rule):
         """Add a choice-rule.
@@ -312,8 +301,16 @@ class Choice(_base.State):  # TODO: unit-test
             _logger.warning(fmt % (self.default, state))
         self.default = state
 
+    def to_dict(self):
+        if not self.choices and self.default is None:
+            raise RuntimeError("Choice '%s' has no next path")
+        defn = super().to_dict()
+        defn["Choices"] = [cr.to_dict() for cr in self.choices]
+        if self.default is not None:
+            defn["Default"] = self.default.name
+        return defn
 
-# TODO: unit-test
+
 class Task(
         _base.HasResultPath,
         _base.HasNext,

@@ -22,7 +22,7 @@ DEBUG = "pytest" in sys.modules
 JSONable = T.Union[None, bool, str, int, float, list, T.Dict[str, T.Any]]
 
 
-class DefaultParameter:  # TODO: unit-test
+class DefaultParameter:
     """Default parameter for step-functions definition."""
     def __bool__(self):
         return False
@@ -37,7 +37,7 @@ class DefaultParameter:  # TODO: unit-test
         return type(self).__name__ + "()"
 
 
-def setup_logging(level: int = None):  # TODO: unit-test
+def setup_logging(level: int = None):
     """Setup logging for ``sfini``, if logs would otherwise be ignored.
 
     Args:
@@ -52,7 +52,7 @@ def setup_logging(level: int = None):  # TODO: unit-test
         [h.setLevel(level) for h in lg.getLogger().handlers]
 
 
-def cached_property(fn: T.Callable) -> property:  # TODO: unit-test
+def cached_property(fn: T.Callable) -> property:
     """Decorate a method as a cached property.
 
     The wrapped method's result is stored in the instance's ``__cache__``
@@ -92,7 +92,7 @@ def cached_property(fn: T.Callable) -> property:  # TODO: unit-test
     return property(wrapped)
 
 
-def assert_valid_name(name: str):  # TODO: unit-test
+def assert_valid_name(name: str):
     """Ensure a valid name of activity, state-machine or state.
 
     Args:
@@ -111,7 +111,7 @@ def assert_valid_name(name: str):  # TODO: unit-test
 def collect_paginated(
         fn: T.Callable[..., T.Dict[str, JSONable]],
         **kwargs
-) -> T.Dict[str, JSONable]:  # TODO: unit-test
+) -> T.Dict[str, JSONable]:
     """Call SFN API paginated endpoint.
 
     Calls ``fn`` until "nextToken" isn't in the return value, collating
@@ -189,7 +189,7 @@ def easy_repr(instance) -> str:
     return "%s(%s)" % (type_name, args_str)
 
 
-class AWSSession:  # TODO: unit-test
+class AWSSession:
     """AWS session, for preconfigure communication with AWS.
 
     Args:

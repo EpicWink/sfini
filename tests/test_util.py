@@ -6,6 +6,180 @@
 from sfini import _util as tscr
 import pytest
 from unittest import mock
+import logging as lg
+import boto3
+
+
+class TestDefaultParameter:
+    """Test `sfini._util.DefaultParameter``."""
+    @pytest.fixture
+    def default(self):
+        """A DefaultParameter instance."""
+        return tscr.DefaultParameter()
+
+    def test_bool(self, default):
+        """Conversion to boolean."""
+        assert not default
+        assert bool(default) is False
+
+    def test_eq(self, default):
+        """Default paramater equality."""
+        other = tscr.DefaultParameter()
+        assert default is not other
+        assert default == other
+
+    def test_str(self, default):
+        """Default paramater stringification."""
+        assert str(default) == "<unspecified>"
+
+    def test_repr(self, default):
+        """Default paramater string representation."""
+        assert repr(default) == "DefaultParameter()"
+
+
+@pytest.mark.parametrize(
+    ("level", "exp_logger_level", "exp_handler_level"),
+    [(None, lg.WARNING, lg.NOTSET), (lg.INFO, lg.INFO, lg.INFO)])
+def test_setup_logging(level, exp_logger_level, exp_handler_level):
+    """Standard-library logging set-up configuration."""
+    # Setup environment
+    root_logger = lg.getLogger()
+    root_logger.setLevel(lg.WARNING)
+
+    # Run function
+    with mock.patch.object(root_logger, "handlers", []):
+        tscr.setup_logging(level=level)
+        handlers = root_logger.handlers
+
+    # Check result
+    assert root_logger.level == exp_logger_level
+    handler, = handlers
+    assert isinstance(handler, lg.StreamHandler)
+    fmt = handler.formatter._fmt
+    assert "message" in fmt
+    assert "asctime" in fmt[:fmt.index("message")]
+    assert "levelname" in fmt[:fmt.index("message")]
+    assert "name" in fmt[:fmt.index("message")]
+    assert handler.level == exp_handler_level
+
+
+class TestCachedProperty:
+    """Test `sfini._util.cached_property``."""
+    def test(self):
+        """Standard use."""
+        with mock.patch.object(tscr, "DEBUG", False):
+            class C:
+                def __init__(self):
+                    self.a = 42
+
+                @tscr.cached_property
+                def b(self):
+                    return self.a * 2
+
+        # Getting
+        c = C()
+        assert c.b == 84
+        c.a = 3
+        assert c.b == 84
+
+        # Setting
+        with pytest.raises(AttributeError):
+            c.b = 4
+
+        # Deleting
+        with pytest.raises(AttributeError):
+            del c.b
+
+    def test_debug(self):
+        """Debug-model allowing property setting/deleting."""
+        with mock.patch.object(tscr, "DEBUG", True):
+            class C:
+                def __init__(self):
+                    self.a = 42
+
+                @tscr.cached_property
+                def b(self):
+                    return self.a * 2
+
+        # Getting
+        c = C()
+        assert c.b == 84
+        c.a = 3
+        assert c.b == 84
+
+        # Setting
+        c.b = 4
+        assert c.b == 4
+
+        # Deleting
+        del c.b
+        assert c.b == 6
+
+
+class TestAssertValidName:
+    """AWS-given name validation."""
+    @pytest.mark.parametrize("name", ["spam", "a.!@-_+='"])
+    def test_valid(self, name):
+        """Passes for valid names."""
+        tscr.assert_valid_name(name)
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "Lorem ipsum dolor sit amet, consectetur adipiscing "
+            "elit, sed do eiusmod tempor incididunt",
+            "foo bar",
+            "spam\nbla",
+            "<xml />",
+            "spam [type]",
+            "{name}",
+            "\"name\"",
+            "name:spam",
+            "#names",
+            "eggs?",
+            ".*",
+            "50%",
+            "\\spam",
+            "foo^bar",
+            "spam|bla",
+            "~name",
+            "/path/to/name",
+            "`name`",
+            "$name"
+            "foo&bar",
+            "foo,bar",
+            "spam;bar",
+            tscr.INVALID_NAME_CHARACTERS])
+    def test_invalid(self, name):
+        """Raises for invalid names."""
+        with pytest.raises(ValueError) as e:
+            tscr.assert_valid_name(name)
+        assert name in str(e.value)
+
+
+def test_collect_paginated():
+    """Paginated AWS API endpoint request collection."""
+    # Build input
+    fn_rvs = [
+        {"items": [1, 5, 4], "nextToken": 42},
+        {"items": [9, 3, 0], "nextToken": 17},
+        {"items": [8]}]
+    fn = mock.Mock(side_effect=fn_rvs)
+    kwargs = {"a": 128, "b": [{"c": None, "d": "spam"}]}
+
+    # Build expectation
+    exp = {"items": [1, 5, 4, 9, 3, 0, 8]}
+    exp_calls = [
+        mock.call(**kwargs),
+        mock.call(nextToken=42, **kwargs),
+        mock.call(nextToken=17, **kwargs)]
+
+    # Run function
+    res = tscr.collect_paginated(fn, **kwargs)
+
+    # Check result
+    assert res == exp
+    assert fn.call_args_list == exp_calls
 
 
 class TestEasyRepr:
@@ -188,3 +362,61 @@ class TestEasyRepr:
         exp = "Class(42, 'spam', d='bar', e=3, g='1')"
         res = repr(instance)
         assert res == exp
+
+
+class TestAWSSession:
+    """Test ``sfini._util.AWSSession``."""
+    @pytest.fixture
+    def session(self):
+        """AWS ``boto3`` session mock."""
+        return mock.Mock(spec=boto3.Session)
+
+    @pytest.fixture
+    def sfini_session(self, session):
+        """An example AWSSession instance."""
+        return tscr.AWSSession(session=session)
+
+    def test_init(self, sfini_session, session):
+        """AWSSession instantiation."""
+        assert sfini_session.session is session
+
+    def test_str(self, sfini_session):
+        """AWSSession stringification."""
+        sfini_session.credentials = mock.Mock()
+        sfini_session.credentials.access_key = "spamkey"
+        sfini_session.region = "spamregion"
+        res = str(sfini_session)
+        assert "spamkey" in res
+        assert "spamregion" in res
+
+    def test_repr(self, sfini_session, session):
+        """AWSSession string representation."""
+        exp = "AWSSession(session=%r)" % session
+        res = repr(sfini_session)
+        assert res == exp
+
+    def test_credentials(self, sfini_session, session):
+        """AWS IAM credentials."""
+        res = sfini_session.credentials
+        assert res is session.get_credentials.return_value
+        session.get_credentials.assert_called_once_with()
+
+    def test_sfn(self, sfini_session, session):
+        """AWS Step Functions client."""
+        res = sfini_session.sfn
+        assert res is session.client.return_value
+        session.client.assert_called_once_with("stepfunctions")
+
+    def test_region(self, sfini_session, session):
+        """AWS session API region."""
+        session.region_name = "spamregion"
+        assert sfini_session.region == "spamregion"
+
+    def test_account_id(self, sfini_session, session):
+        """AWS account ID."""
+        client_mock = mock.Mock()
+        session.client.return_value = client_mock
+        client_mock.get_caller_identity.return_value = {"Account": "spamacc"}
+        assert sfini_session.account_id == "spamacc"
+        session.client.assert_called_once_with("sts")
+        client_mock.get_caller_identity.assert_called_once_with()

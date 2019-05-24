@@ -17,7 +17,7 @@ from .. import _util
 _logger = lg.getLogger(__name__)
 
 
-class ChoiceRule:  # TODO: unit-test
+class ChoiceRule:
     """A choice case for the 'Choice' state.
 
     Args:
@@ -57,7 +57,7 @@ class ChoiceRule:  # TODO: unit-test
         return defn
 
 
-class Comparison(ChoiceRule):  # TODO: unit-test
+class Comparison(ChoiceRule):
     """Compare variable value.
 
     Args:
@@ -97,62 +97,62 @@ class Comparison(ChoiceRule):  # TODO: unit-test
         return defn
 
 
-class BooleanEquals(Comparison):  # TODO: unit-test
+class BooleanEquals(Comparison):
     _final = True
     _expected_value_type = bool
 
 
-class NumericEquals(Comparison):  # TODO: unit-test
+class NumericEquals(Comparison):
     _final = True
     _expected_value_type = (float, int)
 
 
-class NumericGreaterThan(Comparison):  # TODO: unit-test
+class NumericGreaterThan(Comparison):
     _final = True
     _expected_value_type = (float, int)
 
 
-class NumericGreaterThanEquals(Comparison):  # TODO: unit-test
+class NumericGreaterThanEquals(Comparison):
     _final = True
     _expected_value_type = (float, int)
 
 
-class NumericLessThan(Comparison):  # TODO: unit-test
+class NumericLessThan(Comparison):
     _final = True
     _expected_value_type = (float, int)
 
 
-class NumericLessThanEquals(Comparison):  # TODO: unit-test
+class NumericLessThanEquals(Comparison):
     _final = True
     _expected_value_type = (float, int)
 
 
-class StringEquals(Comparison):  # TODO: unit-test
+class StringEquals(Comparison):
     _final = True
     _expected_value_type = str
 
 
-class StringGreaterThan(Comparison):  # TODO: unit-test
+class StringGreaterThan(Comparison):
     _final = True
     _expected_value_type = str
 
 
-class StringGreaterThanEquals(Comparison):  # TODO: unit-test
+class StringGreaterThanEquals(Comparison):
     _final = True
     _expected_value_type = str
 
 
-class StringLessThan(Comparison):  # TODO: unit-test
+class StringLessThan(Comparison):
     _final = True
     _expected_value_type = str
 
 
-class StringLessThanEquals(Comparison):  # TODO: unit-test
+class StringLessThanEquals(Comparison):
     _final = True
     _expected_value_type = str
 
 
-class _TimestampRule(Comparison):  # TODO: unit-test
+class _TimestampRule(Comparison):
     _expected_value_type = datetime.datetime
 
     def _get_comparison(self) -> str:
@@ -162,27 +162,27 @@ class _TimestampRule(Comparison):  # TODO: unit-test
         return dt.isoformat("T")
 
 
-class TimestampEquals(_TimestampRule):  # TODO: unit-test
+class TimestampEquals(_TimestampRule):
     _final = True
 
 
-class TimestampGreaterThan(_TimestampRule):  # TODO: unit-test
+class TimestampGreaterThan(_TimestampRule):
     _final = True
 
 
-class TimestampGreaterThanEquals(_TimestampRule):  # TODO: unit-test
+class TimestampGreaterThanEquals(_TimestampRule):
     _final = True
 
 
-class TimestampLessThan(_TimestampRule):  # TODO: unit-test
+class TimestampLessThan(_TimestampRule):
     _final = True
 
 
-class TimestampLessThanEquals(_TimestampRule):  # TODO: unit-test
+class TimestampLessThanEquals(_TimestampRule):
     _final = True
 
 
-class Logical(ChoiceRule):  # TODO: unit-test
+class Logical(ChoiceRule):
     @staticmethod
     def _get_rule_defn(choice_rule: ChoiceRule) -> T.Dict[str, _util.JSONable]:
         """Get choice rule definition.
@@ -200,7 +200,7 @@ class Logical(ChoiceRule):  # TODO: unit-test
         return choice_rule.to_dict()
 
 
-class _NonUnary(Logical):  # TODO: unit-test
+class _NonUnary(Logical):
     """Logical operation on choice rules.
 
     Args:
@@ -225,15 +225,15 @@ class _NonUnary(Logical):  # TODO: unit-test
         return [self._get_rule_defn(r) for r in self.choice_rules]
 
 
-class And(_NonUnary):  # TODO: unit-test
+class And(_NonUnary):
     _final = True
 
 
-class Or(_NonUnary):  # TODO: unit-test
+class Or(_NonUnary):
     _final = True
 
 
-class Not(Logical):  # TODO: unit-test
+class Not(Logical):
     """Logical 'not' operation on a choice rule.
 
     Args:

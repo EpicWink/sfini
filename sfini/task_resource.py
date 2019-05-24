@@ -15,7 +15,7 @@ from . import _util
 _logger = lg.getLogger(__name__)
 
 
-class TaskResource:  # TODO: unit-test
+class TaskResource:
     """Task execution.
 
     An instance of this represents a service which can run tasks defined in
@@ -49,7 +49,7 @@ class TaskResource:  # TODO: unit-test
         return fmt % (region, account, self.service, self.name)
 
 
-class Lambda(TaskResource):  # TODO: unit-test
+class Lambda(TaskResource):
     """AWS Lambda function executor for a task.
 
     Args:

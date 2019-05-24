@@ -25,17 +25,17 @@ _logger = lg.getLogger(__name__)
 _host_name = socket.getfqdn(socket.gethostname())
 
 
-class WorkerCancel(KeyboardInterrupt):  # TODO: unit-test
+class WorkerCancel(KeyboardInterrupt):
     """Workflow execution interrupted by user."""
     def __init__(self, *args, **kwargs):
-        _msg = (
+        msg = (
             "Activity execution cancelled by user. "
             "This could be due to a `KeyboardInterrupt` during execution, "
             "or the worker was killed during task polling.")
-        super().__init__(_msg, *args, **kwargs)
+        super().__init__(msg, *args, **kwargs)
 
 
-class TaskExecution:  # TODO: unit-test
+class TaskExecution:
     """Execute a task, providing heartbeats and catching failures.
 
     Args:
@@ -103,19 +103,17 @@ class TaskExecution:  # TODO: unit-test
     def _send_heartbeat(self):
         """Send a heartbeat."""
         _logger.debug("Sending heartbeat for '%s'" % self)
-
         try:
             self._send(self.session.sfn.send_task_heartbeat)
         except bc_exc.ClientError as e:
+            self._request_stop = True
             if e.response["Error"]["Code"] != "TaskTimedOut":
                 raise
             _logger.error("Task execution '%s' timed-out" % self)
-            self._request_stop = True
 
     def _heartbeat(self):
         """Run heartbeat sending."""
         heartbeat = self.activity.heartbeat
-        heartbeat = min(max(heartbeat - 5.0, 1.0), heartbeat)
         while True:
             t = time.time()
             if self._request_stop:
@@ -142,7 +140,7 @@ class TaskExecution:  # TODO: unit-test
         self._report_success(res)
 
 
-class Worker:  # TODO: unit-test
+class Worker:
     """Worker to poll for activity task executions.
 
     Args:
@@ -211,8 +209,9 @@ class Worker:  # TODO: unit-test
         try:
             self._poll_and_execute()
         except (Exception, KeyboardInterrupt) as e:
+            _logger.warning("Polling/execution failed", exc_info=e)
             self._exc = e  # send exception to main thread
-            self.end()
+            self._request_finish = True
 
     def start(self):
         """Start polling."""

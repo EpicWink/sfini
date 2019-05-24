@@ -16,7 +16,7 @@ _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
 
 
-class Execution:  # TODO: unit-test
+class Execution:
     """A state-machine execution.
 
     Args:
@@ -77,6 +77,7 @@ class Execution:  # TODO: unit-test
 
         session = session or _util.AWSSession()
         resp = session.sfn.describe_execution(executionArn=arn)
+        assert resp["executionArn"] == arn
         execution_input = _default
         if "input" in resp:
             execution_input = json.loads(resp["input"])

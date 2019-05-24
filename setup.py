@@ -22,6 +22,7 @@ extras_require = {
         "dev": [
             "pytest",
             "pytest-cov",
+            "pytest-timeout",
             "moto",
             "sphinx",
             "sphinx_rtd_theme"]}
@@ -40,7 +41,7 @@ setuptools.setup(
     url="https://gitlab.com/Epic_Wink/aws-sfn-service",
     classifiers=classifiers,
     keywords="aws sfn service step functions states",
-    packages=setuptools.find_packages(exclude=["tests/*"]),
+    packages=setuptools.find_packages(exclude=["tests*"]),
     python_requires="~=3.5",
     install_requires=["boto3"],
     extras_require=extras_require)

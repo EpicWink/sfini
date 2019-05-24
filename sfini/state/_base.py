@@ -21,7 +21,7 @@ STATES_ERRORS = (
     "NoChoiceMatched")
 
 
-class State:  # TODO: unit-test
+class State:
     """Abstract state.
 
     Args:
@@ -79,7 +79,7 @@ class State:  # TODO: unit-test
         return defn
 
 
-class HasNext(State):  # TODO: unit-test
+class HasNext(State):
     """State able to advance mix-in.
 
     Args:
@@ -135,7 +135,7 @@ class HasNext(State):  # TODO: unit-test
         return defn
 
 
-class HasResultPath(State):  # TODO: unit-test
+class HasResultPath(State):
     """State with result mix-in.
 
     Args:
@@ -169,7 +169,7 @@ class HasResultPath(State):  # TODO: unit-test
         return defn
 
 
-class CanRetry(State):  # TODO: unit-test
+class CanRetry(State):
     """Retryable state mix-in.
 
     Args:
@@ -260,7 +260,7 @@ class CanRetry(State):  # TODO: unit-test
         return defn
 
 
-class CanCatch(State):  # TODO: unit-test
+class CanCatch(State):
     """Exception catching state mix-in.
 
     Args:

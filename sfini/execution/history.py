@@ -55,7 +55,7 @@ _type_keys = {
     "WaitStateExited": "stateExitedEventDetails"}
 
 
-class Event:  # TODO: unit-test
+class Event:
     """An execution history event.
 
     Args:
@@ -134,7 +134,7 @@ class Event:  # TODO: unit-test
         return ""
 
 
-class Failed(Event):  # TODO: unit-test
+class Failed(Event):
     """An execution history failure event.
 
     Args:
@@ -176,7 +176,7 @@ class Failed(Event):  # TODO: unit-test
         return "error: %s" % self.error
 
 
-class LambdaFunctionScheduled(Event):  # TODO: unit-test
+class LambdaFunctionScheduled(Event):
     """An execution history AWS Lambda task-schedule event.
 
     Args:
@@ -222,7 +222,7 @@ class LambdaFunctionScheduled(Event):  # TODO: unit-test
         return "resource: %s" % self.resource
 
 
-class ActivityScheduled(LambdaFunctionScheduled):  # TODO: unit-test
+class ActivityScheduled(LambdaFunctionScheduled):
     """An execution history activity task-schedule event.
 
     Args:
@@ -264,7 +264,7 @@ class ActivityScheduled(LambdaFunctionScheduled):  # TODO: unit-test
         return args, kwargs, details
 
 
-class ActivityStarted(Event):  # TODO: unit-test
+class ActivityStarted(Event):
     """An execution history activity task-start event.
 
     Args:
@@ -300,7 +300,7 @@ class ActivityStarted(Event):  # TODO: unit-test
         return "worker: %s" % self.worker_name
 
 
-class ObjectSucceeded(Event):  # TODO: unit-test
+class ObjectSucceeded(Event):
     """An execution history succeed event.
 
     Args:
@@ -333,7 +333,7 @@ class ObjectSucceeded(Event):  # TODO: unit-test
         return args, kwargs, details
 
 
-class ExecutionStarted(Event):  # TODO: unit-test
+class ExecutionStarted(Event):
     """An execution history execution-start event.
 
     Args:
@@ -371,7 +371,7 @@ class ExecutionStarted(Event):  # TODO: unit-test
         return args, kwargs, details
 
 
-class StateEntered(Event):  # TODO: unit-test
+class StateEntered(Event):
     """An execution history state-enter event.
 
     Args:
@@ -412,7 +412,7 @@ class StateEntered(Event):  # TODO: unit-test
         return "name: %s" % self.state_name
 
 
-class StateExited(Event):  # TODO: unit-test
+class StateExited(Event):
     """An execution history state-exit event.
 
     Args:
@@ -493,7 +493,7 @@ _type_classes = {
     "WaitStateExited": StateExited}
 
 
-def parse_history(  # TODO: unit-test
+def parse_history(
         history_events: T.List[T.Dict[str, _util.JSONable]]
 ) -> T.List[Event]:
     """List the execution history.
