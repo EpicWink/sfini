@@ -1,4 +1,11 @@
 # sfini
+[![pipeline status](
+https://gitlab.com/Epic_Wink/aws-sfn-service/badges/master/pipeline.svg)](
+https://gitlab.com/Epic_Wink/aws-sfn-service/pipelines)
+[![coverage report](
+https://gitlab.com/Epic_Wink/aws-sfn-service/badges/master/coverage.svg)](
+https://gitlab.com/Epic_Wink/aws-sfn-service/commits/master)
+
 Create, run and manage AWS Step Functions easily. Pronounced "SFIN-ee".
 
 This package aims to provide a user-friendly interface into defining and
