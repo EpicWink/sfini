@@ -180,8 +180,8 @@ class Parallel(
             parallel. These state-machines do not need to be registered
             with AWS Step Functions.
         next: next state to execute
-        retries: retry conditions
-        catches: handled state errors
+        retriers: retry conditions
+        catchers: handled state errors
     """
 
     def __init__(
@@ -336,8 +336,8 @@ class Task(
 
     Attributes:
         next: next state to execute
-        retries: retry conditions
-        catches: handled state errors
+        retriers: retry conditions
+        catchers: handled state errors
     """
 
     _heartbeat_extra = 5

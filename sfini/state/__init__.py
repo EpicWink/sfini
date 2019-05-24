@@ -11,7 +11,6 @@ __all__ = [
     "State",
     "HasNext",
     "HasResultPath",
-    "ErrorHandling",
     "CanRetry",
     "CanCatch",
     "Succeed",
@@ -26,7 +25,6 @@ __all__ = [
 from ._base import State
 from ._base import HasNext
 from ._base import HasResultPath
-from ._base import ErrorHandling
 from ._base import CanRetry
 from ._base import CanCatch
 from ._state import Succeed

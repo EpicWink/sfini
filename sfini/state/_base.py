@@ -10,6 +10,15 @@ from .. import _util
 
 _logger = lg.getLogger(__name__)
 _default = _util.DefaultParameter()
+STATES_ERRORS = (
+    "ALL",
+    "Timeout",
+    "TaskFailed",
+    "Permissions",
+    "ResultPathMatchFailure",
+    "ParameterPathFailure",
+    "BranchFailed",
+    "NoChoiceMatched")
 
 
 class State:  # TODO: unit-test
@@ -160,77 +169,7 @@ class HasResultPath(State):  # TODO: unit-test
         return defn
 
 
-class ErrorHandling:  # TODO: unit-test
-    """Error handling mix-in."""
-    states_errors = (
-        "ALL",
-        "Timeout",
-        "TaskFailed",
-        "Permissions",
-        "ResultPathMatchFailure",
-        "ParameterPathFailure",
-        "BranchFailed",
-        "NoChoiceMatched")
-
-    def _validate_errors(self, errors: T.Sequence[str]):
-        """Validate error conditions.
-
-        Args:
-            errors: condition error codes
-
-        Raises:
-            ValueError: invalid condition
-        """
-
-        if not errors:
-            raise ValueError("Cannot have no-error condition")
-        if "States.ALL" in errors and len(errors) > 1:
-            msg = "Cannot combine 'States.ALL' condition with other errors"
-            raise ValueError(msg)
-
-        for err in errors:
-            if err.startswith("States."):
-                if err[7:] not in self.states_errors:
-                    fmt = "States error name was '%s', must be one of: %s"
-                    raise ValueError(fmt % (err[7:], self.states_errors))
-
-    @staticmethod
-    def _policy_defn(policy: T.Any) -> T.Dict[str, _util.JSONable]:
-        """Get handler definition details from policy.
-
-        Args:
-            policy: exception policy
-
-        Returns:
-            dict: definition details
-        """
-
-        raise NotImplementedError
-
-    def _handler_defns(
-            self,
-            handlers: T.List[T.Tuple[T.Sequence[str], T.Any]]
-    ) -> T.List[T.Dict[str, _util.JSONable]]:
-        """Build error handler policy definitions.
-
-        Args:
-            handlers: error handlers
-
-        Returns:
-            definitions
-        """
-
-        defns = []
-        for errors, policy in handlers:
-            self._validate_errors(errors)
-            defn = self._policy_defn(policy)
-            defn["ErrorEquals"] = errors
-            defns.append(defn)
-        return defns
-
-
-# TODO: unit-test
-class CanRetry(ErrorHandling, State):
+class CanRetry(State):  # TODO: unit-test
     """Retryable state mix-in.
 
     Args:
@@ -255,7 +194,7 @@ class CanRetry(ErrorHandling, State):
             comment=comment,
             input_path=input_path,
             output_path=output_path)
-        self.retriers: T.List[T.Tuple[T.Sequence[str], T.Dict]] = []
+        self.retriers: T.List[T.Tuple[T.Sequence[str], T.Dict[str, ...]]] = []
 
     def retry_for(
             self,
@@ -263,7 +202,7 @@ class CanRetry(ErrorHandling, State):
             interval: int = _default,
             max_attempts: int = _default,
             backoff_rate: float = _default):
-        """Add a retry condition.
+        """Add a retry handler.
 
         Args:
             errors: codes of errors for retry to be executed. See AWS Step
@@ -280,8 +219,22 @@ class CanRetry(ErrorHandling, State):
         self.retriers.append((errors, policy))
 
     @staticmethod
-    def _policy_defn(policy):
-        defn = {}
+    def _retrier_defn(
+            errors: T.Sequence[str],
+            policy: T.Dict[str, T.Any]
+    ) -> T.Dict[str, _util.JSONable]:
+        """Build retry handler definition.
+
+        Args:
+            errors: codes of errors for retry handler to be invoked
+            policy: retry handler policy
+
+        Returns:
+            definitions
+        """
+
+        _validate_errors(errors)
+        defn = {"ErrorEquals": errors}
         if policy["interval"] != _default:
             defn["IntervalSeconds"] = policy["interval"]
         if policy["max_attempts"] != _default:
@@ -290,16 +243,24 @@ class CanRetry(ErrorHandling, State):
             defn["BackoffRate"] = policy["backoff_rate"]
         return defn
 
+    def _get_retrier_defns(self) -> T.List[T.Dict[str, _util.JSONable]]:
+        """Build retry handler definitions.
+
+        Returns:
+            definitions
+        """
+
+        return [self._retrier_defn(e, p) for e, p in self.retriers]
+
     def to_dict(self):
         defn = super().to_dict()
-        retry = self._handler_defns(self.retriers)
+        retry = self._get_retrier_defns()
         if retry:
             defn["Retry"] = retry
         return defn
 
 
-# TODO: unit-test
-class CanCatch(ErrorHandling, State):
+class CanCatch(State):  # TODO: unit-test
     """Exception catching state mix-in.
 
     Args:
@@ -324,7 +285,7 @@ class CanCatch(ErrorHandling, State):
             comment=comment,
             input_path=input_path,
             output_path=output_path)
-        self.catchers: T.List[T.Tuple[T.Sequence[str], T.Any]] = []
+        self.catchers: T.List[T.Tuple[T.Sequence[str], T.Dict[str, ...]]] = []
 
     def add_to(self, states):
         super().add_to(states)
@@ -336,7 +297,7 @@ class CanCatch(ErrorHandling, State):
             excs: T.Sequence[str],
             next_state: State,
             result_path: T.Union[str, None] = _default):
-        """Add a catch clause.
+        """Add an error handler.
 
         Args:
             excs: errors for catch clause to be executed. If a string, must be
@@ -352,15 +313,62 @@ class CanCatch(ErrorHandling, State):
         policy = {"next_state": next_state, "result_path": result_path}
         self.catchers.append((excs, policy))
 
-    def _policy_defn(self, policy):
-        defn = {"Next": policy["next_state"].name}
+    @staticmethod
+    def _catcher_defn(
+            errors: T.Sequence[str],
+            policy: T.Dict[str, T.Any]
+    ) -> T.Dict[str, _util.JSONable]:
+        """Build error handler definition.
+
+        Args:
+            errors: codes of errors for retry handler to be invoked
+            policy: retry handler policy
+
+        Returns:
+            definitions
+        """
+
+        _validate_errors(errors)
+        defn = {"ErrorEquals": errors, "Next": policy["next_state"].name}
         if policy["result_path"] != _default:
             defn["ResultPath"] = policy["result_path"]
         return defn
 
+    def _get_catcher_defns(self) -> T.List[T.Dict[str, _util.JSONable]]:
+        """Build error handler definitions.
+
+        Returns:
+            definitions
+        """
+
+        return [self._catcher_defn(e, p) for e, p in self.catchers]
+
     def to_dict(self):
         defn = super().to_dict()
-        catch = self._handler_defns(self.catchers)
+        catch = self._get_catcher_defns()
         if catch:
             defn["Catch"] = catch
         return defn
+
+
+def _validate_errors(errors: T.Sequence[str]):
+    """Validate error conditions.
+
+    Args:
+        errors: condition error codes
+
+    Raises:
+        ValueError: invalid condition
+    """
+
+    if not errors:
+        raise ValueError("Cannot have no-error condition")
+    if "States.ALL" in errors and len(errors) > 1:
+        msg = "Cannot combine 'States.ALL' condition with other errors"
+        raise ValueError(msg)
+
+    for err in errors:
+        if err.startswith("States."):
+            if err[7:] not in STATES_ERRORS:
+                fmt = "States error name was '%s', must be one of: %s"
+                raise ValueError(fmt % (err[7:], STATES_ERRORS))
