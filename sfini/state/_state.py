@@ -176,7 +176,7 @@ class Parallel(
             output
 
     Attributes:
-        state_machines (list[sfini.StateMachine]): state-machines to run in
+        branches (list[sfini.StateMachine]): state-machines to run in
             parallel. These state-machines do not need to be registered
             with AWS Step Functions.
         next: next state to execute
@@ -197,11 +197,11 @@ class Parallel(
             input_path=input_path,
             output_path=output_path,
             result_path=result_path)
-        self.state_machines = []
+        self.branches = []
 
     def to_dict(self):
         defn = super().to_dict()
-        defn["Branches"] = [sm.to_dict() for sm in self.state_machines]
+        defn["Branches"] = [sm.to_dict() for sm in self.branches]
         return defn
 
     def add(self, state_machine):
@@ -217,7 +217,7 @@ class Parallel(
                 need to be registered with AWS Step Functions
         """
 
-        self.state_machines.append(state_machine)
+        self.branches.append(state_machine)
 
 
 class Choice(_base.State):  # TODO: unit-test
