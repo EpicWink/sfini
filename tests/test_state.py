@@ -417,9 +417,12 @@ class TestChoice:
             assert str(rule) in str(e.value)
             assert state.choices == exp_choices
 
-    def test_set_default(self, state):
+    @pytest.mark.parametrize(
+        "prev_default",
+        [None, mock.Mock(spec=_base.State)])
+    def test_set_default(self, state, prev_default):
         """Default state-setting."""
-        state.default = None
+        state.default = prev_default
         default_state = mock.Mock(spec=_base.State)
         state.set_default(default_state)
         assert state.default is default_state
