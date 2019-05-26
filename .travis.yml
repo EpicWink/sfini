@@ -1,0 +1,20 @@
+language: python
+dist: xenial
+python:
+  - "3.6"
+  - "3.7"
+if: (branch = master) OR (tag =~ /^v.*$/)
+install: pip3 install .[dev] codecov
+script: pytest --cov=sfini
+after_success: codecov
+deploy:
+  provider: pypi
+  distributions: "sdist bdist_wheel"
+  skip_existing: true
+  user: Epic_Wink
+  password:
+    secure: "kDgNoLEKh1H2BAahIOSo6JUVIOUrSRT7hDFR9ASc8csB2rmVren50VRjb9Xm6O+SYmKm33MWJUe/NkfjbFyLrGcGW6+Hc70fk0Gy/yQko2FopAz94Uon43AccPjXnU+2rlqV5SDnYnw7ACoLIeRoW/nNHAbAv8Y2uZcZQA002UaES7AV69BOZxB0/9I2fr7L9JPKCsEAS5LPi6iwGtHzt2f5vfkua7joi7DEQi5xmYIB5OZ65p9+oPQZHG5X9SIDhCxhKE05Iq9kA4L1astMaeSGXm/sr7WcM/AumffU4Ik7zz/5cM0XlF6loUMm0Ik43Gw3SEo3vH20kvaBIFqBVPQ+tbbVLVzHEGoKSuQ/clKhLo2n2xrWEWsStZLrfvgx9G1utGsE/1Zr+ZzjYyiFsUXtOHyFIM6Ea9aT4b3J5fq0SCZ3UfJav3v1EiUK4Wy14f2c8T9tLGetO5wc6yd3PoCnUN7bpGDgfjFp2VAdIwm2SMKXj1kp7rWQ2/P70y4hRk3Dq2wLmVCJ7lEmegMDyX2/Vm7xpYmPefcSy/qjBAKnNgFl8QqEg+DdKhgF5YmNWuCMKBeO60Dmz8bYc2BE9Vxnf/Im4yA4hG3NIbTSq7/Nt/1oqErE07MK21M6JT4nk5tmBB+PYN4dteRgschYQehX4bvrTp2BPWZCNoQbSWk="
+  on:
+    all_branches: true
+    tags: true
+    condition: "$TRAVIS_TAG =~ ^v.*$"

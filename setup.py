@@ -38,11 +38,11 @@ setuptools.setup(
     description="Create, run and manage AWS Step Functions easily",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://gitlab.com/Epic_Wink/aws-sfn-service",
+    url="https://github.com/EpicWink/sfini",
     classifiers=classifiers,
     keywords="aws sfn service step functions states",
     packages=setuptools.find_packages(where="src"),
     package_dir={"": "src"},
-    python_requires="~=3.5",
+    python_requires="~=3.6",
     install_requires=["boto3"],
     extras_require=extras_require)

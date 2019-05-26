@@ -18,8 +18,8 @@ Use hanging-indent style, with 4 spaces for indentation. No lines with just a
 closing bracket! 80-character lines.
 
 ## TODO
-See the [issues page](https://gitlab.com/Epic_Wink/aws-sfn-service/issues) for
-the current discussions on improvements, features and bugs.
+See the [issues page](https://github.com/EpicWink/sfini/issues) for the current
+discussions on improvements, features and bugs.
 
 ### Generating documentation
 When the package structure is changed (moved/deleted/new packages and/or

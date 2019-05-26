@@ -1,10 +1,13 @@
 # sfini
-[![pipeline status](
-https://gitlab.com/Epic_Wink/aws-sfn-service/badges/master/pipeline.svg)](
-https://gitlab.com/Epic_Wink/aws-sfn-service/pipelines)
-[![coverage report](
-https://gitlab.com/Epic_Wink/aws-sfn-service/badges/master/coverage.svg)](
-https://gitlab.com/Epic_Wink/aws-sfn-service/commits/master)
+[![Build Status](
+https://travis-ci.org/EpicWink/sfini.svg?branch=master)](
+https://travis-ci.org/EpicWink/sfini)
+[![codecov](
+https://codecov.io/gh/EpicWink/sfini/branch/master/graph/badge.svg)](
+https://codecov.io/gh/EpicWink/sfini)
+[![Documentation Status](
+https://readthedocs.org/projects/sfini/badge/?version=latest)](
+https://sfini.readthedocs.io/en/latest/?badge=latest)
 
 Create, run and manage AWS Step Functions easily. Pronounced "SFIN-ee".
 
@@ -35,7 +38,7 @@ pip install sfini
 
 ## Usage
 ### Documentation
-Check the [documentation](https://Epic_Wink.gitlab.io/aws-sfn-service) or use
+Check the [documentation](https://sfini.readthedocs.io/en/latest/) or use
 the built-in help:
 ```bash
 pydoc sfini
@@ -87,7 +90,7 @@ Step Functions documentation for more information.
 
 ### Example
 More examples found [in the documentation](
-https://Epic_Wink.gitlab.io/aws-sfn-service/examples.html).
+https://sfini.readthedocs.io/en/latest/examples.html).
 
 ```python
 import sfini
