@@ -41,8 +41,8 @@ setuptools.setup(
     url="https://gitlab.com/Epic_Wink/aws-sfn-service",
     classifiers=classifiers,
     keywords="aws sfn service step functions states",
-    packages=setuptools.find_packages(where="src/"),
-    package_dir={"": "src/"},
+    packages=setuptools.find_packages(where="src"),
+    package_dir={"": "src"},
     python_requires="~=3.5",
     install_requires=["boto3"],
     extras_require=extras_require)
