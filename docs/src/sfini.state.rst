@@ -7,7 +7,6 @@ Submodules
 .. toctree::
 
    sfini.state.choice
-   sfini.state.error
 
 Module contents
 ---------------
