@@ -155,9 +155,12 @@ class TestHasNext:
             assert states == exp_states
             state.next.add_to.assert_called_once_with(states)
 
-    def test_goes_to(self, state):
+    @pytest.mark.parametrize(
+        "prev_next_state",
+        [None, mock.Mock(spec=tscr.State)])
+    def test_goes_to(self, state, prev_next_state):
         """Next-state setting."""
-        state.next = None
+        state.next = prev_next_state
         next_state = mock.Mock(spec=tscr.State)
         state.goes_to(next_state)
         assert state.next is next_state
@@ -468,11 +471,12 @@ class TestCanCatch:
 
     def test_catch(self, state):
         """Catch handler adding."""
-        state.catchers = []
+        state.catchers = [(["FooBarred", "BarFooed"], {})]
         errors = ["BlaSpammed", "FooBarred"]
         next_state = mock.Mock(spec=tscr.State)
         result_path = "$.error-info"
         exp_catchers = [
+            (["FooBarred", "BarFooed"], {}),
             (
                 ["BlaSpammed", "FooBarred"],
                 {"next_state": next_state, "result_path": "$.error-info"})]

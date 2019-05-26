@@ -162,6 +162,15 @@ class TestWait:
                 _ = state.to_dict()
             assert str(type(until)) in str(e.value)
 
+        def test_naive_datetime(self, state):
+            """Until date-time is naive."""
+            state.next = mock.Mock(spec=_base.State)
+            state.next.name = "bla"
+            state.until = datetime.datetime.now()
+            with pytest.raises(ValueError) as e:
+                _ = state.to_dict()
+            assert "aware" in str(e.value)
+
 
 class TestParallel:
     """Test ``sfini.state._state.Parallel``."""

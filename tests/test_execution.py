@@ -383,6 +383,27 @@ class TestExecution:
         res_input_str = res_se_call[1]["input"]
         assert json.loads(res_input_str) == eg_input
 
+    def test_start_default_input(self, execution, session):
+        """Execution starting."""
+        # Setup environment
+        now = datetime.datetime.now()
+        resp = {"executionArn": "spam:arn", "startDate": now}
+        session.sfn.start_execution.return_value = resp
+        execution.arn = None
+        execution.execution_input = tscr._default
+
+        # Run function
+        execution.start()
+
+        # Check result
+        assert execution.arn == "spam:arn"
+        assert execution._start_date == now
+        assert execution._status == "RUNNING"
+        session.sfn.start_execution.assert_called_once_with(
+            stateMachineArn="bla-sm:arn",
+            name="spam",
+            input="{}")
+
     class TestWait:
         """Waiting on execution to finish."""
         @pytest.mark.timeout(1.0)

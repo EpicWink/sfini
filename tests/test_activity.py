@@ -151,6 +151,12 @@ class TestSmartCallableActivity:
         assert activity.session is session_mock
         assert activity.sig == inspect.signature(self.fn)
 
+    def test_call(self, activity):
+        """SmartCallableActivity calling."""
+        exp = {"a": 42, "b": "bla", "c": {"foo": [1, 2], "bar": None}}
+        res = activity(42, "bla", c={"foo": [1, 2], "bar": None})
+        assert res == exp
+
     class TestGetInputFrom:
         """Argument extract from input."""
         def test_all_provided(self, activity):
