@@ -8,6 +8,9 @@ https://codecov.io/gh/EpicWink/sfini)
 [![Documentation Status](
 https://readthedocs.org/projects/sfini/badge/?version=latest)](
 https://sfini.readthedocs.io/en/latest/?badge=latest)
+[![Contributor Covenant](
+https://img.shields.io/badge/Contributor%20Covenant-v1.4%20adopted-ff69b4.svg)](
+CODE_OF_CONDUCT.md)
 
 Create, run and manage AWS Step Functions easily. Pronounced "SFIN-ee".
 
