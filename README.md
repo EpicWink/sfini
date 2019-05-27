@@ -52,11 +52,6 @@ import sfini
 help(sfini)
 ```
 
-To build the documentation:
-```bash
-sphinx-build -b html docs/src/ docs/_build/
-```
-
 ### AWS Step Functions
 [AWS Step Functions](https://aws.amazon.com/step-functions/) (SFN) is a
 workflow-management service, providing the ability to coordinate tasks in a

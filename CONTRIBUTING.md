@@ -22,10 +22,15 @@ See the [issues page](https://github.com/EpicWink/sfini/issues) for the current
 discussions on improvements, features and bugs.
 
 ### Generating documentation
-When the package structure is changed (moved/deleted/new packages and/or
-modules), the documentation configuration must be regenerated:
+When the package structure is changed (moved/deleted/new packages/modules), the
+documentation configuration must be regenerated:
 ```bash
-sphinx-apidoc -ef -o docs/src/ sfini/ --ext-autodoc
+sphinx-apidoc -ef -o docs/src/ src/sfini/ --ext-autodoc
+```
+
+To build the documentation:
+```bash
+sphinx-build -b html docs/src/ docs/_build/
 ```
 
 ## Code of conduct
