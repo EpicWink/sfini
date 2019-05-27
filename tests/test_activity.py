@@ -23,12 +23,11 @@ class TestActivity:
     @pytest.fixture
     def activity(self, session_mock):
         """An Activity instance."""
-        return tscr.Activity("spam", heartbeat=42, session=session_mock)
+        return tscr.Activity("spam", session=session_mock)
 
     def test_init(self, activity, session_mock):
         """Activity initialisation."""
         assert activity.name == "spam"
-        assert activity.heartbeat == 42
         assert activity.session is session_mock
 
     def test_register(self, activity, session_mock):

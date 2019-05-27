@@ -31,15 +31,13 @@ class Activity(sfini_task_resource.TaskResource):
 
     Args:
         name: name of activity
-        heartbeat: seconds between heartbeat during activity running
         session: session to use for AWS communication
     """
 
     service = "activity"
 
-    def __init__(self, name, heartbeat: int = 20, *, session=None):
+    def __init__(self, name, *, session=None):
         super().__init__(name, session=session)
-        self.heartbeat = heartbeat
 
     def register(self):
         """Register activity with AWS SFN."""
@@ -86,8 +84,9 @@ class CallableActivity(Activity):
     """
 
     def __init__(self, name, fn: T.Callable, heartbeat=20, *, session=None):
-        super().__init__(name, heartbeat=heartbeat, session=session)
+        super().__init__(name, session=session)
         self.fn = fn
+        self.heartbeat = heartbeat
 
     def __call__(self, task_input: _util.JSONable, *args, **kwargs):
         return self.fn(task_input, *args, **kwargs)
