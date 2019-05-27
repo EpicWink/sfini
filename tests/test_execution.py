@@ -403,6 +403,7 @@ class TestExecution:
             stateMachineArn="bla-sm:arn",
             name="spam",
             input="{}")
+        assert execution.execution_input == {}
 
     class TestWait:
         """Waiting on execution to finish."""

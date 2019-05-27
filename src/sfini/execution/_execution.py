@@ -214,13 +214,13 @@ class Execution:
         """
 
         _util.assert_valid_name(self.name)
-        input_ = self.execution_input
-        if input_ == _default:
-            input_ = {}
+        if self.execution_input == _default:
+            self.execution_input = {}
+        input_str = json.dumps(self.execution_input)
         resp = self.session.sfn.start_execution(
             stateMachineArn=self.state_machine_arn,
             name=self.name,
-            input=json.dumps(input_))
+            input=input_str)
         self.arn = resp["executionArn"]
         self._status = "RUNNING"
         self._start_date = resp["startDate"]
