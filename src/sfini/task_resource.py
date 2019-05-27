@@ -26,7 +26,7 @@ class TaskResource:
         session: session to use for AWS communication
 
     Attributes:
-        service: name of service of which the resource belongs to
+        service: resource type
     """
 
     service: str = None

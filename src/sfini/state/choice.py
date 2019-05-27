@@ -187,7 +187,7 @@ class Logical(ChoiceRule):
     def _get_rule_defn(choice_rule: ChoiceRule) -> T.Dict[str, _util.JSONable]:
         """Get choice rule definition.
 
-        Arguments:
+        Args:
             choice_rule: choice rule to process
 
         Returns:

@@ -19,7 +19,14 @@ lg.getLogger("botocore").setLevel(lg.WARNING)
 MAX_NAME_LENGTH = 79
 INVALID_NAME_CHARACTERS = " \n\t<>{}[]?*\"#%\\^|~`$&,;:/"
 DEBUG = "pytest" in sys.modules
-JSONable = T.Union[None, bool, str, int, float, list, T.Dict[str, T.Any]]
+JSONable = T.Union[
+    None,
+    bool,
+    str,
+    int,
+    float,
+    T.List["JSONable"],
+    T.Dict[str, "JSONable"]]
 
 
 class DefaultParameter:
@@ -110,7 +117,7 @@ def assert_valid_name(name: str):
 
 def collect_paginated(
         fn: T.Callable[..., T.Dict[str, JSONable]],
-        **kwargs
+        **kwargs: JSONable
 ) -> T.Dict[str, JSONable]:
     """Call SFN API paginated endpoint.
 

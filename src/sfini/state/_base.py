@@ -54,7 +54,7 @@ class State:
 
         Any child states will also be added to the definition.
 
-        Arguments:
+        Args:
             states (dict[str, State]): state-machine states
         """
 

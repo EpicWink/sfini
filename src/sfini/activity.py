@@ -38,6 +38,7 @@ class Activity(sfini_task_resource.TaskResource):
 
     def register(self):
         """Register activity with AWS SFN."""
+        _logger.debug("Registering activity '%s' on SFN" % self)
         _util.assert_valid_name(self.name)
         resp = self.session.sfn.create_activity(name=self.name)
         assert resp["activityArn"] == self.arn

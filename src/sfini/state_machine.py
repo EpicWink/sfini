@@ -184,7 +184,7 @@ class StateMachine:
         This state-machine is manually attached to the ``state_machine``
         attribute of the resultant executions here.
 
-        Arguments:
+        Args:
             items: execution list-items
 
         Returns:
