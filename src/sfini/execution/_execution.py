@@ -95,7 +95,7 @@ class Execution:
         return self
 
     @classmethod
-    def from_execution_list_item(
+    def from_list_item(
             cls,
             item: T.Dict[str, _util.JSONable],
             *,

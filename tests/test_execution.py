@@ -137,7 +137,7 @@ class TestExecution:
         session.sfn.describe_execution.assert_called_once_with(
             executionArn="spam:arn")
 
-    def test_from_execution_list_item(self, session):
+    def test_from_list_item(self, session):
         """Construction of Execution after querying AWS."""
         now = datetime.datetime.now()
         item = {
@@ -149,7 +149,7 @@ class TestExecution:
             "stopDate": now - datetime.timedelta(minutes=50)}
 
         # Run function
-        res = tscr.Execution.from_execution_list_item(item, session=session)
+        res = tscr.Execution.from_list_item(item, session=session)
 
         # Check result
         assert isinstance(res, tscr.Execution)

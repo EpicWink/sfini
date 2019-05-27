@@ -278,7 +278,7 @@ class TestStateMachine:
         # Run function
         with mock.patch.object(
                 state_machine._execution_class,
-                "from_execution_list_item",
+                "from_list_item",
                 exec_init_mock):
             res = state_machine._build_executions(items)
 

@@ -194,7 +194,7 @@ class StateMachine:
         executions = []
         for item in items:
             assert item["stateMachineArn"] == self.arn
-            execution = self._execution_class.from_execution_list_item(
+            execution = self._execution_class.from_list_item(
                 item,
                 session=self.session)
             execution.state_machine = self
