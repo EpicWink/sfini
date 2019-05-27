@@ -36,9 +36,6 @@ class Activity(sfini_task_resource.TaskResource):
 
     service = "activity"
 
-    def __init__(self, name, *, session=None):
-        super().__init__(name, session=session)
-
     def register(self):
         """Register activity with AWS SFN."""
         _util.assert_valid_name(self.name)
