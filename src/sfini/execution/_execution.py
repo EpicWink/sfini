@@ -20,8 +20,6 @@ class Execution:
         name: name of execution
         state_machine_arn: executed state-machine ARN
         execution_input: execution input (must be JSON-serialisable)
-        arn: execution ARN (if known: provided when execution is posted to
-            AWS SFN)
         session: session to use for AWS communication
     """
 
@@ -33,13 +31,11 @@ class Execution:
             name: str,
             state_machine_arn: str,
             execution_input: _util.JSONable = _default,
-            arn: str = None,
             *,
             session: _util.AWSSession = None):
         self.name = name
         self.state_machine_arn = state_machine_arn
         self.execution_input = execution_input
-        self.arn = arn
         self.session = session or _util.AWSSession()
 
         self._status = None
@@ -58,11 +54,8 @@ class Execution:
             cls,
             arn: str,
             *,
-            session: _util.AWSSession = None
-    ) -> "Execution":
+            session: _util.AWSSession = None):
         """Construct an ``Execution`` from an existing execution.
-
-        Queries AWS Step Functions for the execution with the given ARN
 
         Args:
             arn: existing execution ARN
@@ -72,23 +65,15 @@ class Execution:
             described execution
         """
 
-        session = session or _util.AWSSession()
-        resp = session.sfn.describe_execution(executionArn=arn)
-        assert resp["executionArn"] == arn
-        execution_input = _default
-        if "input" in resp:
-            execution_input = json.loads(resp["input"])
+        arn_split = arn.split(":", 7)
+        name = arn_split[7]
+        state_machine_arn = ":".join(arn_split[:7])
         self = cls(
-            resp["name"],
-            resp["stateMachineArn"],
-            execution_input=execution_input,
-            arn=arn,
+            name,
+            state_machine_arn,
+            execution_input=cls._not_provided,
             session=session)
-        self._status = resp["status"]
-        self._start_date = resp["startDate"]
-        self._stop_date = resp.get("stopDate")
-        if "output" in resp:
-            self._output = json.loads(resp["output"])
+        assert self.arn == arn
         return self
 
     @classmethod
@@ -96,8 +81,7 @@ class Execution:
             cls,
             item: T.Dict[str, _util.JSONable],
             *,
-            session: _util.AWSSession = None
-    ) -> "Execution":
+            session: _util.AWSSession = None):
         """Construct an ``Execution`` from a response list-item.
 
         Args:
@@ -108,29 +92,30 @@ class Execution:
             described execution
         """
 
-        self = cls(
-            item["name"],
-            item["stateMachineArn"],
-            cls._not_provided,
-            arn=item["executionArn"],
-            session=session)
+        self = cls.from_arn(item["executionArn"], session=session)
+        assert self.name == item["name"]
         self._status = item["status"]
         self._start_date = item["startDate"]
         self._stop_date = item.get("stopDate")
         return self
 
     @property
+    def arn(self) -> str:
+        """Execution generated ARN."""
+        return self.state_machine_arn + ":" + self.name
+
+    @property
     def status(self) -> str:
         """Execution status."""
         if self._status in (None, "RUNNING"):
-            self._update()
+            self.update()
         return self._status
 
     @property
     def start_date(self) -> datetime.datetime:
         """Execution start time."""
         if self._start_date is None:
-            self._update()
+            self.update()
         return self._start_date
 
     @property
@@ -142,7 +127,7 @@ class Execution:
         """
 
         if self._stop_date is None:
-            self._update()
+            self.update()
             self._raise_unfinished()
         return self._stop_date
 
@@ -156,26 +141,22 @@ class Execution:
         """
 
         if self._output == _default:
-            self._update()
+            self.update()
             self._raise_unfinished()
             self._raise_on_failure()
         return self._output
 
-    def _update(self):
-        """Update execution information from AWS.
-
-        Raises:
-            RuntimeError: if execution ARN is not known (must be provided)
-        """
-
+    def update(self):
+        """Update execution information from AWS."""
         status_known = self._status not in (None, "RUNNING")
         input_known = self.execution_input != self._not_provided
         if status_known and input_known:
             _logger.debug("Execution finished: update is unnecessary")
             return
-        self._raise_no_arn()
         resp = self.session.sfn.describe_execution(executionArn=self.arn)
         assert resp["executionArn"] == self.arn
+        assert resp["name"] == self.name
+        assert resp["stateMachineArn"] == self.state_machine_arn
         self._status = resp["status"]
         self._start_date = resp["startDate"]
         self._stop_date = resp.get("stopDate")
@@ -199,11 +180,6 @@ class Execution:
         if self._status == "RUNNING":
             raise RuntimeError("Execution '%s' not yet finished" % self)
 
-    def _raise_no_arn(self):
-        """Raise ``RuntimeError`` when ARN is not provided."""
-        if self.arn is None:
-            raise RuntimeError("Execution '%s' ARN is unknown" % self)
-
     def start(self):
         """Start this state-machine execution.
 
@@ -218,7 +194,7 @@ class Execution:
             stateMachineArn=self.state_machine_arn,
             name=self.name,
             input=input_str)
-        self.arn = resp["executionArn"]
+        assert self.arn == resp["executionArn"]
         self._status = "RUNNING"
         self._start_date = resp["startDate"]
 
@@ -237,7 +213,7 @@ class Execution:
 
         t = time.time()
         while True:
-            self._update()
+            self.update()
             if self._status != "RUNNING":
                 break
             if timeout is not None and time.time() - t > timeout:
@@ -262,7 +238,6 @@ class Execution:
             kw["error"] = error_code
         if details != _default:
             kw["cause"] = details
-        self._raise_no_arn()
         resp = self.session.sfn.stop_execution(executionArn=self.arn, **kw)
         self._stop_date = resp["stopDate"]
         _logger.info("Execution stopped on %s" % resp["stopDate"])
@@ -274,7 +249,6 @@ class Execution:
             history of execution events
         """
 
-        self._raise_no_arn()
         resp = _util.collect_paginated(
             self.session.sfn.get_execution_history,
             executionArn=self.arn)
@@ -293,7 +267,7 @@ class Execution:
             ds = event.details_str
             line = ("%s:\n  %s" % (event, ds)) if ds else str(event)
             lines.append(line)
-        self._update()
+        self.update()
         if self._output != _default:
             line = "Output: %s" % json.dumps(self._output)
             lines.append(line)

@@ -37,6 +37,16 @@ class TestTaskResource:
         res = repr(task_resource)
         assert res == exp
 
+    def test_region(self, task_resource, session):
+        """Resource region."""
+        session.region = "spam-region"
+        assert task_resource._region == "spam-region"
+
+    def test_account_id(self, task_resource, session):
+        """Resource account ID."""
+        session.account_id = "spamAccount"
+        assert task_resource._account_id == "spamAccount"
+
     def test_arn(self, task_resource, session):
         """TaskResource instance ARN."""
         session.region = "space"

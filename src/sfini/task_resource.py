@@ -13,7 +13,7 @@ _logger = lg.getLogger(__name__)
 
 
 class TaskResource:
-    """Task execution.
+    """Task executor.
 
     An instance of this represents a service which can run tasks defined in
     a state-machine.
@@ -37,13 +37,35 @@ class TaskResource:
 
     __repr__ = _util.easy_repr
 
+    @classmethod
+    def from_arn(cls, arn: str, *, session: _util.AWSSession = None):  # TODO: unit-test
+        """Task executor from ARN.
+
+        Args:
+            arn: task executor resource ARN
+            session: session to use for AWS communication
+        """
+
+        name = arn.split(":", 6)[6]
+        resource = cls(name, session=session)
+        assert resource.arn == arn
+        return resource
+
+    @property
+    def _region(self) -> str:
+        """Resource region."""
+        return self.session.region
+
+    @property
+    def _account_id(self) -> str:
+        """Resource account ID."""
+        return self.session.account_id
+
     @_util.cached_property
     def arn(self) -> str:
         """Task resource generated ARN."""
-        region = self.session.region
-        account = self.session.account_id
         fmt = "arn:aws:states:%s:%s:%s:%s"
-        return fmt % (region, account, self.service, self.name)
+        return fmt % (self._region, self._account_id, self.service, self.name)
 
 
 class Lambda(TaskResource):

@@ -29,7 +29,6 @@ class TestExecution:
             "spam",
             "bla-sm:arn",
             eg_input,
-            arn="spam:arn",
             session=session)
 
     def test_init(self, execution, session, eg_input):
@@ -55,22 +54,9 @@ class TestExecution:
 
     class TestRepr:
         """Execution string representation."""
-        def test_with_arn_container_input(self, execution, session):
+        def test_container_input(self, execution, session):
             """ARN provided and execution input is a container."""
             execution.execution_input = {"a": 42, "b": "bla", "c": [1, 2] * 20}
-            exp_pref = "Execution("
-            exp_pos = "'spam', 'bla-sm:arn', len(execution_input)=3"
-            exp_kw_a = ", arn='spam:arn', session=%r)" % session
-            exp_kw_b = ", session=%r, arn='spam:arn')" % session
-            exp_a = exp_pref + exp_pos + exp_kw_a
-            exp_b = exp_pref + exp_pos + exp_kw_b
-            res = repr(execution)
-            assert res in (exp_a, exp_b)
-
-        def test_no_arn_container_input(self, execution, session):
-            """ARN provided and execution input is a container."""
-            execution.execution_input = {"a": 42, "b": "bla", "c": [1, 2] * 20}
-            execution.arn = None
             exp_pref = "Execution("
             exp_pos = "'spam', 'bla-sm:arn', len(execution_input)=3"
             exp_kw = ", session=%r)" % session
@@ -78,67 +64,34 @@ class TestExecution:
             res = repr(execution)
             assert res == exp
 
-        def test_with_arn_scalar_input(self, execution, session):
+        def test_scalar_input(self, execution, session):
             """ARN provided and execution input is a scalar."""
             execution.execution_input = 42
-            exp_pref = "Execution("
-            exp_pos = "'spam', 'bla-sm:arn'"
-            exp_kw_1 = "execution_input=42"
-            exp_kw_2 = "arn='spam:arn'"
-            exp_kw_3 = "session=%r" % session
-            exp_kws = [
-                ", " + exp_kw_1 + ", " + exp_kw_2 + ", " + exp_kw_3 + ")",
-                ", " + exp_kw_1 + ", " + exp_kw_3 + ", " + exp_kw_2 + ")",
-                ", " + exp_kw_2 + ", " + exp_kw_1 + ", " + exp_kw_3 + ")",
-                ", " + exp_kw_2 + ", " + exp_kw_3 + ", " + exp_kw_1 + ")",
-                ", " + exp_kw_3 + ", " + exp_kw_1 + ", " + exp_kw_2 + ")",
-                ", " + exp_kw_3 + ", " + exp_kw_2 + ", " + exp_kw_1 + ")"]
-            exps = [exp_pref + exp_pos + exp_kw for exp_kw in exp_kws]
+            exps = [
+                (
+                    "Execution('spam', 'bla-sm:arn', "
+                    "execution_input=42, session=%r)" % session),
+                (
+                    "Execution('spam', 'bla-sm:arn', "
+                    "session=%r, execution_input=42)" % session)]
             res = repr(execution)
             assert res in exps
 
     def test_from_arn(self, session):
         """Construction of Execution by querying AWS."""
-        # Setup environment
-        now = datetime.datetime.now()
-        input_ = {"a": 42, "b": "bla", "c": {"foo": [1, 2], "bar": None}}
-        output = {"foo": [1, 2], "bar": None}
-        resp = {
-            "executionArn": "spam:arn",
-            "stateMachineArn": "bla-sm:arn",
-            "name": "spam",
-            "status": "SUCCEEDED",
-            "startDate": now - datetime.timedelta(hours=1),
-            "stopDate": now - datetime.timedelta(minutes=50),
-            "input": json.dumps(input_),
-            "output": json.dumps(output)}
-        session.sfn.describe_execution.return_value = resp
-
-        # Build input
-        arn = "spam:arn"
-
-        # Run function
+        sm_arn = "arn:aws:states:bla-region:blaAccount:stateMachine:bla-sm"
+        arn = sm_arn + ":spam"
         res = tscr.Execution.from_arn(arn, session=session)
-
-        # Check result
         assert isinstance(res, tscr.Execution)
         assert res.name == "spam"
-        assert res.state_machine_arn == "bla-sm:arn"
-        assert res.execution_input == input_
-        assert res.arn == "spam:arn"
+        assert res.state_machine_arn == sm_arn
         assert res.session is session
-        assert res._status == "SUCCEEDED"
-        assert res._start_date == now - datetime.timedelta(hours=1)
-        assert res._stop_date == now - datetime.timedelta(minutes=50)
-        assert res._output == {"foo": [1, 2], "bar": None}
-        session.sfn.describe_execution.assert_called_once_with(
-            executionArn="spam:arn")
 
     def test_from_list_item(self, session):
         """Construction of Execution after querying AWS."""
         now = datetime.datetime.now()
         item = {
-            "executionArn": "spam:arn",
+            "executionArn": "bla-sm:arn:spam",
             "stateMachineArn": "bla-sm:arn",
             "name": "spam",
             "status": "SUCCEEDED",
@@ -153,109 +106,112 @@ class TestExecution:
         assert res.name == "spam"
         assert res.state_machine_arn == "bla-sm:arn"
         assert res.execution_input is res._not_provided
-        assert res.arn == "spam:arn"
         assert res.session is session
         assert res._status == "SUCCEEDED"
         assert res._start_date == now - datetime.timedelta(hours=1)
         assert res._stop_date == now - datetime.timedelta(minutes=50)
+
+    def test_arn(self, execution):
+        """Execution ARN."""
+        assert execution.arn == "bla-sm:arn:spam"
 
     class TestStatus:
         """Execution status provided by AWS."""
         @pytest.mark.parametrize("status", [None, "RUNNING"])
         def test_unknown(self, execution, status):
             """Execution status is not currently known."""
-            def _update():
+            def update():
                 execution._status = "TIMED_OUT"
-            execution._update = mock.Mock(side_effect=_update)
+            execution.update = mock.Mock(side_effect=update)
             execution._status = status
             res = execution.status
             assert res == "TIMED_OUT"
-            execution._update.assert_called_once_with()
+            execution.update.assert_called_once_with()
 
         @pytest.mark.parametrize(
             "status",
             ["SUCCEEDED", "FAILED", "ABORTED", "TIMED_OUT"])
         def test_known(self, execution, status):
             """Execution status is known."""
-            execution._update = mock.Mock()
+            execution.update = mock.Mock()
             execution._status = status
             res = execution.status
             assert res == status
-            execution._update.assert_not_called()
+            execution.update.assert_not_called()
 
     class TestStartTime:
         """Execution start-time provided by AWS."""
         def test_unknown(self, execution):
             """Execution start-time is not already known."""
-            def _update():
+            def update():
                 execution._start_date = now - datetime.timedelta(minutes=10)
             now = datetime.datetime.now()
-            execution._update = mock.Mock(side_effect=_update)
+            execution.update = mock.Mock(side_effect=update)
             execution._start_date = None
             res = execution.start_date
             assert res == now - datetime.timedelta(minutes=10)
-            execution._update.assert_called_once_with()
+            execution.update.assert_called_once_with()
 
         def test_known(self, execution):
             """Execution start-time is known."""
             now = datetime.datetime.now()
-            execution._update = mock.Mock()
+            execution.update = mock.Mock()
             execution._start_date = now - datetime.timedelta(minutes=10)
             res = execution.start_date
             assert res == now - datetime.timedelta(minutes=10)
-            execution._update.assert_not_called()
+            execution.update.assert_not_called()
 
     class TestStopTime:
         """Execution stop-time provided by AWS."""
         def test_unknown(self, execution):
             """Execution stop-time is not already known."""
-            def _update():
+            def update():
                 execution._stop_date = now - datetime.timedelta(minutes=10)
             now = datetime.datetime.now()
-            execution._update = mock.Mock(side_effect=_update)
+            execution.update = mock.Mock(side_effect=update)
             execution._raise_unfinished = mock.Mock()
             execution._stop_date = None
             res = execution.stop_date
             assert res == now - datetime.timedelta(minutes=10)
-            execution._update.assert_called_once_with()
+            execution.update.assert_called_once_with()
             execution._raise_unfinished.assert_called_once_with()
 
         def test_known(self, execution):
             """Execution stop-time is known."""
             now = datetime.datetime.now()
-            execution._update = mock.Mock()
+            execution.update = mock.Mock()
             execution._raise_unfinished = mock.Mock()
             execution._stop_date = now - datetime.timedelta(minutes=10)
             res = execution.stop_date
             assert res == now - datetime.timedelta(minutes=10)
-            execution._update.assert_not_called()
+            execution.update.assert_not_called()
             execution._raise_unfinished.assert_not_called()
 
     class TestOutput:
         """Execution output provided by AWS."""
         def test_unknown(self, execution):
             """Execution output is not already known."""
-            def _update():
+            def update():
                 execution._output = {"foo": [1, 2], "bar": None}
-            execution._update = mock.Mock(side_effect=_update)
+            execution.update = mock.Mock(side_effect=update)
             execution._raise_unfinished = mock.Mock()
             execution._raise_on_failure = mock.Mock()
             execution._output = tscr._default
             res = execution.output
             assert res == {"foo": [1, 2], "bar": None}
-            execution._update.assert_called_once_with()
+            execution.update.assert_called_once_with()
             execution._raise_unfinished.assert_called_once_with()
             execution._raise_on_failure.assert_called_once_with()
 
         def test_known(self, execution):
             """Execution output is known."""
-            execution._update = mock.Mock()
+            execution.update = mock.Mock()
             execution._raise_unfinished = mock.Mock()
             execution._raise_on_failure = mock.Mock()
             execution._output = {"foo": [1, 2], "bar": None}
             res = execution.output
             assert res == {"foo": [1, 2], "bar": None}
-            execution._update.assert_not_called()
+            execution.update.assert_not_called()
             execution._raise_unfinished.assert_not_called()
             execution._raise_on_failure.assert_not_called()
 
@@ -275,7 +231,7 @@ class TestExecution:
             rinput_ = {"a": 42, "c": {"foo": [1, 2], "bar": None}}
             output = {"foo": [1, 2], "bar": None}
             resp = {
-                "executionArn": "spam:arn",
+                "executionArn": "bla-sm:arn:spam",
                 "stateMachineArn": "bla-sm:arn",
                 "name": "spam",
                 "status": "SUCCEEDED",
@@ -284,12 +240,11 @@ class TestExecution:
                 "input": json.dumps(rinput_),
                 "output": json.dumps(output)}
             session.sfn.describe_execution.return_value = resp
-            execution._raise_no_arn = mock.Mock()
             execution._status = status
             execution.execution_input = input_
 
             # Run function
-            execution._update()
+            execution.update()
 
             # Check result
             assert execution._status == "SUCCEEDED"
@@ -297,14 +252,13 @@ class TestExecution:
             assert execution._stop_date == now - datetime.timedelta(minutes=50)
             assert execution._output == {"foo": [1, 2], "bar": None}
             session.sfn.describe_execution.assert_called_once_with(
-                executionArn="spam:arn")
-            execution._raise_no_arn.assert_called_once_with()
+                executionArn="bla-sm:arn:spam")
 
         def test_finished(self, execution, session):
             """No query of AWS is performed."""
             execution._raise_no_arn = mock.Mock()
             execution._status = "SUCCEEDED"
-            execution._update()
+            execution.update()
             session.sfn.describe_execution.assert_not_called()
             execution._raise_no_arn.assert_not_called()
 
@@ -343,33 +297,17 @@ class TestExecution:
             execution._status = status
             execution._raise_unfinished()
 
-    class TestRaiseNoArn:
-        """Raising when no ARN is provided to execution."""
-        def test_no_arn(self, execution):
-            """Execution has no associated ARN."""
-            execution.arn = None
-            with pytest.raises(RuntimeError) as e:
-                execution._raise_no_arn()
-            assert "ARN" in str(e.value)
-            assert "spam" in str(e.value)
-
-        def test_finished(self, execution):
-            """Execution has finished."""
-            execution._raise_no_arn()
-
     def test_start(self, execution, session, eg_input):
         """Execution starting."""
         # Setup environment
         now = datetime.datetime.now()
-        resp = {"executionArn": "spam:arn", "startDate": now}
+        resp = {"executionArn": "bla-sm:arn:spam", "startDate": now}
         session.sfn.start_execution.return_value = resp
-        execution.arn = None
 
         # Run function
         execution.start()
 
         # Check result
-        assert execution.arn == "spam:arn"
         assert execution._start_date == now
         assert execution._status == "RUNNING"
         session.sfn.start_execution.assert_called_once_with(
@@ -384,16 +322,14 @@ class TestExecution:
         """Execution starting."""
         # Setup environment
         now = datetime.datetime.now()
-        resp = {"executionArn": "spam:arn", "startDate": now}
+        resp = {"executionArn": "bla-sm:arn:spam", "startDate": now}
         session.sfn.start_execution.return_value = resp
-        execution.arn = None
         execution.execution_input = tscr._default
 
         # Run function
         execution.start()
 
         # Check result
-        assert execution.arn == "spam:arn"
         assert execution._start_date == now
         assert execution._status == "RUNNING"
         session.sfn.start_execution.assert_called_once_with(
@@ -410,14 +346,14 @@ class TestExecution:
             # Setup environment
             _shared = {"j": 0}
 
-            def _update():
+            def update():
                 if _shared["j"] > 3:
                     execution._status = "FAILED"
                     return
                 execution._status = "RUNNING"
                 _shared["j"] += 1
 
-            execution._update = mock.Mock(side_effect=_update)
+            execution.update = mock.Mock(side_effect=update)
             execution._raise_on_failure = mock.Mock()
             execution._wait_sleep_time = 0.01
 
@@ -428,7 +364,7 @@ class TestExecution:
             execution.wait()
 
             # Check result
-            assert execution._update.call_args_list == exp_ud_calls
+            assert execution.update.call_args_list == exp_ud_calls
             execution._raise_on_failure.assert_called_once_with()
 
         @pytest.mark.timeout(1.0)
@@ -437,14 +373,14 @@ class TestExecution:
             # Setup environment
             _shared = {"j": 0}
 
-            def _update():
+            def update():
                 if _shared["j"] > 3:
                     execution._status = "FAILED"
                     return
                 execution._status = "RUNNING"
                 _shared["j"] += 1
 
-            execution._update = mock.Mock(side_effect=_update)
+            execution.update = mock.Mock(side_effect=update)
             execution._raise_on_failure = mock.Mock()
             execution._wait_sleep_time = 0.01
 
@@ -455,7 +391,7 @@ class TestExecution:
             execution.wait(raise_on_failure=False)
 
             # Check result
-            assert execution._update.call_args_list == exp_ud_calls
+            assert execution.update.call_args_list == exp_ud_calls
             execution._raise_on_failure.assert_not_called()
 
         @pytest.mark.timeout(1.0)
@@ -464,14 +400,14 @@ class TestExecution:
             # Setup environment
             _shared = {"j": 0}
 
-            def _update():
+            def update():
                 if _shared["j"] > 3:
                     execution._status = "FAILED"
                     return
                 execution._status = "RUNNING"
                 _shared["j"] += 1
 
-            execution._update = mock.Mock(side_effect=_update)
+            execution.update = mock.Mock(side_effect=update)
             execution._raise_on_failure = mock.Mock()
             execution._wait_sleep_time = 0.01
 
@@ -485,14 +421,14 @@ class TestExecution:
             assert "spam" in str(e.value)
 
             # Check result
-            assert execution._update.call_args_list == exp_ud_calls
+            assert execution.update.call_args_list == exp_ud_calls
             execution._raise_on_failure.assert_not_called()
 
         @pytest.mark.timeout(1.0)
         def test_finished(self, execution):
             """Execution is finished, then doesn't raise on failure."""
             # Setup environment
-            execution._update = mock.Mock()
+            execution.update = mock.Mock()
             execution._raise_on_failure = mock.Mock()
             execution._wait_sleep_time = 0.01
             execution._status = "SUCCEEDED"
@@ -501,7 +437,7 @@ class TestExecution:
             execution.wait(raise_on_failure=False)
 
             # Check result
-            execution._update.assert_called_once_with()
+            execution.update.assert_called_once_with()
             execution._raise_on_failure.assert_not_called()
 
     @pytest.mark.parametrize(
@@ -519,7 +455,6 @@ class TestExecution:
         now = datetime.datetime.now()
         resp = {"stopDate": now}
         session.sfn.stop_execution.return_value = resp
-        execution._raise_no_arn = mock.Mock()
 
         # Run function
         execution.stop(**kwargs)
@@ -527,9 +462,8 @@ class TestExecution:
         # Check result
         assert execution._stop_date == now
         session.sfn.stop_execution.assert_called_once_with(
-            executionArn="spam:arn",
+            executionArn="bla-sm:arn:spam",
             **exp_kwargs)
-        execution._raise_no_arn.assert_called_once_with()
 
     def test_get_history(self, execution, session):
         """Execution history querying."""
@@ -538,7 +472,6 @@ class TestExecution:
         session.sfn.get_execution_history.return_value = resp
         events = [mock.Mock(spec=history.Event) for _ in range(4)]
         ph_mock = mock.Mock(return_value=events)
-        execution._raise_no_arn = mock.Mock()
 
         # Run function
         with mock.patch.object(history, "parse_history", ph_mock):
@@ -548,8 +481,7 @@ class TestExecution:
         assert res == events
         ph_mock.assert_called_once_with([{"id": j} for j in range(4)])
         session.sfn.get_execution_history.assert_called_once_with(
-            executionArn="spam:arn")
-        execution._raise_no_arn.assert_called_once_with()
+            executionArn="bla-sm:arn:spam")
 
     @pytest.mark.parametrize(
         ("output", "exp_suff"),
@@ -576,7 +508,7 @@ class TestExecution:
             Event("ev3", "Event details 3"),
             Event("ev4", "")]
         execution.get_history = mock.Mock(return_value=events)
-        execution._update = mock.Mock()
+        execution.update = mock.Mock()
         execution._output = output
 
         # Build expectation
@@ -597,4 +529,4 @@ class TestExecution:
         # Check result
         assert res == exp
         execution.get_history.assert_called_once_with()
-        execution._update.assert_called_once_with()
+        execution.update.assert_called_once_with()

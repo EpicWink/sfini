@@ -11,6 +11,8 @@ import datetime
 import typing as T
 import logging as lg
 
+from botocore import exceptions as bc_exc
+
 from . import _util
 from . import execution as sfini_execution
 from . import state as sfini_state
@@ -48,11 +50,44 @@ class StateMachine:
         self.comment = comment
         self.timeout = timeout
         self.session = session or _util.AWSSession()
+        self._creation_date = None
 
     def __str__(self):
         return "'%s' (%d states)" % (self.name, len(self.states))
 
     __repr__ = _util.easy_repr
+
+    @classmethod
+    def from_arn(cls, arn: str, *, session: _util.AWSSession = None):  # TODO: unit-test
+        """State-machine from ARN.
+
+        Args:
+            arn: state-machine ARN
+            session: session to use for AWS communication
+        """
+
+        name = arn.split(":", 6)[6]
+        self = cls(name, _default, _default, session=session)
+        assert self.arn == arn
+        return self
+
+    @classmethod
+    def from_list_item(  # TODO: unit-test
+            cls,
+            item: T.Dict[str, T.Any],
+            *,
+            session: _util.AWSSession = None):
+        """State-machine from a response state-machine list-item.
+
+        Args:
+            item: state-machine list-item
+            session: session to use for AWS communication
+        """
+
+        self = cls.from_arn(item["stateMachineArn"], session=session)
+        assert self.name == item["name"]
+        self._creation_date = item["creationDate"]
+        return self
 
     @_util.cached_property
     def arn(self) -> str:
@@ -66,6 +101,34 @@ class StateMachine:
     def default_role_arn(self) -> str:
         """``sfini``-generated state-machine IAM role ARN."""
         return "arn:aws:iam::%s:role/sfiniGenerated" % self.session.account_id
+
+    @property
+    def creation_date(self) -> datetime.datetime:  # TODO: unit-test
+        """State-machine creation date."""
+        if self._creation_date is None:
+            self.update()
+        return self._creation_date
+
+    def update(self):  # TODO: unit-test
+        """Update state-machine details from AWS."""
+        cdate_known = self._creation_date is not None
+        definition_known = self.states != _default
+        start_known = self.start_state != _default
+        if cdate_known and definition_known and start_known:
+            _logger.debug("State-machine specified: update is unnecessary")
+            return
+        resp = self.session.sfn.describe_state_machine(
+            stateMachineArn=self.arn)
+        assert resp["stateMachineArn"] == self.arn
+        assert resp["name"] == self.name
+        self._creation_date = resp["creationDate"]
+        defn = resp["definition"]
+        self.start_state = defn["StartAt"]
+        self.comment = defn.get("Comment", _default)
+        self.timeout = defn.get("TimeoutSeconds", _default)
+        states_definitions = json.loads(defn["States"])
+        self.states = states_definitions  # TODO: construct states
+        # self.states = sfini_state.construct_states(states_definitions)
 
     def to_dict(self) -> T.Dict[str, _util.JSONable]:
         """Convert this state-machine to a definition dictionary.
@@ -91,9 +154,13 @@ class StateMachine:
         """
 
         _logger.debug("Testing for registration of '%s' on SFN" % self)
-        resp = _util.collect_paginated(self.session.sfn.list_state_machines)
-        arns = {sm["stateMachineArn"] for sm in resp["stateMachines"]}
-        return self.arn in arns
+        try:
+            self.update()
+        except bc_exc.ClientError as e:
+            if e.response["Error"]["Code"] != "StateMachineDoesNotExist":
+                raise
+            return False
+        return True
 
     def _sfn_create(self, role_arn: str):
         """Create this state-machine in AWS SFN.

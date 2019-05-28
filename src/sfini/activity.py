@@ -5,9 +5,12 @@ implementations of 'Task' states. Activities are registered separately.
 """
 
 import inspect
+import datetime
 import typing as T
 import logging as lg
 import functools as ft
+
+from botocore import exceptions as bc_exc
 
 from . import _util
 from . import task_resource as sfini_task_resource
@@ -33,12 +36,52 @@ class Activity(sfini_task_resource.TaskResource):
 
     service = "activity"
 
+    def __init__(self, name, *, session=None):
+        super().__init__(name, session=session)
+        self._creation_date = None
+
+    @classmethod
+    def from_list_item(  # TODO: unit-test
+            cls,
+            item: T.Dict[str, T.Any],
+            *,
+            session: _util.AWSSession = None):
+        """Activity from a response activity list-item.
+
+        Args:
+            item: activity list-item
+            session: session to use for AWS communication
+        """
+
+        self = cls.from_arn(item["activityArn"], session=session)
+        assert self.name == item["name"]
+        self._creation_date = item["creationDate"]
+        return self
+
+    @property
+    def creation_date(self) -> datetime.datetime:  # TODO: unit-test
+        """Activity creation date."""
+        if self._creation_date is None:
+            self.update()
+        return self._creation_date
+
+    def update(self):  # TODO: unit-test
+        """Update activity details from AWS."""
+        if self._creation_date is not None:
+            _logger.debug("Creation-date known: update is unnecessary")
+            return
+        resp = self.session.sfn.describe_activity(activityArn=self.arn)
+        assert resp["activityArn"] == self.arn
+        assert resp["name"] == self.name
+        self._creation_date = resp["creationDate"]
+
     def register(self):
         """Register activity with AWS SFN."""
         _logger.debug("Registering activity '%s' on SFN" % self)
         _util.assert_valid_name(self.name)
         resp = self.session.sfn.create_activity(name=self.name)
         assert resp["activityArn"] == self.arn
+        self._creation_date = resp["creationDate"]
         fmt = "Activity '%s' registered with ARN '%s' at %s"
         _logger.info(fmt % (self, self.arn, resp["creationDate"]))
 
@@ -50,9 +93,13 @@ class Activity(sfini_task_resource.TaskResource):
         """
 
         _logger.debug("Testing for registration of '%s' on SFN" % self)
-        resp = _util.collect_paginated(self.session.sfn.list_activities)
-        arns = {sm["activityArn"] for sm in resp["activities"]}
-        return self.arn in arns
+        try:
+            self.update()
+        except bc_exc.ClientError as e:
+            if e.response["Error"]["Code"] != "ActivityDoesNotExist":
+                raise
+            return False
+        return True
 
     def deregister(self):
         """Remove activity from AWS SFN."""
