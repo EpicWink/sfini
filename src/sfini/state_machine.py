@@ -234,41 +234,15 @@ class StateMachine:
         execution = self._execution_class(
             name,
             self.arn,
-            execution_input,
+            execution_input=execution_input,
             session=self.session)
         execution.start()
         return execution
 
-    def _build_executions(
+    def list_executions(
             self,
-            items: T.List[T.Dict[str, _util.JSONable]]
-    ) -> T.List[_execution_class]:
-        """Build executions from response list-items.
-
-        This state-machine is manually attached to the ``state_machine``
-        attribute of the resultant executions here.
-
-        Args:
-            items: execution list-items
-
-        Returns:
-            constructed executions
-        """
-
-        executions = []
-        for item in items:
-            assert item["stateMachineArn"] == self.arn
-            execution = self._execution_class.from_list_item(
-                item,
-                session=self.session)
-            execution.state_machine = self
-            executions.append(execution)
-
-            fmt = "Found execution '%s' with stop-date: %s"
-            _logger.debug(fmt % (execution, item.get("stopDate")))
-        return executions
-
-    def list_executions(self, status: str = None) -> T.List[_execution_class]:
+            status: str = None
+    ) -> T.List[sfini_execution.Execution]:
         """List all executions of this state-machine.
 
         This state-machine is manually attached to the ``state_machine``
@@ -282,15 +256,7 @@ class StateMachine:
             executions of this state-machine
         """
 
-        _s = " with status '%s'" % status if status else ""
-        _logger.info("Listing executions of '%s'" % self + _s)
-
-        kwargs = {"stateMachineArn": self.arn}
-        if status is not None:
-            kwargs["statusFilter"] = status
-        fn = self.session.sfn.list_executions
-        resp = _util.collect_paginated(fn, **kwargs)
-        return self._build_executions(resp["executions"])
+        return sfini_execution.list_executions(self.arn, status=status)
 
 
 def construct_state_machine(
@@ -331,3 +297,47 @@ def construct_state_machine(
         comment=comment,
         timeout=timeout,
         session=session)
+
+
+def list_state_machines(  # TODO: unit-test
+        *,
+        session: _util.AWSSession = None
+) -> T.List[StateMachine]:
+    """List state-machines.
+
+    Args:
+        session: session to use for AWS communication
+
+    Returns:
+        all registered state-machines
+    """
+
+    _logger.info("Listing state-machines")
+    session = session or _util.AWSSession()
+    resp = _util.collect_paginated(session.sfn.list_state_machines)
+    state_machines = []
+    for item in resp["stateMachines"]:
+        state_machine = StateMachine.from_list_item(item, session=session)
+        state_machines.append(state_machine)
+    return state_machines
+
+
+def get_state_machine_with_name(  # TODO: unit-test
+        name: str,
+        *,
+        session: _util.AWSSession = None
+) -> StateMachine:
+    """Get a state-machine.
+
+    Args:
+        name: state-machine name
+        session: session to use for AWS communication
+
+    Returns:
+        state-machine with given name
+    """
+
+    state_machines = list_state_machines(session=session)
+    names = [sm.name for sm in state_machines]
+    sm_idx = names.index(name)
+    return state_machines[sm_idx]

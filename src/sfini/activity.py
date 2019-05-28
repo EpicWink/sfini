@@ -107,6 +107,9 @@ class Activity(sfini_task_resource.TaskResource):
         self.session.sfn.delete_activity(activityArn=self.arn)
 
 
+sfini_task_resource.RESOURCE_TYPES["activity"] = Activity
+
+
 class CallableActivity(Activity):
     """Activity execution defined by a callable.
 
@@ -352,27 +355,66 @@ class ActivityRegistration:
         for activity in self.activities.values():
             activity.register()
 
-    def _list_activities(self) -> T.List[T.Tuple[str, str, str]]:
+    def _list_activities(self) -> T.List[Activity]:
         """List activities in SFN."""
-        resp = _util.collect_paginated(self.session.sfn.list_activities)
-        acts = []
-        for act in resp["activities"]:
-            prefix = act["name"][:len(self.prefix)]
-            if prefix != self.prefix and act["name"] not in self.activities:
-                continue
-            acts.append((act["name"], act["activityArn"], act["creationDate"]))
-        return acts
+        activities = list_activities(session=self.session)
+        filtered = []
+        for activity in activities:
+            name = activity.name
+            prefix = name[:len(self.prefix)]
+            if prefix == self.prefix or name in self.activities:
+                filtered.append(activity)
+        return filtered
 
-    def _deregister_activities(
-            self,
-            activity_items: T.Sequence[T.Tuple[str, str, str]]):
+    @staticmethod
+    def _deregister_activities(activities: T.Sequence[Activity]):
         """Deregister activities."""
-        _logger.info("Deregistering %d activities" % len(activity_items))
-        for act in activity_items:
-            _logger.debug("Deregistering '%s'" % act[0])
-            self.session.sfn.delete_activity(activityArn=act[1])
+        _logger.info("Deregistering %d activities" % len(activities))
+        for activity in activities:
+            activity.deregister()
 
     def deregister(self):
         """Remove activities in AWS SFN."""
         acts = self._list_activities()
         self._deregister_activities(acts)
+
+
+def list_activities(*, session: _util.AWSSession = None) -> T.List[Activity]:  # TODO: unit-test
+    """List activities.
+
+    Args:
+        session: session to use for AWS communication
+
+    Returns:
+        all registered activities
+    """
+
+    _logger.info("Listing activities")
+    session = session or _util.AWSSession()
+    resp = _util.collect_paginated(session.sfn.list_activities)
+    activities = []
+    for item in resp["activities"]:
+        activity = Activity.from_list_item(item, session=session)
+        activities.append(activity)
+    return activities
+
+
+def get_activity_with_name(  # TODO: unit-test
+        name: str,
+        *,
+        session: _util.AWSSession = None
+) -> Activity:
+    """Get an activity.
+
+    Args:
+        name: activity name
+        session: session to use for AWS communication
+
+    Returns:
+        activity with given name
+    """
+
+    activities = list_activities(session=session)
+    names = [a.name for a in activities]
+    activity_idx = names.index(name)
+    return activities[activity_idx]

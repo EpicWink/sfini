@@ -83,3 +83,26 @@ class Lambda(TaskResource):
         arn_split = super().arn.split(":")
         arn_split[2] = "lambda"
         return ":".join(arn_split)
+
+
+RESOURCE_TYPES = {"function": Lambda}
+
+
+def get_task_resource(  # TODO: unit-test
+        arn: str,
+        *,
+        session: _util.AWSSession = None
+) -> TaskResource:
+    """Get a task executor.
+
+    Args:
+        arn: task executor resource ARN
+        session: session to use for AWS communication
+
+    Returns:
+        task executor. Service will be determined from ARN
+    """
+
+    resource_type = arn.split(":", 6)[5]
+    service_cls = RESOURCE_TYPES[resource_type]
+    return service_cls.from_arn(arn, session=session)

@@ -272,3 +272,43 @@ class Execution:
             line = "Output: %s" % json.dumps(self._output)
             lines.append(line)
         return "\n".join(lines)
+
+
+def list_executions(  # TODO: unit-test
+        state_machine_arn: str,
+        status: str = None,
+        *,
+        session: _util.AWSSession = None
+) -> T.List[Execution]:
+    """List all executions of this state-machine.
+
+    This state-machine is manually attached to the ``state_machine``
+    attribute of the resultant executions here.
+
+    Args:
+        state_machine_arn: ARN of state-machine to list executions of
+        status: only list executions with this status. Choose from
+            'RUNNING', 'SUCCEEDED', 'FAILED', 'TIMED_OUT' or 'ABORTED'
+        session: session to use for AWS communication
+
+    Returns:
+        executions of this state-machine
+    """
+
+    name = state_machine_arn.split(":", 6)[6]
+    status_str = (" with status '%s'" % status) if status else ""
+    _logger.info("Listing executions of '%s'" % name + status_str)
+
+    session = session or _util.AWSSession()
+
+    kwargs = {"statusFilter": status} if status else {}
+    resp = _util.collect_paginated(
+        session.sfn.list_executions,
+        stateMachineArn=state_machine_arn,
+        **kwargs)
+
+    executions = []
+    for item in resp["executions"]:
+        execution = Execution.from_list_item(item, session=session)
+        executions.append(execution)
+    return executions
