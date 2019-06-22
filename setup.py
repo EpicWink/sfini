@@ -19,13 +19,18 @@ classifiers = [
     "Operating System :: MacOS",
     "License :: OSI Approved :: MIT License"]
 extras_require = {
-        "dev": [
-            "pytest",
-            "pytest-cov",
-            "pytest-timeout",
-            "moto",
-            "sphinx",
-            "sphinx_rtd_theme"]}
+    "dev": [
+        "pytest",
+        "pytest-cov",
+        "pytest-timeout",
+        "moto",
+        "sphinx",
+        "sphinx_rtd_theme"]}
+project_urls = {
+    "Documentation": "https://sfini.readthedocs.io/en/latest/",
+    "Source": "https://github.com/EpicWink/sfini",
+    "Bugs": "https://github.com/EpicWink/sfini/issues"}
+packages = setuptools.find_packages(where="src")
 
 setuptools.setup(
     name="sfini",
@@ -41,12 +46,9 @@ setuptools.setup(
     url="https://github.com/EpicWink/sfini",
     classifiers=classifiers,
     keywords="aws sfn service step functions states",
-    packages=setuptools.find_packages(where="src"),
+    packages=packages,
     package_dir={"": "src"},
     python_requires="~=3.6",
     install_requires=["boto3"],
     extras_require=extras_require,
-    project_urls={
-        "Documentation": "https://sfini.readthedocs.io/en/latest/",
-        "Source": "https://github.com/EpicWink/sfini",
-        "Bugs": "https://github.com/EpicWink/sfini/issues"})
+    project_urls=project_urls)
