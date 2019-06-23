@@ -1,5 +1,5 @@
-sfini.worker module
-===================
+sfini.worker
+============
 
 .. automodule:: sfini.worker
     :members:

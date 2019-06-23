@@ -1,5 +1,5 @@
-sfini.state\_machine module
-===========================
+sfini.state\_machine
+====================
 
 .. automodule:: sfini.state_machine
     :members:

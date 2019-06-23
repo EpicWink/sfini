@@ -1,5 +1,5 @@
-sfini.task\_resource module
-===========================
+sfini.task\_resource
+====================
 
 .. automodule:: sfini.task_resource
     :members:

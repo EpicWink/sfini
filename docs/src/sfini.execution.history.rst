@@ -1,5 +1,5 @@
-sfini.execution.history module
-==============================
+sfini.execution.history
+=======================
 
 .. automodule:: sfini.execution.history
     :members:

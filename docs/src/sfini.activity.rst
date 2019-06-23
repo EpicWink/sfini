@@ -1,5 +1,5 @@
-sfini.activity module
-=====================
+sfini.activity
+==============
 
 .. automodule:: sfini.activity
     :members:

@@ -1,15 +1,9 @@
-sfini.execution package
-=======================
-
-Submodules
-----------
+sfini.execution
+===============
 
 .. toctree::
 
    sfini.execution.history
-
-Module contents
----------------
 
 .. automodule:: sfini.execution
     :members:

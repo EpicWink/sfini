@@ -1,10 +1,5 @@
-.. sfini documentation master file, created by
-   sphinx-quickstart on Wed Mar 13 14:23:51 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-sfini - AWS Step Functions made easy
-====================================
+*sfini* - AWS Step Functions made easy
+======================================
 
 Create, run and manage AWS Step Functions easily. Pronounced "SFIN-ee".
 

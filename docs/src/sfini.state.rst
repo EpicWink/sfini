@@ -1,15 +1,9 @@
-sfini.state package
-===================
-
-Submodules
-----------
+sfini.state
+===========
 
 .. toctree::
 
    sfini.state.choice
-
-Module contents
----------------
 
 .. automodule:: sfini.state
     :members:

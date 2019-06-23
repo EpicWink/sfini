@@ -1,11 +1,7 @@
-sfini package
-=============
-
-Subpackages and submodules
---------------------------
+*sfini* Reference
+=================
 
 .. toctree::
-    :titlesonly:
 
     sfini.execution
     sfini.state
@@ -13,9 +9,6 @@ Subpackages and submodules
     sfini.state_machine
     sfini.task_resource
     sfini.worker
-
-Module contents
----------------
 
 .. automodule:: sfini
     :members:

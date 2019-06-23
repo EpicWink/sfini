@@ -1,5 +1,5 @@
-sfini.state.choice module
-=========================
+sfini.state.choice
+==================
 
 .. automodule:: sfini.state.choice
     :members:
