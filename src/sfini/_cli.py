@@ -262,6 +262,7 @@ class CLI:
 
         execs = self.state_machine.list_executions(status=args.status)
         for execution in execs:
+            print("\nExecution '%s':" % execution)
             print(execution.format_history())
 
     def _delegate(self, args: argparse.Namespace):

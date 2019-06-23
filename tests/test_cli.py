@@ -284,12 +284,17 @@ class TestCLI:
         state_machine.list_executions.return_value = execs
         for j, execution in enumerate(execs):
             execution.format_history.return_value = "spam\n  %d" % j
+            type(execution).__str__ = mock.Mock(return_value="exec%s" % j)
 
         # Build input
         args = argparse.Namespace(status="spam-status", command="executions")
 
         # Build expectation
-        exp_output = "spam\n  0\nspam\n  1\nspam\n  2\nspam\n  3\n"
+        exp_output = (
+            "\nExecution 'exec0':\nspam\n  0\n"
+            "\nExecution 'exec1':\nspam\n  1\n"
+            "\nExecution 'exec2':\nspam\n  2\n"
+            "\nExecution 'exec3':\nspam\n  3\n")
 
         # Run function
         with mock.patch.object(sys, "stdout", output_stream):
