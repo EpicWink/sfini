@@ -123,6 +123,19 @@ print(execution.name)
 execution.wait()
 print(execution.output)
 # 45
+print(execution.format_history())
+# ExecutionStarted [1] @ 2019-06-23 20:03:52.817000+10:00
+# TaskStateEntered [2] @ 2019-06-23 20:03:52.840000+10:00:
+#   name: add
+# ActivityScheduled [3] @ 2019-06-23 20:03:52.840000+10:00:
+#   resource: arn:aws:states:us-west-2:ACCID:activity:testaddActivity
+# ActivityStarted [4] @ 2019-06-23 20:03:53.954000+10:00:
+#   worker: hostname-3a4fb480
+# ActivitySucceeded [5] @ 2019-06-23 20:03:55.028000+10:00
+# TaskStateExited [6] @ 2019-06-23 20:03:55.028000+10:00:
+#   name: add
+# ExecutionSucceeded [7] @ 2019-06-23 20:03:55.028000+10:00
+# Output: 45
 
 # Stop activity workers
 worker.end()

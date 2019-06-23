@@ -95,6 +95,15 @@ This will only unregister the adding activity.
 More examples
 -------------
 
+Enabling log output for these examples may be helpful:
+
+.. code-block:: python
+
+    import logging as lg
+    lg.basicConfig(
+        level=lg.DEBUG,
+        format="[%(levelname)8s] %(name)s: %(message)s")
+
 File-processing
 ^^^^^^^^^^^^^^^
 
@@ -105,7 +114,7 @@ File-processing
     from PIL import Image
 
     # Define activities
-    activities = sfini.ActivityRegistration("myPackage")
+    activities = sfini.ActivityRegistration(prefix="sfiniActs")
 
 
     @activities.smart_activity("resizeActivity")
@@ -114,6 +123,7 @@ File-processing
         resized_image_dir = pathlib.Path(resized_image_dir)
         for path in image_dir.iterdir():
             resized_path = resized_image_dir / path.relative_to(image_dir)
+            print("Resizing image '%s'" % path)
             Image.open(path).resize(new_size).save(resized_path)
 
 
@@ -123,7 +133,7 @@ File-processing
         centres = []
         for path in resized_image_dir.iterdir():
             im = Image.open(path)
-            centres.append(im.getpixel(im.size[0] // 2, im.size[1] // 2))
+            centres.append(im.getpixel((im.size[0] // 2, im.size[1] // 2)))
         return centres
 
 
@@ -141,7 +151,7 @@ File-processing
         result_path="$.res")
     resize_images.goes_to(get_centres)
 
-    sm = sfini.construct_state_machine("myStateMachine", resize_images)
+    sm = sfini.construct_state_machine("sfiniSM", resize_images)
 
     # Register state-machine and activities
     activities.register()
@@ -159,7 +169,7 @@ File-processing
             "image_dir": "~/data/images/",
             "resized_image_dir": "~/data/images-small/"})
     print(execution.name)
-    # myStateMachine_2018-07-11T19-07_0354d790
+    # sfiniSM-07-11T19-07_0354d790
 
     # Wait for execution and print output
     execution.wait()
@@ -186,7 +196,7 @@ Looping
     import sfini
 
     # Define activities
-    activities = sfini.ActivityRegistration("myPackage")
+    activities = sfini.ActivityRegistration(prefix="sfiniActs")
 
 
     @activities.activity("increment")
@@ -214,7 +224,7 @@ Looping
     end = sfini.Succeed("end", output_path="$.counter")
     check_counter.set_default(end)
 
-    sm = sfini.construct_state_machine("myStateMachine", initialise)
+    sm = sfini.construct_state_machine("sfiniSM", initialise)
 
     # Register state-machine and activities
     activities.register()
@@ -227,7 +237,7 @@ Looping
     # Start execution
     execution = sm.start_execution(execution_input={"increment": 3})
     print(execution.name)
-    # myStateMachine_2018-07-11T19-07_0354d790
+    # sfiniSM-07-11T19-07_0354d790
 
     # Wait for execution and print output
     execution.wait()
@@ -253,7 +263,7 @@ Parallel
     import logging as lg
 
     # Define activities
-    activities = sfini.ActivityRegistration("myPackage")
+    activities = sfini.ActivityRegistration(prefix="sfiniActs")
 
 
     @activities.activity("logActivity")
@@ -266,7 +276,7 @@ Parallel
         print(message)
         diff = datetime.timedelta(seconds=len(message) * 5)
         now = datetime.datetime.now(tz=datetime.timezone.utc)
-        return now + diff
+        return (now + diff).isoformat()
 
 
     # Define state-machine
@@ -279,7 +289,7 @@ Parallel
     log_sm = sfini.construct_state_machine("logSM", log)
 
     print_ = sfini.Task(
-        "log",
+        "print",
         print_message_activity,
         result_path="$.until")
     wait = sfini.Wait("wait", "$.until")
@@ -289,7 +299,7 @@ Parallel
     print_and_log.add(log_sm)
     print_and_log.add(print_sm)
 
-    sm = sfini.construct_state_machine("myStateMachine", print_and_log)
+    sm = sfini.construct_state_machine("sfiniSM", print_and_log)
 
     # Register state-machine and activities
     activities.register()
@@ -302,9 +312,10 @@ Parallel
     [w.start() for w in workers]
 
     # Start execution
-    execution = sm.start_execution(execution_input={"level": 20, "message": "foo"})
+    execution = sm.start_execution(
+        execution_input={"level": 20, "message": "foo"})
     print(execution.name)
-    # myStateMachine_2018-07-11T19-07-26.53_0354d790
+    # sfiniSM-07-11T19-07-26.53_0354d790
 
     # Wait for execution and print output
     execution.wait()
@@ -330,7 +341,7 @@ CLI
     import sfini
 
     # Define activities
-    activities = sfini.ActivityRegistration("myPackage")
+    activities = sfini.ActivityRegistration(prefix="sfiniActs")
 
 
     @activities.activity("printActivity")
@@ -340,7 +351,7 @@ CLI
 
     # Define state-machine
     print_ = sfini.Task("print", print_activity)
-    sm = sfini.construct_state_machine("myStateMachine", print_)
+    sm = sfini.construct_state_machine("sfiniSM", print_)
 
     # Parse arguments
     sfini.CLI(sm, activities, role_arn="...", version="1.0").parse_args()
@@ -355,7 +366,7 @@ Error-handling
     import time
 
     # Define activities
-    activities = sfini.ActivityRegistration("myPackage")
+    activities = sfini.ActivityRegistration(prefix="sfiniActs")
 
     sleep_time = 15
 
@@ -374,15 +385,15 @@ Error-handling
 
     # Define state-machine
     raise_ = sfini.Task("raise", raise_activity, timeout=10)
-    raise_.retry_for("Timeout", interval=3)
+    raise_.retry_for(["States.Timeout"], interval=3)
 
     fail = sfini.Fail(
         "fail",
         error="WorkerError",
         cause="MyError was raised")
-    raise_.catch(MyError, fail, result_path="$.error-info")
+    raise_.catch(["MyError"], fail, result_path="$.error-info")
 
-    sm = sfini.construct_state_machine("myStateMachine", raise_)
+    sm = sfini.construct_state_machine("sfiniSM", raise_)
 
     # Register state-machine and activities
     activities.register()
@@ -395,12 +406,32 @@ Error-handling
     # Start execution
     execution = sm.start_execution(execution_input={})
     print(execution.name)
-    # myStateMachine_2018-07-11T19-07_0354d790
+    # sfiniSM-07-11T19-07_0354d790
 
     # Wait for execution and print output
     execution.wait()
-    print(execution.output)
-    # {"error-info": {"error": "WorkerError", "cause": "MyError was raised"}}
+    print(execution.format_history())
+    # ExecutionStarted [1] @ 2019-06-23 19:27:34.026000+10:00
+    # TaskStateEntered [2] @ 2019-06-23 19:27:34.052000+10:00:
+    #   name: raise
+    # ActivityScheduled [3] @ 2019-06-23 19:27:34.052000+10:00:
+    #   resource: arn:...:sfiniActsraiseActivity
+    # ActivityStarted [4] @ 2019-06-23 19:27:34.130000+10:00:
+    #   worker: myWorker-81a5a3e4
+    # ActivityTimedOut [5] @ 2019-06-23 19:27:44.131000+10:00:
+    #   error: States.Timeout
+    # ActivityScheduled [6] @ 2019-06-23 19:27:47.132000+10:00:
+    #   resource: arn:...:sfiniActsraiseActivity
+    # ActivityStarted [7] @ 2019-06-23 19:30:45.637000+10:00:
+    #   worker: myWorker-4b6b9dfb
+    # ActivityFailed [8] @ 2019-06-23 19:30:50.908000+10:00:
+    #   error: MyError
+    # TaskStateExited [9] @ 2019-06-23 19:30:50.908000+10:00:
+    #   name: raise
+    # FailStateEntered [10] @ 2019-06-23 19:30:50.916000+10:00:
+    #   name: fail
+    # ExecutionFailed [11] @ 2019-06-23 19:30:50.916000+10:00:
+    #   error: WorkerError
 
     # Stop activity workers
     worker.end()
