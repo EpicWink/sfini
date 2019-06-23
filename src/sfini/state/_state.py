@@ -54,6 +54,15 @@ class Fail(_base.State):
         self.error = error
         self.cause = cause
 
+    @staticmethod
+    def _get_args(definition):  # TODO: unit-test
+        args, kwargs, definition = super()._get_args(definition)
+        if "Error" in definition:
+            kwargs["error"] = definition["Error"]
+        if "Cause" in definition:
+            kwargs["cause"] = definition["Cause"]
+        return args, kwargs, definition
+
     def to_dict(self):
         defn = super().to_dict()
         if self.cause != _default:
@@ -98,6 +107,13 @@ class Pass(_base.HasResultPath, _base.HasNext, _base.State):
             result_path=result_path)
         self.result = result
 
+    @staticmethod
+    def _get_args(definition):  # TODO: unit-test
+        args, kwargs, definition = super()._get_args(definition)
+        if "Result" in definition:
+            kwargs["result"] = definition["Result"]
+        return args, kwargs, definition
+
     def to_dict(self):
         defn = super().to_dict()
         if self.result != _default:
@@ -135,6 +151,23 @@ class Wait(_base.HasNext, _base.State):
             input_path=input_path,
             output_path=output_path)
         self.until = until
+
+    @staticmethod
+    def _get_args(definition):  # TODO: unit-test
+        args, kwargs, definition = super()._get_args(definition)
+        seconds = definition.get("Seconds")
+        timestamp = definition.get("Timestamp")
+        timestamp_path = definition.get("TimestampPath")
+        untils = [seconds, timestamp, timestamp_path]
+        untils = [u for u in untils if u is not None]
+        if len(untils) != 1:
+            fmt = (
+                "Required one 'wait until' (got $d) definition: "
+                "Seconds, Timestamp, TimestampPath")
+            raise ValueError(fmt % len(untils))
+        until = untils[0]
+        args += (until,)
+        return args, kwargs, definition
 
     def to_dict(self):
         defn = super().to_dict()
@@ -355,6 +388,18 @@ class Task(
         self.resource = resource
         self.timeout = timeout
 
+    @staticmethod
+    def _get_args(definition):  # TODO: unit-test
+        from .. import task_resource
+        args, kwargs, definition = super()._get_args(definition)
+        resource = task_resource.get_task_resource(definition["Resource"])
+        args += (resource,)
+        if "TimeoutSeconds" in definition:
+            kwargs["timeout"] = definition["TimeoutSeconds"]
+        if "HeartbeatSeconds" in definition:
+            resource.heartbeat = definition["HeartbeatSeconds"]
+        return args, kwargs, definition
+
     def to_dict(self):
         defn = super().to_dict()
         defn["Resource"] = self.resource.arn
@@ -364,3 +409,71 @@ class Task(
             _h = self._heartbeat_extra
             defn["HeartbeatSeconds"] = self.resource.heartbeat + _h
         return defn
+
+
+STATES = {
+    "Succeed": Succeed,
+    "Fail": Fail,
+    "Pass": Pass,
+    "Wait": Wait,
+    "Parallel": Parallel,
+    "Choice": Choice,
+    "Task": Task}
+
+
+def _construct_state(  # TODO: unit-test
+        name: str,
+        definition: T.Dict[str, _util.JSONable]
+) -> _base.State:
+    """Construct a state from a definition.
+
+    Args:
+        name: state name
+        definition: state definition
+
+    Returns:
+        constructed state
+    """
+
+    state_type = definition["Type"]
+    state_cls = STATES[state_type]
+    return state_cls.from_definition(name, definition)
+
+
+def _update_states(  # TODO: unit-test
+        states: T.Dict[str, _base.State],
+        states_definition: T.Dict[str, T.Dict[str, _util.JSONable]]):
+    """Update states with child structure.
+
+    Args:
+        states: states to update
+        states_definition: corresponding state definitions ('states' key of
+            state-machine definition)
+    """
+
+    assert states.keys() == states_definition.keys()
+    for state in states.values():
+        state._update_children(states_definition)
+
+
+def construct_states(  # TODO: unit-test
+        states_definition: T.Dict[str, T.Dict[str, _util.JSONable]]
+) -> T.Dict[str, _base.State]:
+    """Construct states from definitions.
+
+    Args:
+        states_definition: state definitions ('states' key of state-machine
+            definition)
+
+    Returns:
+        corresponding states
+    """
+
+    if not states_definition:
+        return {}
+    states = {}
+    for name, definition in states_definition.items():
+        state = _construct_state(name, definition)
+        states[name] = state
+    _update_states(states, states_definition)
+    return states

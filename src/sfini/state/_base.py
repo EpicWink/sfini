@@ -46,6 +46,45 @@ class State:
 
     __repr__ = _util.easy_repr
 
+    @staticmethod
+    def _get_args(  # TODO: unit-test
+            definition: T.Dict[str, _util.JSONable]
+    ) -> T.Tuple[T.Tuple, T.Dict[str, T.Any], T.Dict[str, _util.JSONable]]:
+        """Build instantiation arguments from state definition.
+
+        Args:
+            definition: state definition
+
+        Returns:
+            instantiation position and keyword arguments, as well as the state
+                definition so subclasses can add to instatiation arguments
+        """
+
+        args = ()
+        kwargs = {}
+        if "Comment" in definition:
+            kwargs["comment"] = definition["Comment"]
+        if "InputPath" in definition:
+            kwargs["input_path"] = definition["InputPath"]
+        if "OutputPath" in definition:
+            kwargs["output_path"] = definition["OutputPath"]
+        return args, kwargs, definition
+
+    @classmethod
+    def from_definition(  # TODO: unit-test
+            cls,
+            name: str,
+            definition: T.Dict[str, _util.JSONable]):
+        """Construct a state from its definition.
+
+        Args:
+            name: state name
+            definition: state definition
+        """
+
+        args, kwargs, _ = cls._get_args(definition)
+        return cls(name, *args, **kwargs)
+
     def add_to(self, states):
         """Add this state to a state-machine definition.
 
@@ -159,6 +198,13 @@ class HasResultPath(State):
             input_path=input_path,
             output_path=output_path)
         self.result_path = result_path
+
+    @staticmethod
+    def _get_args(definition):  # TODO: unit-test
+        args, kwargs, definition = super()._get_args(definition)
+        if "ResultPath" in definition:
+            kwargs["result_path"] = definition["ResultPath"]
+        return args, kwargs, definition
 
     def to_dict(self):
         defn = super().to_dict()

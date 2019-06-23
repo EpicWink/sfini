@@ -17,7 +17,8 @@ __all__ = [
     "Parallel",
     "Choice",
     "Task",
-    "choice"]
+    "choice",
+    "construct_states"]
 
 from ._base import State
 from ._base import HasNext
@@ -32,3 +33,4 @@ from ._state import Parallel
 from ._state import Choice
 from ._state import Task
 from . import choice
+from ._state import construct_states
