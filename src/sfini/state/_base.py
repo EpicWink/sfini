@@ -294,24 +294,23 @@ class CanCatch(State):
 
     def catch(
             self,
-            excs: T.Sequence[str],
+            errors: T.Sequence[str],
             next_state: State,
             result_path: T.Union[str, None] = _default):
         """Add an error handler.
 
         Args:
-            excs: errors for catch clause to be executed. If a string, must be
-                one of the pre-defined errors (see AWS Step Functions
-                documentation)
+            errors: code of errors for catch clause to be executed. See AWS
+                Step Functions documentation
             next_state: state to execute for catch clause
             result_path: error details location JSONPath
         """
 
-        if any(any(e in excs_ for e in excs) for excs_, _ in self.catchers):
-            fmt = "Handler has already accounted-for exceptions: %s"
-            _logger.warning(fmt % excs)
+        if any(any(e in excs_ for e in errors) for excs_, _ in self.catchers):
+            fmt = "Handler has already accounted-for errors: %s"
+            _logger.warning(fmt % errors)
         policy = {"next_state": next_state, "result_path": result_path}
-        self.catchers.append((excs, policy))
+        self.catchers.append((errors, policy))
 
     @staticmethod
     def _catcher_defn(
