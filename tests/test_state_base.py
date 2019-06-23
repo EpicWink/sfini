@@ -149,11 +149,25 @@ class TestHasNext:
         def test_not_terminal(self, state):
             """Has next state."""
             state.next = mock.Mock(spec=tscr.State)
+            state.next.name = "spamNext"
             states = {"bla": mock.Mock(spec=tscr.State)}
             exp_states = {"bla": states["bla"], "spam": state}
             state.add_to(states)
             assert states == exp_states
             state.next.add_to.assert_called_once_with(states)
+
+        def test_not_terminal_already_registered(self, state):
+            """Has next state."""
+            state.next = mock.Mock(spec=tscr.State)
+            state.next.name = "foo"
+            states = {"bla": mock.Mock(spec=tscr.State), "foo": state.next}
+            exp_states = {
+                "bla": states["bla"],
+                "foo": state.next,
+                "spam": state}
+            state.add_to(states)
+            assert states == exp_states
+            state.next.add_to.assert_not_called()
 
     @pytest.mark.parametrize(
         "prev_next_state",
@@ -450,16 +464,18 @@ class TestCanCatch:
         """Add state to collection."""
         # Setup environment
         foo_state = mock.Mock(spec=tscr.State)
+        foo_state.name = "foo"
         bar_state = mock.Mock(spec=tscr.State)
+        bar_state.name = "bar"
         state.catchers = [
             ([], {"next_state": foo_state}),
             ([], {"next_state": bar_state})]
 
         # Build input
-        states = {"bla": mock.Mock(spec=tscr.State)}
+        states = {"bla": mock.Mock(spec=tscr.State), "bar": bar_state}
 
         # Build expectation
-        exp_states = {"bla": states["bla"], "spam": state}
+        exp_states = {"bla": states["bla"], "bar": bar_state, "spam": state}
 
         # Run function
         state.add_to(states)
@@ -467,7 +483,7 @@ class TestCanCatch:
         # Check result
         assert states == exp_states
         foo_state.add_to.assert_called_once_with(states)
-        bar_state.add_to.assert_called_once_with(states)
+        bar_state.add_to.assert_not_called()
 
     def test_catch(self, state):
         """Catch handler adding."""

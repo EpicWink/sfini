@@ -331,15 +331,22 @@ class TestChoice:
             # Setup environmnent
             foo_rule = mock.Mock(spec=sfini.state.choice.ChoiceRule)
             foo_rule.next_state = mock.Mock(spec=_base.State)
+            foo_rule.next_state.name = "fooNext"
             bar_rule = mock.Mock(spec=sfini.state.choice.ChoiceRule)
             bar_rule.next_state = mock.Mock(spec=_base.State)
+            bar_rule.next_state.name = "barNext"
             state.choices = [foo_rule, bar_rule]
 
             # Build input
-            states = {"bla": mock.Mock(spec=_base.State)}
+            states = {
+                "bla": mock.Mock(spec=_base.State),
+                "barNext": foo_rule.next_state}
 
             # Build expectation
-            exp_states = {"bla": states["bla"], "spam": state}
+            exp_states = {
+                "bla": states["bla"],
+                "barNext": foo_rule.next_state,
+                "spam": state}
 
             # Run function
             state.add_to(states)
@@ -347,23 +354,31 @@ class TestChoice:
             # Check result
             assert states == exp_states
             foo_rule.next_state.add_to.assert_called_once_with(states)
-            bar_rule.next_state.add_to.assert_called_once_with(states)
+            bar_rule.next_state.add_to.assert_not_called()
 
         def test_has_default(self, state):
             """Has default state."""
             # Setup environmnent
             foo_rule = mock.Mock(spec=sfini.state.choice.ChoiceRule)
             foo_rule.next_state = mock.Mock(spec=_base.State)
+            foo_rule.next_state.name = "fooNext"
             bar_rule = mock.Mock(spec=sfini.state.choice.ChoiceRule)
             bar_rule.next_state = mock.Mock(spec=_base.State)
+            bar_rule.next_state.name = "barNext"
             state.choices = [foo_rule, bar_rule]
             state.default = mock.Mock(spec=_base.State)
+            state.default.name = "default"
 
             # Build input
-            states = {"bla": mock.Mock(spec=_base.State)}
+            states = {
+                "bla": mock.Mock(spec=_base.State),
+                "barNext": foo_rule.next_state}
 
             # Build expectation
-            exp_states = {"bla": states["bla"], "spam": state}
+            exp_states = {
+                "bla": states["bla"],
+                "barNext": foo_rule.next_state,
+                "spam": state}
 
             # Run function
             state.add_to(states)
@@ -372,7 +387,7 @@ class TestChoice:
             assert states == exp_states
             state.default.add_to.assert_called_once_with(states)
             foo_rule.next_state.add_to.assert_called_once_with(states)
-            bar_rule.next_state.add_to.assert_called_once_with(states)
+            bar_rule.next_state.add_to.assert_not_called()
 
     class TestAdd:
         """Choice-rule adding."""

@@ -253,8 +253,9 @@ class Choice(_base.State):
     def add_to(self, states):
         super().add_to(states)
         for rule in self.choices:
-            rule.next_state.add_to(states)
-        if self.default is not None:
+            if rule.next_state.name not in states:
+                rule.next_state.add_to(states)
+        if self.default is not None and self.default.name not in states:
             self.default.add_to(states)
 
     def add(self, rule):

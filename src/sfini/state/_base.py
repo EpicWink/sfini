@@ -58,6 +58,7 @@ class State:
             states (dict[str, State]): state-machine states
         """
 
+        _logger.debug("Adding state to state-machine definition: '%s'" % self)
         if states.get(self.name, self) != self:
             raise ValueError("State name '%s' already registered" % self.name)
         states[self.name] = self
@@ -108,7 +109,7 @@ class HasNext(State):
 
     def add_to(self, states):
         super().add_to(states)
-        if self.next is not None:
+        if self.next is not None and self.next.name not in states:
             self.next.add_to(states)
 
     def goes_to(self, state: State):
@@ -290,7 +291,8 @@ class CanCatch(State):
     def add_to(self, states):
         super().add_to(states)
         for _, policy in self.catchers:
-            policy["next_state"].add_to(states)
+            if policy["next_state"].name not in states:
+                policy["next_state"].add_to(states)
 
     def catch(
             self,
