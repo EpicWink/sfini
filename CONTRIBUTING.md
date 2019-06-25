@@ -21,7 +21,7 @@ closing bracket! 80-character lines.
 See the [issues page](https://github.com/EpicWink/sfini/issues) for the current
 discussions on improvements, features and bugs.
 
-### Generating documentation
+## Generating documentation
 When the package structure is changed (moved/deleted/new packages/modules), the
 documentation configuration must be regenerated:
 ```bash
