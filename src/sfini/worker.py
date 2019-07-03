@@ -5,11 +5,11 @@ public. This module's worker implementation uses threading, and is
 designed to be resource-managed outside of Python.
 """
 
+import sys
 import json
 import uuid
 import time
 import socket
-import threading
 import traceback
 import typing as T
 import logging as lg
@@ -20,6 +20,14 @@ from . import _util
 
 _logger = lg.getLogger(__name__)
 _host_name = socket.getfqdn(socket.gethostname())
+threading = None
+
+
+def _import_threading():
+    """Import ``threading`` multi-threading module."""
+    global threading
+    if "threading" not in sys.modules:
+        import threading
 
 
 class WorkerCancel(KeyboardInterrupt):
@@ -55,6 +63,7 @@ class TaskExecution:
         self.task_input = task_input
         self.session = session or _util.AWSSession()
 
+        _import_threading()
         self._heartbeat_thread = threading.Thread(target=self._heartbeat)
         self._request_stop = False
 
@@ -160,6 +169,7 @@ class Worker:
         self.name = name or "%s-%s" % (_host_name, str(str(uuid.uuid4()))[:8])
         self.session = session or _util.AWSSession()
 
+        _import_threading()
         self._poller = threading.Thread(target=self._worker)
         self._request_finish = False
         self._exc = None
