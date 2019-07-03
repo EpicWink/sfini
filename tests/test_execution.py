@@ -60,8 +60,8 @@ class TestExecution:
             execution.execution_input = {"a": 42, "b": "bla", "c": [1, 2] * 20}
             exp_pref = "Execution("
             exp_pos = "'spam', 'bla-sm:arn', len(execution_input)=3"
-            exp_kw_a = ", arn='spam:arn', session=%r)" % session
-            exp_kw_b = ", session=%r, arn='spam:arn')" % session
+            exp_kw_a = f", arn='spam:arn', session={session!r})"
+            exp_kw_b = f", session={session!r}, arn='spam:arn')"
             exp_a = exp_pref + exp_pos + exp_kw_a
             exp_b = exp_pref + exp_pos + exp_kw_b
             res = repr(execution)
@@ -73,7 +73,7 @@ class TestExecution:
             execution.arn = None
             exp_pref = "Execution("
             exp_pos = "'spam', 'bla-sm:arn', len(execution_input)=3"
-            exp_kw = ", session=%r)" % session
+            exp_kw = f", session={session!r})"
             exp = exp_pref + exp_pos + exp_kw
             res = repr(execution)
             assert res == exp
@@ -85,7 +85,7 @@ class TestExecution:
             exp_pos = "'spam', 'bla-sm:arn'"
             exp_kw_1 = "execution_input=42"
             exp_kw_2 = "arn='spam:arn'"
-            exp_kw_3 = "session=%r" % session
+            exp_kw_3 = f"session={session!r}"
             exp_kws = [
                 ", " + exp_kw_1 + ", " + exp_kw_2 + ", " + exp_kw_3 + ")",
                 ", " + exp_kw_1 + ", " + exp_kw_3 + ", " + exp_kw_2 + ")",

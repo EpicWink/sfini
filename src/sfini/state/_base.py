@@ -42,7 +42,7 @@ class State:
 
     def __str__(self):
         name = type(self).__name__
-        return "%s [%s]" % (self.name, name)
+        return f"{self.name} [{name}]"
 
     __repr__ = _util.easy_repr
 
@@ -55,9 +55,9 @@ class State:
             states (dict[str, State]): state-machine states
         """
 
-        _logger.debug("Adding state to state-machine definition: '%s'" % self)
+        _logger.debug(f"Adding state to state-machine definition: '{self}'")
         if states.get(self.name, self) != self:
-            raise ValueError("State name '%s' already registered" % self.name)
+            raise ValueError(f"State name '{self.name}' already registered")
         states[self.name] = self
 
     def to_dict(self) -> T.Dict[str, _util.JSONable]:
@@ -117,7 +117,7 @@ class HasNext(State):
         """
 
         if self.next is not None:
-            _logger.warning("Overriding current next state: %s" % self.next)
+            _logger.warning(f"Overriding current next state: {self.next}")
         self.next = state
 
     def remove_next(self):
@@ -306,8 +306,8 @@ class CanCatch(State):
         """
 
         if any(any(e in excs_ for e in errors) for excs_, _ in self.catchers):
-            fmt = "Handler has already accounted-for errors: %s"
-            _logger.warning(fmt % errors)
+            msg = f"Handler has already accounted-for errors: {errors}"
+            _logger.warning(msg)
         policy = {"next_state": next_state, "result_path": result_path}
         self.catchers.append((errors, policy))
 
@@ -368,5 +368,6 @@ def _validate_errors(errors: T.Sequence[str]):
     for err in errors:
         if err.startswith("States."):
             if err[7:] not in STATES_ERRORS:
-                fmt = "States error name was '%s', must be one of: %s"
-                raise ValueError(fmt % (err[7:], STATES_ERRORS))
+                raise ValueError(
+                    f"States error name was '{err[7:]}', "
+                    f"must be one of: {STATES_ERRORS}")

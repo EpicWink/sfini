@@ -33,7 +33,7 @@ class TaskResource:
         self.session = session
 
     def __str__(self):
-        return "%s [%s]" % (self.name, self.service)
+        return f"{self.name} [{self.service}]"
 
     __repr__ = _util.easy_repr
 
@@ -42,8 +42,7 @@ class TaskResource:
         """Task resource generated ARN."""
         region = self.session.region
         account = self.session.account_id
-        fmt = "arn:aws:states:%s:%s:%s:%s"
-        return fmt % (region, account, self.service, self.name)
+        return f"arn:aws:states:{region}:{account}:{self.service}:{self.name}"
 
 
 class Lambda(TaskResource):

@@ -35,12 +35,13 @@ class Activity(sfini_task_resource.TaskResource):
 
     def register(self):
         """Register activity with AWS SFN."""
-        _logger.debug("Registering activity '%s' on SFN" % self)
+        _logger.debug(f"Registering activity '{self}' on SFN")
         _util.assert_valid_name(self.name)
         resp = self.session.sfn.create_activity(name=self.name)
         assert resp["activityArn"] == self.arn
-        fmt = "Activity '%s' registered with ARN '%s' at %s"
-        _logger.info(fmt % (self, self.arn, resp["creationDate"]))
+        _logger.info(
+            f"Activity '{self}' registered with ARN '{self.arn}' "
+            f"at {resp['creationDate']}")
 
     def is_registered(self) -> bool:
         """See if this activity is registered with AWS SFN.
@@ -49,14 +50,14 @@ class Activity(sfini_task_resource.TaskResource):
             if this activity is registered
         """
 
-        _logger.debug("Testing for registration of '%s' on SFN" % self)
+        _logger.debug(f"Testing for registration of '{self}' on SFN")
         resp = _util.collect_paginated(self.session.sfn.list_activities)
         arns = {sm["activityArn"] for sm in resp["activities"]}
         return self.arn in arns
 
     def deregister(self):
         """Remove activity from AWS SFN."""
-        _logger.info("Deleting activity '%s' from SFN" % self)
+        _logger.info(f"Deleting activity '{self}' from SFN")
         self.session.sfn.delete_activity(activityArn=self.arn)
 
 
@@ -218,7 +219,7 @@ class ActivityRegistration:
         self.activities: T.Dict[str, Activity] = {}
 
     def __str__(self):
-        return "'%s' activities" % self.prefix
+        return f"'{self.prefix}' activities"
 
     __repr__ = _util.easy_repr
 
@@ -233,7 +234,7 @@ class ActivityRegistration:
         """
 
         if activity.name in self.activities:
-            raise ValueError("Activity '%s' already in group" % activity.name)
+            raise ValueError(f"Activity '{activity.name}' already in group")
         self.activities[activity.name] = activity
 
     def _activity(
@@ -320,9 +321,9 @@ class ActivityRegistration:
             self,
             activity_items: T.Sequence[T.Tuple[str, str, str]]):
         """Deregister activities."""
-        _logger.info("Deregistering %d activities" % len(activity_items))
+        _logger.info(f"Deregistering {len(activity_items)} activities")
         for act in activity_items:
-            _logger.debug("Deregistering '%s'" % act[0])
+            _logger.debug(f"Deregistering '{act[0]}'")
             self.session.sfn.delete_activity(activityArn=act[1])
 
     def deregister(self):

@@ -46,7 +46,7 @@ class ChoiceRule:
 
         op_name = type(self).__name__
         if not self._final:
-            raise RuntimeError("'%s' is not a valid choice rule" % op_name)
+            raise RuntimeError(f"'{op_name}' is not a valid choice rule")
         comp = self._get_comparison()
         defn = {op_name: comp}
         if self.next_state:
@@ -75,17 +75,17 @@ class Comparison(ChoiceRule):
         self.comparison_value = comparison_value
 
     def __str__(self):
-        return "'%s' %s %s%s" % (
-            self.variable_path,
-            type(self).__name__,
-            self.comparison_value,
-            "" if self.next_state is None else (" -> %s" % self.next_state))
+        has_no_next = self.next_state is None
+        next_state_str = "" if has_no_next else f" -> {self.next_state}"
+        return (
+            f"'{self.variable_path}' {type(self).__name__} "
+            f"{self.comparison_value}{next_state_str}")
 
     def _get_comparison(self):
         if not isinstance(self.comparison_value, self._expected_value_type):
-            fmt = "Comparison value must be type `%s`: %s"
-            exp_type_name = self._expected_value_type.__name__
-            raise TypeError(fmt % (self.comparison_value, exp_type_name))
+            raise TypeError(
+                f"Comparison value must be type `{self.comparison_value}`: "
+                f"{self._expected_value_type.__name__}")
         return self.comparison_value
 
     def to_dict(self):
@@ -210,9 +210,9 @@ class _NonUnary(Logical):
         self.choice_rules = choice_rules
 
     def __str__(self):
-        _t = " %s " % type(self).__name__
-        _s = _t.join("(%s)" % r for r in self.choice_rules)
-        _n = "" if self.next_state is None else (" -> %s" % self.next_state)
+        _t = f" {type(self).__name__} "
+        _s = _t.join(f"({r})" for r in self.choice_rules)
+        _n = "" if self.next_state is None else f" -> {self.next_state}"
         return _s + _n
 
     def _get_comparison(self) -> T.List[T.Dict[str, _util.JSONable]]:
@@ -245,9 +245,8 @@ class Not(Logical):
         self.choice_rule = choice_rule
 
     def __str__(self):
-        _n = "" if self.next_state is None else (" -> %s" % self.next_state)
-        _f = (type(self).__name__, self.choice_rule, _n)
-        return "%s %s%s" % _f
+        _n = "" if self.next_state is None else f" -> {self.next_state}"
+        return f"{type(self).__name__} {self.choice_rule}{_n}"
 
     def _get_comparison(self) -> T.Dict[str, _util.JSONable]:
         return self._get_rule_defn(self.choice_rule)

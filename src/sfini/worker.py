@@ -67,7 +67,7 @@ class TaskExecution:
         self._request_stop = False
 
     def __str__(self):
-        return "%s - %s" % (self.activity.name, self.task_token)
+        return f"{self.activity.name} - {self.task_token}"
 
     __repr__ = _util.easy_repr
 
@@ -80,7 +80,7 @@ class TaskExecution:
 
     def _report_exception(self, exc: BaseException):
         """Report failure."""
-        _logger.info("Reporting task failure for '%s'" % self, exc_info=exc)
+        _logger.info(f"Reporting task failure for '{self}'", exc_info=exc)
         tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
         self._send(
             self.session.sfn.send_task_failure,
@@ -90,8 +90,8 @@ class TaskExecution:
 
     def report_cancelled(self):
         """Cancel a task execution: stop interaction with SFN."""
-        fmt = "Reporting task failure for '%s' due to cancellation"
-        _logger.info(fmt % self)
+        msg = f"Reporting task failure for '{self}' due to cancellation"
+        _logger.info(msg)
         self._send(
             self.session.sfn.send_task_failure,
             error=WorkerCancel.__name__,
@@ -100,21 +100,21 @@ class TaskExecution:
 
     def _report_success(self, res: _util.JSONable):
         """Report success."""
-        fmt = "Reporting task success for '%s' with output: %s"
-        _logger.debug(fmt % (self, res))
+        msg = f"Reporting task success for '{self}' with output: {res}"
+        _logger.debug(msg)
         self._send(self.session.sfn.send_task_success, output=json.dumps(res))
         self._request_stop = True
 
     def _send_heartbeat(self):
         """Send a heartbeat."""
-        _logger.debug("Sending heartbeat for '%s'" % self)
+        _logger.debug(f"Sending heartbeat for '{self}'")
         try:
             self._send(self.session.sfn.send_task_heartbeat)
         except bc_exc.ClientError as e:
             self._request_stop = True
             if e.response["Error"]["Code"] != "TaskTimedOut":
                 raise
-            _logger.error("Task execution '%s' timed-out" % self)
+            _logger.error(f"Task execution '{self}' timed-out")
 
     def _heartbeat(self):
         """Run heartbeat sending."""
@@ -140,8 +140,8 @@ class TaskExecution:
             self._report_exception(e)
             return
 
-        fmt = "Task '%s' completed in %.6f seconds"
-        _logger.debug(fmt % (self, time.time() - t))
+        dt = time.time() - t
+        _logger.debug(f"Task '{self}' completed in {dt:.6f} seconds")
         self._report_success(res)
 
 
@@ -165,7 +165,8 @@ class Worker:
             *,
             session: _util.AWSSession = None):
         self.activity = activity
-        self.name = name or "%s-%s" % (_host_name, str(str(uuid.uuid4()))[:8])
+        uuid_str = str(uuid.uuid4())[:8]
+        self.name = name or f"{_host_name}-{uuid_str}"
         self.session = session or _util.AWSSession()
 
         _import_threading()
@@ -174,7 +175,7 @@ class Worker:
         self._exc = None
 
     def __str__(self):
-        return "%s [%s]" % (self.name, self.activity.name)
+        return f"{self.name} [{self.activity.name}]"
 
     __repr__ = _util.easy_repr
 
@@ -186,7 +187,7 @@ class Worker:
             task_token: task execution identifier
         """
 
-        _logger.debug("Got task input: %s" % task_input)
+        _logger.debug(f"Got task input: {task_input}")
 
         execution = self._task_execution_class(
             self.activity,
@@ -201,8 +202,7 @@ class Worker:
     def _poll_and_execute(self):
         """Poll for tasks to execute, then execute any found."""
         while not self._request_finish:
-            fmt = "Polling for activity '%s' executions"
-            _logger.debug(fmt % self.activity)
+            _logger.debug(f"Polling for activity '{self.activity}' executions")
             resp = self.session.sfn.get_activity_task(
                 activityArn=self.activity.arn,
                 workerName=self.name)
@@ -223,9 +223,9 @@ class Worker:
         """Start polling."""
         from . import activity
         if not isinstance(self.activity, activity.CallableActivity):
-            raise TypeError("Activity '%s' cannot be executed" % self.activity)
+            raise TypeError(f"Activity '{self.activity}' cannot be executed")
         _util.assert_valid_name(self.name)
-        _logger.info("Worker '%s': waiting on final poll to finish" % self)
+        _logger.info(f"Worker '{self}': waiting on final poll to finish")
         self._poller.start()
 
     def join(self):
@@ -244,7 +244,7 @@ class Worker:
 
     def end(self):
         """End polling."""
-        _logger.info("Worker '%s': waiting on final poll to finish" % self)
+        _logger.info(f"Worker '{self}': waiting on final poll to finish")
         self._request_finish = True
 
     def run(self):

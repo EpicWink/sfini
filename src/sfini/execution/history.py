@@ -74,8 +74,7 @@ class Event:
         self.previous_event_id = previous_event_id
 
     def __str__(self):
-        fmt = "%s [%s] @ %s"
-        return fmt % (self.event_type, self.event_id, self.timestamp)
+        return f"{self.event_type} [{self.event_id}] @ {self.timestamp}"
 
     __repr__ = _util.easy_repr
 
@@ -92,7 +91,7 @@ class Event:
             initialisation positional and keyword arguments, and event details
         """
 
-        # _logger.debug("history_event: %s" % history_event)
+        # _logger.debug(f"history_event: {history_event}")
         timestamp = history_event["timestamp"]
         event_type = history_event["type"]
         event_id = history_event["id"]
@@ -170,7 +169,7 @@ class Failed(Event):
 
     @_util.cached_property
     def details_str(self):
-        return "error: %s" % self.error
+        return f"error: {self.error}"
 
 
 class LambdaFunctionScheduled(Event):
@@ -216,7 +215,7 @@ class LambdaFunctionScheduled(Event):
 
     @_util.cached_property
     def details_str(self):
-        return "resource: %s" % self.resource
+        return f"resource: {self.resource}"
 
 
 class ActivityScheduled(LambdaFunctionScheduled):
@@ -294,7 +293,7 @@ class ActivityStarted(Event):
 
     @_util.cached_property
     def details_str(self):
-        return "worker: %s" % self.worker_name
+        return f"worker: {self.worker_name}"
 
 
 class ObjectSucceeded(Event):
@@ -406,7 +405,7 @@ class StateEntered(Event):
 
     @_util.cached_property
     def details_str(self):
-        return "name: %s" % self.state_name
+        return f"name: {self.state_name}"
 
 
 class StateExited(Event):
@@ -447,7 +446,7 @@ class StateExited(Event):
 
     @_util.cached_property
     def details_str(self):
-        return "name: %s" % self.state_name
+        return f"name: {self.state_name}"
 
 
 _type_classes = {

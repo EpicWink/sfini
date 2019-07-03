@@ -240,8 +240,7 @@ class TestActivityRegistration:
 
     def test_repr(self, activities, session_mock):
         """ActivityRegistration string representation."""
-        fmt = "ActivityRegistration(prefix='spam', session=%s)"
-        exp = fmt % repr(session_mock)
+        exp = f"ActivityRegistration(prefix='spam', session={session_mock!r})"
         assert repr(activities) == exp
 
     class TestAddActivity:

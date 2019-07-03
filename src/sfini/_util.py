@@ -107,9 +107,9 @@ def assert_valid_name(name: str):
     """
 
     if len(name) > MAX_NAME_LENGTH:
-        raise ValueError("Name is too long: '%s'" % name)
+        raise ValueError(f"Name is too long: '{name}'")
     if any(c in name for c in INVALID_NAME_CHARACTERS):
-        raise ValueError("Name contains invalid characters: '%s'" % name)
+        raise ValueError(f"Name contains invalid characters: '{name}'")
 
 
 def collect_paginated(
@@ -175,7 +175,7 @@ def easy_repr(instance) -> str:
         attr_val = getattr(instance, param.name)
         arg_str = repr(attr_val)
         if len(arg_str) > 80 and isinstance(attr_val, abc.Sized):
-            arg_str = "len %d" % len(attr_val)
+            arg_str = f"len {len(attr_val)}"
         arg_strs.append(arg_str)
     for param in params_named:
         attr_val = getattr(instance, param.name)
@@ -183,14 +183,14 @@ def easy_repr(instance) -> str:
             continue
         arg_str = repr(attr_val)
         if len(arg_str) > 80 and isinstance(attr_val, abc.Sized):
-            arg_str = "len(%s)=%d" % (param.name, len(attr_val))
+            arg_str = f"len({param.name})={len(attr_val)}"
         else:
-            arg_str = "%s=%s" % (param.name, arg_str)
+            arg_str = f"{param.name}={arg_str}"
         arg_strs.append(arg_str)
 
     args_str = ", ".join(arg_strs)
     type_name = type(instance).__name__
-    return "%s(%s)" % (type_name, args_str)
+    return f"{type_name}({args_str})"
 
 
 class AWSSession:
@@ -204,8 +204,9 @@ class AWSSession:
         self.session = session or boto3.Session()
 
     def __str__(self):
-        fmt = "<access key: %s, region: %s>"
-        return fmt % (self.credentials.access_key, self.region)
+        return (
+            f"<access key: {self.credentials.access_key}, "
+            f"region: {self.region}>")
 
     __repr__ = easy_repr
 

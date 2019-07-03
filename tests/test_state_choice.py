@@ -124,7 +124,7 @@ class TestTimestampRule:
     def rule(self, state_mock, timestamp):
         """An example _TimestampRule instance."""
         return tscr._TimestampRule(
-            "%.varPath",
+            "$.varPath",
             timestamp,
             next_state=state_mock)
 

@@ -33,7 +33,7 @@ class TestTaskResource:
 
     def test_repr(self, task_resource, session):
         """TaskResource representation."""
-        exp = "TaskResource('spam', session=%s)" % repr(session)
+        exp = f"TaskResource('spam', session={session!r})"
         res = repr(task_resource)
         assert res == exp
 

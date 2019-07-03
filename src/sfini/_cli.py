@@ -53,12 +53,11 @@ class CLI:
 
         d = None
         if self.state_machine and self.activities:
-            fmt = "Control %s and %s"
-            d = fmt % (self.state_machine, self.activities)
+            d = f"Control {self.state_machine} and {self.activities}"
         elif self.state_machine:
-            d = "Control %s" % self.state_machine
+            d = f"Control {self.state_machine}"
         elif self.activities:
-            d = "Control %s" % self.activities
+            d = f"Control {self.activities}"
         parser = self._parser_class(description=d, prog=self.prog)
         if self.version:
             parser.add_argument(
@@ -92,8 +91,8 @@ class CLI:
 
         register_parser = subparsers.add_parser(
             "register",
-            help="register %s with SFN" % sma_str,
-            description="register %s with SFN" % sma_str)
+            help=f"register {sma_str} with SFN",
+            description=f"register {sma_str} with SFN")
         if self.state_machine:
             register_parser.add_argument(
                 "-u",
@@ -115,8 +114,8 @@ class CLI:
 
         deregister_parser = subparsers.add_parser(
             "deregister",
-            help="deregister %s from SFN" % sma_str,
-            description="deregister %s from SFN" % sma_str)
+            help=f"deregister {sma_str} from SFN",
+            description=f"deregister {sma_str} from SFN")
         if self.state_machine and self.activities:
             _g = deregister_parser.add_mutually_exclusive_group()
             _g.add_argument(
@@ -259,7 +258,7 @@ class CLI:
 
         execs = self.state_machine.list_executions(status=args.status)
         for execution in execs:
-            print("\nExecution '%s':" % execution)
+            print(f"\nExecution '{execution}':")
             print(execution.format_history())
 
     def _delegate(self, args: argparse.Namespace):

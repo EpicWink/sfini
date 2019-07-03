@@ -388,7 +388,7 @@ class TestAWSSession:
 
     def test_repr(self, sfini_session, session):
         """AWSSession string representation."""
-        exp = "AWSSession(session=%r)" % session
+        exp = f"AWSSession(session={session!r})"
         res = repr(sfini_session)
         assert res == exp
 

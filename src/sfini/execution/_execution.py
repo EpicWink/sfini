@@ -48,8 +48,8 @@ class Execution:
         self._output = _default
 
     def __str__(self):
-        status_str = (" [%s]" % self._status) if self._status else ""
-        return "%s%s" % (self.name, status_str)
+        status_str = f" [{self._status}]" if self._status else ""
+        return f"{self.name}{status_str}"
 
     __repr__ = _util.easy_repr
 
@@ -192,17 +192,17 @@ class Execution:
         """Raise ``RuntimeError`` on execution failure."""
         failed = self._status not in ("RUNNING", "SUCCEEDED")
         if failed:
-            raise RuntimeError("Execution '%s' %s" % (self, self._status))
+            raise RuntimeError(f"Execution '{self}' {self._status}")
 
     def _raise_unfinished(self):
         """Raise ``RuntimeError`` when requiring execution to be finished."""
         if self._status == "RUNNING":
-            raise RuntimeError("Execution '%s' not yet finished" % self)
+            raise RuntimeError(f"Execution '{self}' not yet finished")
 
     def _raise_no_arn(self):
         """Raise ``RuntimeError`` when ARN is not provided."""
         if self.arn is None:
-            raise RuntimeError("Execution '%s' ARN is unknown" % self)
+            raise RuntimeError(f"Execution '{self}' ARN is unknown")
 
     def start(self):
         """Start this state-machine execution.
@@ -241,7 +241,7 @@ class Execution:
             if self._status != "RUNNING":
                 break
             if timeout is not None and time.time() - t > timeout:
-                raise RuntimeError("Time-out waiting on execution '%s'" % self)
+                raise RuntimeError(f"Time-out waiting on execution '{self}'")
             time.sleep(self._wait_sleep_time)
         if raise_on_failure:
             self._raise_on_failure()
@@ -265,7 +265,7 @@ class Execution:
         self._raise_no_arn()
         resp = self.session.sfn.stop_execution(executionArn=self.arn, **kw)
         self._stop_date = resp["stopDate"]
-        _logger.info("Execution stopped on %s" % resp["stopDate"])
+        _logger.info(f"Execution stopped on {resp['stopDate']}")
 
     def get_history(self) -> T.List[history.Event]:
         """List the execution history.
@@ -291,10 +291,11 @@ class Execution:
         lines = []
         for event in events:
             ds = event.details_str
-            line = ("%s:\n  %s" % (event, ds)) if ds else str(event)
+            line = f"{event}:\n  {ds}" if ds else str(event)
             lines.append(line)
         self._update()
         if self._output != _default:
-            line = "Output: %s" % json.dumps(self._output)
+            output_str = json.dumps(self._output)
+            line = f"Output: {output_str}"
             lines.append(line)
         return "\n".join(lines)

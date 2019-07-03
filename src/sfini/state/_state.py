@@ -148,8 +148,8 @@ class Wait(_base.HasNext, _base.State):
         elif isinstance(self.until, str):
             defn["TimestampPath"] = self.until
         else:
-            fmt = "Invalid type for wait time: %s"
-            raise TypeError(fmt % type(self.until))
+            until_type = type(self.until)
+            raise TypeError(f"Invalid type for wait time: {until_type}")
         return defn
 
 
@@ -267,8 +267,8 @@ class Choice(_base.State):
         """
 
         if rule.next_state is None:
-            msg = "Top-level choice rule '%s' must specify next state"
-            raise RuntimeError(msg % rule)
+            msg = f"Top-level choice rule '{rule}' must specify next state"
+            raise RuntimeError(msg)
         self.choices.append(rule)
 
     def remove(self, rule):
@@ -283,8 +283,8 @@ class Choice(_base.State):
         """
 
         if rule not in self.choices:
-            fmt = "Rule '%s' is not registered with this state"
-            raise ValueError(fmt % rule)
+            msg = f"Rule '{rule}' is not registered with this state"
+            raise ValueError(msg)
         self.choices.remove(rule)
 
     def set_default(self, state: _base.State):
@@ -295,13 +295,14 @@ class Choice(_base.State):
         """
 
         if self.default is not None:
-            fmt = "Overwriting current default state '%s' with '%s'"
-            _logger.warning(fmt % (self.default, state))
+            _logger.warning(
+                f"Overwriting current default state '{self.default}' "
+                f"with '{state}'")
         self.default = state
 
     def to_dict(self):
         if not self.choices and self.default is None:
-            raise RuntimeError("Choice '%s' has no next path" % self)
+            raise RuntimeError(f"Choice '{self}' has no next path")
         defn = super().to_dict()
         defn["Choices"] = [cr.to_dict() for cr in self.choices]
         if self.default is not None:

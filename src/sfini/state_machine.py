@@ -50,7 +50,7 @@ class StateMachine:
         self.session = session or _util.AWSSession()
 
     def __str__(self):
-        return "'%s' (%d states)" % (self.name, len(self.states))
+        return f"'{self.name}' ({len(self.states)} states)"
 
     __repr__ = _util.easy_repr
 
@@ -59,13 +59,12 @@ class StateMachine:
         """State-machine generated ARN."""
         region = self.session.region
         account = self.session.account_id
-        fmt = "arn:aws:states:%s:%s:stateMachine:%s"
-        return fmt % (region, account, self.name)
+        return f"arn:aws:states:{region}:{account}:stateMachine:{self.name}"
 
     @_util.cached_property
     def default_role_arn(self) -> str:
         """``sfini``-generated state-machine IAM role ARN."""
-        return "arn:aws:iam::%s:role/sfiniGenerated" % self.session.account_id
+        return f"arn:aws:iam::{self.session.account_id}:role/sfiniGenerated"
 
     def to_dict(self) -> T.Dict[str, _util.JSONable]:
         """Convert this state-machine to a definition dictionary.
@@ -74,7 +73,7 @@ class StateMachine:
             definition
         """
 
-        _logger.debug("Converting '%s' to dictionary" % self)
+        _logger.debug(f"Converting '{self}' to dictionary")
         state_defns = {n: s.to_dict() for n, s in self.states.items()}
         defn = {"StartAt": self.start_state, "States": state_defns}
         if self.comment != _default:
@@ -90,7 +89,7 @@ class StateMachine:
             if this state-machine is registered
         """
 
-        _logger.debug("Testing for registration of '%s' on SFN" % self)
+        _logger.debug(f"Testing for registration of '{self}' on SFN")
         resp = _util.collect_paginated(self.session.sfn.list_state_machines)
         arns = {sm["stateMachineArn"] for sm in resp["stateMachines"]}
         return self.arn in arns
@@ -102,14 +101,15 @@ class StateMachine:
             role_arn: state-machine IAM role ARN
         """
 
-        _logger.info("Creating '%s' on SFN" % self)
+        _logger.info(f"Creating '{self}' on SFN")
         resp = self.session.sfn.create_state_machine(
             name=self.name,
             definition=json.dumps(self.to_dict(), indent=4),
             roleArn=role_arn)
         assert resp["stateMachineArn"] == self.arn
-        fmt = "State-machine '%s' registered with ARN '%s' at %s"
-        _logger.info(fmt % (self, self.arn, resp["creationDate"]))
+        _logger.info(
+            f"State-machine '{self}' registered with ARN '{self.arn}' "
+            f"at {resp['creationDate']}")
 
     def _sfn_update(self, role_arn: str = None):
         """Update this state-machine in AWS SFN.
@@ -118,13 +118,13 @@ class StateMachine:
             role_arn: state-machine IAM role ARN to update to
         """
 
-        _logger.info("Updating '%s' on SFN" % self)
+        _logger.info(f"Updating '{self}' on SFN")
         kwargs = {} if role_arn is None else {"roleArn": role_arn}
         resp = self.session.sfn.update_state_machine(
             definition=json.dumps(self.to_dict(), indent=4),
             stateMachineArn=self.arn,
             **kwargs)
-        _logger.info("'%s' updated at %s" % (self, resp["updateDate"]))
+        _logger.info(f"'{self}' updated at {resp['updateDate']}")
 
     def register(self, role_arn: str = None, allow_update: bool = False):
         """Register state-machine with AWS SFN.
@@ -143,7 +143,7 @@ class StateMachine:
 
     def deregister(self):
         """Remove state-machine from AWS SFN."""
-        _logger.info("Deleting state-machine '%s' from SFN" % self)
+        _logger.info(f"Deleting state-machine '{self}' from SFN")
         self.session.sfn.delete_state_machine(stateMachineArn=self.arn)
 
     def start_execution(
@@ -159,11 +159,11 @@ class StateMachine:
             started execution
         """
 
-        fmt = "Starting execution of '%s' with: %s"
-        _logger.info(fmt % (self, execution_input))
+        _logger.info(f"Starting execution of '{self}' with: {execution_input}")
 
-        _now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-        name = self.name + "_" + _now + "_" + str(uuid.uuid4())[:8]
+        now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+        uuid_str = str(uuid.uuid4())[:8]
+        name = f"{self.name}_{now}_{uuid_str}"
         execution = self._execution_class(
             name,
             self.arn,
@@ -197,8 +197,9 @@ class StateMachine:
             execution.state_machine = self
             executions.append(execution)
 
-            fmt = "Found execution '%s' with stop-date: %s"
-            _logger.debug(fmt % (execution, item.get("stopDate")))
+            stop_date = item.get("stopDate")
+            msg = f"Found execution '{execution}' with stop-date: {stop_date}"
+            _logger.debug(msg)
         return executions
 
     def list_executions(self, status: str = None) -> T.List[_execution_class]:
@@ -215,8 +216,8 @@ class StateMachine:
             executions of this state-machine
         """
 
-        _s = " with status '%s'" % status if status else ""
-        _logger.info("Listing executions of '%s'" % self + _s)
+        _s = f" with status '{status}'" if status else ""
+        _logger.info(f"Listing executions of '{self}'" + _s)
 
         kwargs = {"stateMachineArn": self.arn}
         if status is not None:

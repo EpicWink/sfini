@@ -280,8 +280,8 @@ class TestCLI:
         execs = [mock.Mock(spec=sfini.execution.Execution) for _ in range(4)]
         state_machine.list_executions.return_value = execs
         for j, execution in enumerate(execs):
-            execution.format_history.return_value = "spam\n  %d" % j
-            type(execution).__str__ = mock.Mock(return_value="exec%s" % j)
+            execution.format_history.return_value = f"spam\n  {j}"
+            type(execution).__str__ = mock.Mock(return_value=f"exec{j}")
 
         # Build input
         args = argparse.Namespace(status="spam-status", command="executions")

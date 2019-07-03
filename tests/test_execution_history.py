@@ -43,13 +43,13 @@ class TestEvent:
         """Event string representation."""
         def test_with_prev(self, event, timestamp):
             """Event has preceding event."""
-            exp = "Event(%r, 'BlaSpammed', 2, previous_event_id=1)" % timestamp
+            exp = f"Event({timestamp!r}, 'BlaSpammed', 2, previous_event_id=1)"
             assert repr(event) == exp
 
         def test_no_prev(self, event, timestamp):
             """Event has no preceding event."""
             event.previous_event_id = None
-            exp = "Event(%r, 'BlaSpammed', 2)" % timestamp
+            exp = f"Event({timestamp!r}, 'BlaSpammed', 2)"
             assert repr(event) == exp
 
     class TestGetArgs:
