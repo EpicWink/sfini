@@ -304,7 +304,7 @@ class Choice(_base.State):
 
     def to_dict(self):
         if not self.choices and self.default is None:
-            raise RuntimeError("Choice '%s' has no next path")
+            raise RuntimeError("Choice '%s' has no next path" % self)
         defn = super().to_dict()
         defn["Choices"] = [cr.to_dict() for cr in self.choices]
         if self.default is not None:

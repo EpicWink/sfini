@@ -483,6 +483,7 @@ class TestChoice:
                 state.to_dict()
             assert " no" in str(e.value)
             assert "path" in str(e.value) or "transition" in str(e.value)
+            assert str(state) in str(e.value)
 
 
 class TestTask:
