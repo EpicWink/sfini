@@ -146,7 +146,7 @@ class SmartCallableActivity(CallableActivity):
 
     def __init__(self, name, fn: T.Callable, heartbeat=20, *, session=None):
         super().__init__(name, fn, heartbeat=heartbeat, session=session)
-        self.sig: inspect.Signature = inspect.Signature.from_callable(fn)
+        self.sig = inspect.Signature.from_callable(fn)
 
     def __call__(self, *args, **kwargs):
         return self.fn(*args, **kwargs)
@@ -215,7 +215,7 @@ class ActivityRegistration:
     def __init__(self, prefix: str = "", *, session: _util.AWSSession = None):
         self.prefix = prefix
         self.session = session or _util.AWSSession()
-        self.activities: T.Dict[str, Activity] = {}
+        self.activities = {}
 
     def __str__(self):
         return "'%s' activities" % self.prefix

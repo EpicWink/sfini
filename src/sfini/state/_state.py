@@ -245,7 +245,7 @@ class Choice(_base.State):
             input_path=input_path,
             output_path=output_path)
         self.choices = []
-        self.default: T.Union[_base.State, None] = None
+        self.default = None
 
     def add_to(self, states):
         super().add_to(states)

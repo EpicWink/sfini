@@ -26,7 +26,7 @@ class TaskResource:
         service: resource type
     """
 
-    service: str = None
+    service = None
 
     def __init__(self, name: str, *, session: _util.AWSSession = None):
         self.name = name

@@ -102,7 +102,7 @@ class HasNext(State):
             comment=comment,
             input_path=input_path,
             output_path=output_path)
-        self.next: T.Union[State, None] = None
+        self.next = None
 
     def add_to(self, states):
         super().add_to(states)
@@ -192,7 +192,7 @@ class CanRetry(State):
             comment=comment,
             input_path=input_path,
             output_path=output_path)
-        self.retriers: T.List[T.Tuple[T.Sequence[str], T.Dict[str, ...]]] = []
+        self.retriers = []
 
     def retry_for(
             self,
@@ -283,7 +283,7 @@ class CanCatch(State):
             comment=comment,
             input_path=input_path,
             output_path=output_path)
-        self.catchers: T.List[T.Tuple[T.Sequence[str], T.Dict[str, ...]]] = []
+        self.catchers = []
 
     def add_to(self, states):
         super().add_to(states)
