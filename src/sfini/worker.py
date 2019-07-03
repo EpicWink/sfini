@@ -26,7 +26,7 @@ threading = None
 def _import_threading():
     """Import ``threading`` multi-threading module."""
     global threading
-    if "threading" not in sys.modules:
+    if threading is None:
         import threading
 
 

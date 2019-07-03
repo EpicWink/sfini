@@ -8,7 +8,6 @@ from sfini import _util as sfini_util
 import json
 from botocore import exceptions as bc_exc
 import threading
-import sys
 
 
 @pytest.fixture
@@ -24,10 +23,7 @@ def session_mock():
 
 
 def test_import_threading():
-    tscr.threading = None
-    sys_modules = sys.modules.copy()
-    del sys_modules["threading"]
-    with mock.patch.object(sys, "modules", sys_modules):
+    with mock.patch.object(tscr, "threading", None):
         tscr._import_threading()
         assert tscr.threading is threading
         tscr._import_threading()
