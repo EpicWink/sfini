@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/07/11
-
 """Test ``sfini.state_machine``."""
 
 from sfini import state_machine as tscr

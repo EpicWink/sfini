@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/07/11
-
 """State-machine interfacing.
 
 A state-machine defines the logic for a workflow of an application. It

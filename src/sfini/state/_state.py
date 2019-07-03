@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2019/05/13
-
 """State definitions."""
 
 import datetime

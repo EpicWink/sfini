@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/07/11
-
 """SFN choice rules.
 
 These rules are used in the 'Choice' state of a state-machine, and

@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/07/11
-
 """State-machine execution."""
 
 import time

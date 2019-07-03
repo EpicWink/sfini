@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2019/05/09
-
 """Test ``sfini.task_resource``."""
 
 from sfini import task_resource as tscr

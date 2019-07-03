@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/07/12
-
 """Activity interfacing.
 
 Activities are separate from state-machines, and are used as

@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2019/05/09
-
 """Task resource interfacing.
 
 'Task' states require some executor to implement the task, which

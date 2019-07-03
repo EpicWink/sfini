@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2019/05/13
-
 """State definition bases and mix-ins."""
 
 import typing as T

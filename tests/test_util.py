@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/07/11
-
 """Test ``sfini._util``."""
 
 from sfini import _util as tscr

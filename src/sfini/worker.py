@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/07/12
-
 """Activity task polling and execution.
 
 You can provide you're own workers: the interface to the activities is

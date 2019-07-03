@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/08/09
-
 """Test ``sfini.execution.history``."""
 
 from sfini.execution import history as tscr

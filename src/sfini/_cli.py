@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/08/06
-
 """SFN service CLI helper.
 
 Use in your ``__main__`` module to provide a CLI to your service.

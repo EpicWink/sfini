@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2019/05/20
-
 """Test ``sfini.state._base``."""
 
 from sfini.state import _base as tscr

@@ -1,6 +1,3 @@
-# --- 80 characters -----------------------------------------------------------
-# Created by: Laurie 2018/08/09
-
 """State-machine execution history events.
 
 Use ``sfini.execution.Execution.format_history`` for nice history
