@@ -5,7 +5,6 @@ public. This module's worker implementation uses threading, and is
 designed to be resource-managed outside of Python.
 """
 
-import sys
 import json
 import uuid
 import time
