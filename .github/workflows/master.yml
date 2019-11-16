@@ -1,0 +1,31 @@
+name: master-push test
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Build package
+      run: python3 setup.py sdist bdist_wheel
+    - uses: actions/upload-archive
+      with:
+        name: dist
+        path: dist/
+  test:
+    needs: build
+    runs-on: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@master
+    - uses: actions/download-archive
+      with:
+        name: dist
+        path: dist/
+    - name: Install package
+      run: pip3 install "sfini[dev]==$(cat VERSION)" -f dist/
+    - name: Test package
+      run: pytest -vvra
