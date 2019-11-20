@@ -31,6 +31,7 @@ sphinx-apidoc -ef -o docs/src/ src/sfini/ --ext-autodoc
 
 To build the documentation:
 ```bash
+pip3 install -r docs/requirements.txt
 sphinx-build -b html docs/src/ docs/_build/
 ```
 

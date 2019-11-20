@@ -33,10 +33,6 @@ setuptools.setup(
     package_dir={"": "src"},
     python_requires="~=3.6",
     install_requires=["boto3"],
-    extras_require={
-        "dev": [
-            "sphinx",
-            "sphinx_rtd_theme"]},
     project_urls={
         "Documentation": "https://sfini.readthedocs.io/en/latest/",
         "Source": "https://github.com/EpicWink/sfini",
