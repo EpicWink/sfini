@@ -35,10 +35,6 @@ setuptools.setup(
     install_requires=["boto3"],
     extras_require={
         "dev": [
-            "pytest",
-            "pytest-cov",
-            "pytest-timeout",
-            "moto",
             "sphinx",
             "sphinx_rtd_theme"]},
     project_urls={
